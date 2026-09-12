@@ -130,12 +130,12 @@ Because Vercel's free Hobby plan restricts native crons to once daily (`0 0 * * 
 
 1. Create a free account at [cron-job.org](https://cron-job.org).
 2. Click **Create Cronjob**.
-3. Fill in the fields:
+3. On the **Common** tab, simply fill in:
    - **Title**: `SRSMA Exam Timer Sweep`
-   - **URL**: `https://your-project.vercel.app/api/cron/sweep-expired?key=cee0fa379c396c15290ea1a528c9cc92`
-   - **Execution Schedule**: Every `2` minutes (or `1` minute).
-   - **Request Method**: `GET`
-4. Click **Create**.
+   - **URL**: `https://test-app-rouge-eight.vercel.app/api/cron/sweep-expired?key=cee0fa379c396c15290ea1a528c9cc92`
+   - **Schedule**: Every `2` minutes (e.g. choose *User-defined* or *Every 2 minutes*).
+4. *(Note: You do not need to change the HTTP method — `GET` is already the built-in default on cron-job.org under the Advanced tab).*
+5. Click **Create / Save**.
 
 *This will run 24/7 without cost, auto-submit expired exams, and keep your Supabase database continuously active so it never goes to sleep!*
 

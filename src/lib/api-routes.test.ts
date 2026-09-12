@@ -16,6 +16,8 @@ import { describe, expect, it } from 'vitest';
  * nothing caught either one.
  */
 
+import { ALL_REGISTERED_ROUTES } from '@/server/api/router';
+
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const API_DIR = path.join(ROOT, 'src/app/api');
 const SRC_DIR = path.join(ROOT, 'src');
@@ -33,34 +35,27 @@ function walk(dir: string, filter: (name: string) => boolean): string[] {
   return out;
 }
 
-/** Collect every route.ts under src/app/api, with the HTTP verbs it exports. */
+/** Collect every registered route from the unified API router, with the HTTP verbs it exports. */
 function collectRoutes(): RouteFile[] {
-  return walk(API_DIR, (n) => n === 'route.ts' || n === 'route.tsx').map((file) => {
-    const source = fs.readFileSync(file, 'utf8');
+  // Sort routes so exact literal paths are matched before parameterized segments (e.g. /questions/bulk before /questions/[id])
+  const sorted = [...ALL_REGISTERED_ROUTES].sort((a, b) => {
+    const aParamCount = (a.pattern.match(/\[/g) || []).length;
+    const bParamCount = (b.pattern.match(/\[/g) || []).length;
+    if (aParamCount !== bParamCount) return aParamCount - bParamCount;
+    return b.pattern.length - a.pattern.length;
+  });
 
-    const verbs = new Set<string>();
-    for (const m of source.matchAll(
-      /export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g,
-    )) {
-      verbs.add(m[1]);
-    }
-    // `export const PATCH = handler; export const POST = handler;`
-    for (const m of source.matchAll(/export\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*\w+\s*;/g)) {
-      verbs.add(m[1]);
-    }
-
-    // src/app/api/tests/[id]/attempts/route.ts → /api/tests/<seg>/attempts
-    const rel = path.relative(path.join(ROOT, 'src/app'), path.dirname(file)).split(path.sep).join('/');
+  return sorted.map((r) => {
     const pattern = new RegExp(
-      '^/' +
-        rel
+      '^' +
+        r.pattern
           .split('/')
           .map((seg) => (seg.startsWith('[') ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
           .join('/') +
         '$',
     );
 
-    return { urlPattern: pattern, verbs, file: path.relative(ROOT, file) };
+    return { urlPattern: pattern, verbs: new Set(r.verbs), file: `src/server/api/router.ts (${r.pattern})` };
   });
 }
 
@@ -149,5 +144,11 @@ describe('API route references', () => {
     }
 
     expect(broken, `Verb mismatches:\n${broken.join('\n')}`).toEqual([]);
+  });
+
+  it('enforces Vercel Hobby plan limit with a single unified route handler in src/app/api', () => {
+    const appApiRoutes = walk(API_DIR, (n) => n === 'route.ts' || n === 'route.tsx');
+    expect(appApiRoutes.length).toBe(1);
+    expect(appApiRoutes[0]).toContain('[[...slug]]');
   });
 });

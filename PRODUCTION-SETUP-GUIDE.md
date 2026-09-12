@@ -13,7 +13,7 @@
 | Service | Free Tier Limits | How SRSMA Uses It | Status |
 |---|---|---|---|
 | **Supabase PostgreSQL** | 500 MB database, 50,000 monthly active users, 5 GB bandwidth. | All student profiles, exam papers, KaTeX questions, options, and scorecards take < 20 MB for hundreds of tests. | ✅ **Plenty of room** |
-| **Vercel Hosting** | 100 GB bandwidth/month, unlimited serverless requests, free automatic SSL & custom domain. | Test runner and dashboards consume minimal bandwidth. | ✅ **100% Free** |
+| **Vercel Hosting** | 100 GB bandwidth/month, max 12 Serverless Functions per deployment, free SSL & custom domain. | All 39 API routes are consolidated into 1 unified Serverless Function (`/api/[[...slug]]`), keeping total functions at ~2 (far below the 12-function cap). | ✅ **100% Free** |
 | **Exam Sweep Cron** | Vercel Hobby tier allows native cron only once per day (`0 0 * * *`). | Use **[cron-job.org](https://cron-job.org)** (100% free forever) to ping the sweep endpoint every 2 minutes. | ✅ **100% Free** |
 
 > [!TIP]

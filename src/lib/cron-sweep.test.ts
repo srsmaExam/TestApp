@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { GET, POST } from '@/app/api/cron/sweep-expired/route';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { GET, POST } from '@/server/api/cron/sweep-expired';
+
+vi.mock('@/lib/sweep', () => ({
+  sweepExpiredAttempts: vi.fn().mockResolvedValue(0),
+}));
 
 describe('Cron Sweep Route Handler (/api/cron/sweep-expired)', () => {
   const originalEnv = process.env.CRON_SECRET;

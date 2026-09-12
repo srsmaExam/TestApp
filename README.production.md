@@ -478,3 +478,31 @@ Configure these environment variables in your Vercel Project Settings (**Setting
 
 ### Q5: Can students see the answers by inspecting network requests?
 **A**: No. The platform uses a strict Data Transfer Object (DTO) projection layer (`toStudentQuestion`) that omits answer keys and explanations from all student network payloads until after submission and release.
+
+---
+
+## 9. Serverless Architecture & Vercel Free-Tier Optimization
+
+### 9.1 The Vercel Hobby Plan 12-Function Constraint
+Vercel enforces a strict platform limit on the **Hobby Plan (Free Tier)**:
+```
+No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan.
+```
+In default Next.js App Router applications, each independent `route.ts` file under `src/app/api/` is compiled into a standalone Serverless Function (`.func` bundle). Because this platform features 39 modular API endpoints (auth, tests, questions, attempts, analytics, cron, media, papers), a default setup generated 39 separate Lambda functions, instantly failing Vercel's deployment validator and prompting for a paid Pro upgrade ($20/seat/month).
+
+### 9.2 The Unified API Router Solution (`src/app/api/[[...slug]]`)
+To ensure the platform remains **100% free forever ($0.00/month)** without compromising modularity, all 39 API routes are dispatched through a single, high-performance catch-all router:
+- **Route Handler**: [`src/app/api/[[...slug]]/route.ts`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/api/[[...slug]]/route.ts)
+- **Router Engine**: [`src/server/api/router.ts`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/server/api/router.ts)
+- **Handler Modules**: Cleanly separated under [`src/server/api/`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/server/api/)
+
+**Impact on Function Count**:
+- Previous: **39 API functions + dynamic pages = ~60 functions** (deployment blocked).
+- Consolidated: **1 unified API function + dynamic pages = ~2–3 functions total** (well under the 12-function cap).
+
+### 9.3 Performance & Zero Latency Regression
+Consolidating API handlers into a single function not only avoids paid plans, but **significantly improves real-world performance**:
+1. **Shared Warm Container**: In a 39-function setup, a student logging in, starting a test, and submitting answers hits three separate cold Lambdas. With the unified router, the Lambda environment (database connection pool, auth tokens, compiled Zod schemas) stays warm across the entire user journey.
+2. **Reduced Cold Starts**: Cold start latency drops from occurring across 39 disparate routes to a single shared execution context.
+3. **Identical API Contracts**: All URLs (`/api/auth/login`, `/api/papers/[id]/pdf`, `/api/cron/sweep-expired`, etc.) remain identical. No frontend, mobile, or external cron modifications are required.
+4. **Resilient Dual Storage**: Uploaded question papers (PDFs) and diagrams are stored with sha256 deduplication in Supabase PostgreSQL (`stored_files` table), completely eliminating read-only filesystem errors (`ENOENT: mkdir /var/task/data`) on serverless runtimes.

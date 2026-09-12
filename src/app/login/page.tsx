@@ -2,7 +2,10 @@ import Image from 'next/image';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { BRAND } from '@/config/branding';
-import { getSession } from '@/lib/session';
+import { sql } from 'drizzle-orm';
+import { getDb } from '@/db/client';
+import { profiles } from '@/db/schema';
+import { clearSession, getSession } from '@/lib/session';
 import { homeFor } from '@/lib/auth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LoginForm } from './LoginForm';
@@ -11,7 +14,25 @@ export const metadata = { title: 'Student Sign In | SRSMA' };
 
 export default async function LoginPage() {
   const session = await getSession();
-  if (session) redirect(homeFor(session.role));
+  if (session) {
+    const db = await getDb();
+    const [user] = await db
+      .select({
+        id: profiles.id,
+        role: profiles.role,
+        isActive: profiles.isActive,
+        canLogin: profiles.canLogin,
+      })
+      .from(profiles)
+      .where(sql`${profiles.id} = ${session.userId}`)
+      .limit(1);
+
+    if (user && user.isActive && user.canLogin) {
+      redirect(homeFor(user.role));
+    } else {
+      await clearSession();
+    }
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10 transition-colors dark:bg-[#090d16]">

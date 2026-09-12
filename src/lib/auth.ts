@@ -3,11 +3,11 @@ import { sql } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 import { profiles } from '@/db/schema';
 import { verifyPassword } from './password';
-import { getSession, issueSession, type Role, type Session } from './session';
+import { clearSession, getSession, issueSession, type Role, type Session } from './session';
 import { HttpError } from './http';
 
 export type { Session, Role };
-export { getSession };
+export { getSession, clearSession };
 
 /**
  * Authenticate a username/password pair. Returns null for every failure mode —
@@ -178,6 +178,7 @@ export async function requireSession(): Promise<Session> {
     .limit(1);
 
   if (!user || !user.isActive || !user.canLogin) {
+    await clearSession();
     redirect(session.role === 'teacher' ? '/SRSMA' : '/login');
   }
 
@@ -209,6 +210,7 @@ export async function requireTeacher(): Promise<Session> {
     .limit(1);
 
   if (!user || !user.isActive || !user.canLogin || user.role !== 'teacher') {
+    await clearSession();
     redirect('/SRSMA');
   }
 
@@ -240,6 +242,7 @@ export async function requireStudent(): Promise<Session> {
     .limit(1);
 
   if (!user || !user.isActive || !user.canLogin || user.role !== 'student') {
+    await clearSession();
     redirect('/login');
   }
 

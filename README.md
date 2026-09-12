@@ -1,166 +1,180 @@
-# Vidya Test Prep — JEE Mains Test Platform (Local Build)
+# SRSMA — JEE Mains Computer-Based Test (CBT) Platform
 
-A full-featured, local-first JEE Mains Computer-Based Test (CBT) platform prototype. Built to run **entirely on your machine** — no cloud dependencies, no external databases, no paid subscriptions, and no API keys required.
+A full-featured, institutional-grade JEE Mains Computer-Based Test (CBT) platform engineered for **SRSMA**. Built to replicate the exact National Testing Agency (NTA) exam environment, question delivery, timing algorithms, and score calibration.
 
-All runtime state (embedded Postgres database, source PDFs, cropped diagrams, and backups) lives locally on disk under `data/`.
+Runs in two flexible modes:
+- **Production (Cloud)**: Deployed on **Vercel** + **Supabase (PostgreSQL)** + **cron-job.org** with **$0.00 / month operating cost**.
+- **Local (Offline Prototype)**: Runs 100% locally on disk with embedded PostgreSQL (PGlite) under `data/` with zero cloud dependencies.
 
 ---
 
-## Quick Start
+## 📚 Documentation Quick Links
 
-### 1. Prerequisites
-- **Node.js 20+** (tested on Node 22 and 24)
-- **npm 10+**
+| Document | Purpose |
+|---|---|
+| 📖 **[Detailed Production Operations & User Guide](README.production.md)** | **Exhaustive manual on how to use every feature in production (Students, Faculty, Ingestion, Tests, Analytics)** |
+| 🚀 **[Production Setup & Deployment Guide](PRODUCTION-SETUP-GUIDE.md)** | Step-by-step instructions for Supabase pooler setup, Vercel deployment, and free 2-min cron configuration |
+| 💻 **[Local Build Quick Reference](README.local.md)** | Quick reference for offline local development with embedded PGlite |
+| 🏛 **[System Low-Level Design (LLD)](JEE-Test-Platform-LLD.md)** | Architectural specifications, schema definitions, and security invariants |
 
-### 2. Installation & Seed
+---
 
+## Key Portals & Credentials
+
+### 1. Faculty & Staff Portal
+- **URL**: `https://your-domain.vercel.app/SRSMA` *(Restricted route)*
+- **Authentication**: Username and Password.
+- **Production Admin**:
+  - Username: `Teacher`
+  - Provisioned via: `npm run seed:admin`
+- **Features**: Student roster management, bulk CSV import, PDF digitization studio, question diagram cropper, test builder, live monitoring, test leaderboards, and cohort weak chapter analytics.
+
+### 2. Student Portal
+- **URL**: `https://your-domain.vercel.app/login` (or `/`)
+- **Authentication**: Mobile Phone Number with Country Code (default: 🇮🇳 India `+91`, supports 18+ international codes).
+- **Session**: 90-day persistent session cookie (no repeated daily logins).
+- **Features**: NTA-style CBT test runner with synchronized timer, 75-question palette (5 color states), disconnect-resilient local mirroring (IndexedDB), instant scorecard, KaTeX step-by-step solutions, and personal performance curves.
+
+---
+
+## Quick Start (Production vs Local)
+
+### Option A: Running Production Build Locally with Supabase
+```powershell
+# 1. Install dependencies
+npm install
+
+# 2. Run migrations against Supabase
+$env:DATABASE_URL="postgresql://postgres.xxx:pass@aws-0-...pooler.supabase.com:6543/postgres?sslmode=require"
+npm run migrate
+
+# 3. Provision Master Faculty Admin
+$env:ADMIN_USERNAME="Teacher"
+$env:ADMIN_PASSWORD="SRSMA@108"
+$env:ADMIN_FULLNAME="SRSMA"
+$env:ADMIN_EMAIL="exams.srsma@gmail.com"
+npm run seed:admin
+
+# 4. Start local production-like dev server
+npm run dev
+```
+
+### Option B: Running Offline Local Prototype (Embedded PGlite)
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Seed database (creates accounts, demo paper, and sample tests with attempts)
+# 2. Seed demo accounts, sample papers, and mock attempts
 npm run seed
 
-# 3. Start development server
+# 3. Start local development server
 npm run dev
 ```
-
-Open **[http://localhost:3000](http://localhost:3000)** in your browser.
-
-> 💡 **Note:** `npm run seed` and `npm run dev` cannot hold the embedded database lock simultaneously. Run `seed` before starting `dev`, or stop the dev server before re-seeding.
+Open **[http://localhost:3000](http://localhost:3000)**. Faculty logs in at `/SRSMA` (`Teacher` / `112345`), Student logs in at `/login`.
 
 ---
 
-## Logins & Credentials
+## How to Use as a Teacher / Administrator
 
-| Username | Password | Role | Description |
-|---|---|---|---|
-| `Teacher` | `112345` | **Teacher** | Paper digitization, question bank, test builder, cohort analytics |
-| `Student` | `112345` | **Student** | Timed CBT test runner, solutions review, performance analytics |
+### 1. Manage Students & Batches (`/teacher/students`)
+- **View Roster**: Search by student name, mobile number, username, or email. Filter by batch.
+- **Add Individual Student**: Enter student name, 10-digit mobile number, email, and assign to a cohort batch.
+- **Bulk CSV Import**: Import hundreds of students at once. Required headers: `full_name, username, email, phone, batch, password`.
+- **Batch Assignment**: Select multiple students to assign them to batches (e.g., `JEE 2026 Batch A`).
+- **Account Controls**: Instantly toggle student access (Active/Inactive or Disable Login).
 
-*(These are development credentials seeded locally — delete them before any production deployment).*
+### 2. Digitize Question Papers (`/teacher/papers` & `/teacher/questions/upload`)
+- **Upload PDF**: Upload official JEE Mains question paper PDFs under `/teacher/papers`.
+- **Extraction Prompts**: Copy the standardized prompt from `/teacher/extraction-prompt`, run it in Gemini/Claude with the PDF attached, and copy the JSON.
+- **Ingest & Validate**: Paste JSON into the Ingest tab. Built-in Zod schema validation checks syntax and auto-repairs formatting issues before staging as drafts.
+- **Crop Studio**: Open questions in `/teacher/questions/[id]` with split-screen PDF canvas. Drag a box over any circuit, diagram, or graph on the PDF to instantly crop and attach it to `[[IMG:...]]` placeholders as an optimized WebP.
+- **Verify Questions**: Confirm answer keys, KaTeX LaTeX previews, and taxonomy tags, then click **Verify Question** (required before publishing).
+- **Direct Question Bank Upload**: Upload standalone questions, answer keys, and worked step-by-step solutions directly under `/teacher/questions/upload`.
 
----
+### 3. Build & Publish Exams (`/teacher/tests`)
+- **Create Test**: Set Title, Duration (e.g. 180 min), active schedule window, max attempts, and anti-cheating shuffle options (shuffle questions, shuffle options A/B/C/D).
+- **Results Policy**: Choose **Immediate** (instant scorecard & solutions upon submit) or **On Release** (solutions hidden until teacher releases results).
+- **Test Builder**: Switch between Physics, Chemistry, and Mathematics. Add verified questions from the question bank, reorder questions, and override scoring schemes.
+- **Publish Gate**: Enforces 100% question verification before going live.
+- **Clone Test**: Duplicate existing tests with one click for alternate shifts.
 
-## How to Use as a Teacher
-
-### 1. Digitize a Question Paper
-1. **Upload Paper**: Navigate to **Papers** (`/teacher/papers`) and upload a PDF of a JEE Mains question paper.
-2. **Extraction Prompt**: Navigate to **Extraction Prompt** (`/teacher/extraction-prompt`) and click **Copy Prompt**. Open Gemini / Claude in a browser tab, attach the PDF, and run the prompt to generate structured JSON.
-3. **Ingest**: On the paper's **Ingest** tab (`/teacher/papers/[id]/ingest`), paste the JSON. The built-in Zod validator checks syntax with instant error highlighting before staging questions as drafts.
-4. **Crop Figures & Verify**:
-   - Open questions in the **Question Editor** (`/teacher/questions/[id]`).
-   - The split-screen displays the PDF canvas on the left and KaTeX math preview on the right.
-   - Drag a selection rectangle on the PDF canvas to crop diagrams for any `[[IMG:...]]` placeholder.
-   - Enter the answer key and pedagogy tags, then click **Verify Question**.
-
----
-
-### 2. Build & Publish a Test
-1. **Create Test**: Navigate to **Tests** (`/teacher/tests`) and click **Create Test**.
-2. **Configure Settings**: Set Title, Duration (e.g. 180 min), Active Window dates, Shuffle options, and Results Policy (*Immediate* vs *On Release*).
-3. **Test Builder** (`/teacher/tests/[id]`):
-   - Switch to the **Add from Bank** tab to search and filter questions by Subject (Physics, Chemistry, Maths), Chapter, Difficulty, or Type.
-   - Reorder question positions and customize scoring schemes (+4 for correct, -1 for wrong, 0 for unattempted presets).
-   - Click **Publish Test** (the Publish Gate guarantees that 100% of questions are verified before going live).
-
----
-
-### 3. Review Analytics & Export CSV
-1. **Test-Specific Dashboard** (`/teacher/tests/[id]/analytics`):
-   - Score distribution histogram.
-   - Ranked student leaderboard with percentile and time taken.
-   - Question item calibration table (observing candidate % correct vs assigned difficulty).
-   - Click **Export CSV** to download a complete spreadsheet of test scores.
-2. **Cohort Overview** (`/teacher/analytics`):
-   - View enrolled student performance across all tests.
-   - Identify class-wide weak chapters that need priority revision.
+### 4. Monitor & Analyze Results (`/teacher/tests/[id]/analytics` & `/teacher/analytics`)
+- **Real-Time Leaderboard**: Live rankings, total scores, percentiles, and completion times.
+- **Score Distribution**: Visual histogram showing candidate distribution across score brackets.
+- **Question Item Calibration**: Identify tricky questions where student error rate is unusually high.
+- **One-Click CSV Export**: Download a complete spreadsheet of student scores and section breakdowns.
+- **Cohort Analytics**: Track cross-test score curves and detect class-wide weak chapters to plan revision lectures.
 
 ---
 
 ## How to Use as a Student
 
-### 1. Take a Timed JEE Mains CBT Test
-1. Sign in as `Student` (`112345`) and view active exams on **My tests** (`/student`).
-2. Click **Take Test** to open the **Instructions Screen** (`/student/tests/[id]`).
-3. Read the marking scheme (+4 / -1 / 0) and the 5-color palette legend, check the declaration, and click **I am ready to begin**.
-4. **Inside the Test Runner** (`/student/attempts/[id]`):
-   - **Timer**: Server-authoritative countdown clock at the top.
-   - **Subject Tabs**: Quickly switch between Physics, Chemistry, and Mathematics sections.
-   - **Palette**: 75-cell quick-navigation grid showing:
-     - 🟩 **Green**: Answered
-     - 🟥 **Red**: Not Answered (Seen)
-     - 🟪 **Purple**: Marked for Review
-     - 🟪🟢 **Purple with Dot**: Answered & Marked for Review
-     - ⬜ **Grey**: Not Visited
-   - **Actions**: Use **Save & Next**, **Mark for Review & Next**, or **Clear Response**.
-   - **Offline Disconnect Resilience**: In-memory state is continuously mirrored to `IndexedDB` and autosaved. If internet or server connection drops, you can continue answering uninterrupted.
-   - **Submit**: Click **Submit Test** in the header to review your subject-wise attempt summary modal, then confirm submission.
+### 1. Sign In & Access Dashboard
+- Visit `/login` (or `/`), select your country code (🇮🇳 `+91`), enter your registered mobile number, and click **Sign in as Student**.
+- The dashboard (`/student`) displays all active and upcoming tests.
+
+### 2. Take a CBT Exam (`/student/tests/[id]` → `/student/attempts/[id]`)
+- **Instructions**: Review the exam duration, marking scheme (+4 / -1 / 0), and 5-color palette legend. Check the declaration box and begin.
+- **NTA-Style Test Runner**:
+  - Synchronized countdown clock at the top.
+  - Section tabs to jump between **Physics**, **Chemistry**, and **Mathematics**.
+  - 75-cell quick-navigation palette:
+    - 🟩 **Green**: Answered
+    - 🟥 **Red**: Not Answered (Visited)
+    - 🟪 **Purple**: Marked for Review
+    - 🟪🟢 **Purple with Dot**: Answered & Marked for Review *(Evaluated for marks)*
+    - ⬜ **Grey**: Not Visited
+  - Answering: Radio options for MCQs; validated numeric field for numerical questions.
+  - Actions: **Save & Next**, **Mark for Review & Next**, **Clear Response**.
+  - **Offline Disconnect Resilience**: In-memory state is continuously mirrored to `IndexedDB`. If the internet drops or the page is refreshed, you can continue answering uninterrupted.
+  - **Submit**: Click **Submit Test** to review section-wise summary counts before confirming submission.
+
+### 3. Review Scorecard & Solutions (`/student/attempts/[id]/result`)
+- Immediate breakdown of Total Marks, Cohort Percentile, and Subject Scores.
+- Step-by-step KaTeX worked solutions for every question.
+- Side-by-side answer comparison (Your Selection vs Correct Answer).
+- **Overtime Flag (⏱)**: Flags questions where time spent exceeded >1.5× expected time.
+- Filter by *Correct*, *Incorrect*, *Unattempted*, and *Overtime*.
+
+### 4. Track Performance Analytics (`/student/analytics`)
+- Visual score progression curve across all completed mock exams.
+- Subject-wise accuracy percentages and chapter mastery breakdown.
 
 ---
 
-### 2. Review Worked Solutions & Scorecard
-1. Immediately upon submission (or after teacher release), open the **Scorecard & Solutions** review (`/student/attempts/[id]/result`).
-2. Inspect your total marks, rank, percentile, and subject breakdowns.
-3. Review question-by-question solutions with step-by-step KaTeX math, side-by-side answer comparisons, and overtime flags (>1.5x expected time).
-4. Filter questions by *Correct*, *Wrong*, *Unattempted*, or *Overtime*.
-
----
-
-### 3. Student Personal Analytics
-1. Navigate to **Analytics** (`/student/analytics`).
-2. Track your **Score Progression Curve** over successive mock tests.
-3. Review your **Subject-Wise Accuracy** bar charts and **Chapter Mastery** breakdowns to target weak topics.
-
----
-
-## Scripts & Operations
+## Administrative Scripts & CLI Operations
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Starts local development server on `http://localhost:3000` |
-| `npm run build` | Compiles Next.js production build |
-| `npm run start` | Starts production server |
-| `npm run seed` | Seeds default accounts, demo paper, and sample tests |
-| `npm run backup` | Creates a timestamped dump of database + PDFs + images under `data/backups/` |
-| `npm run restore` | Restores database and files from the latest backup |
-| `npm run reset` | Wipes `data/`, re-runs migrations, and re-seeds cleanly |
-| `npm test` | Runs the Vitest test suite (grading engine, leak prevention, schemas) |
-| `npm run typecheck` | Runs `tsc --noEmit` to verify TypeScript type safety |
+| `npm run migrate` | Runs pending PostgreSQL migrations against Supabase |
+| `npm run seed:admin` | Provisions or updates the master faculty admin account |
+| `npm run regrade` | Re-grades any attempts that were closed without a recorded score |
+| `npm run test` | Runs the Vitest test suite (grading engine, leak prevention, schemas) |
+| `npm run typecheck` | Runs TypeScript compiler checks (`tsc --noEmit`) |
+| `npm run verify` | Complete pre-deployment check (`typecheck` + `tokens` + `test`) |
+| `npm run build` | Compiles the production Next.js application bundle |
+| `npm run seed` | *(Local dev only)* Seeds demo accounts and mock papers into PGlite |
+| `npm run backup` | *(Local dev only)* Dumps database and media files under `data/backups/` |
+| `npm run reset` | *(Local dev only)* Wipes local PGlite data and re-seeds |
 
 ---
 
-## Project Structure & Architecture
+## Security & Answer-Key Leak Prevention
 
-```
-├── data/                         # ALL runtime mutable state (never committed to git)
-│   ├── pgdata/                   # Embedded Postgres (PGlite) database directory
-│   ├── papers/                   # Stored source PDF files
-│   ├── images/                   # Cropped question diagrams (WebP)
-│   └── backups/                  # Timestamped full backups
-├── drizzle/                      # SQL migrations (0000_init.sql is source of truth)
-├── prompts/                      # Versioned LLM extraction prompts (extract-v1.txt)
-├── scripts/                      # Seed, backup, restore, and reset scripts
-└── src/
-    ├── app/                      # Next.js App Router (login, teacher, student, api)
-    │   ├── api/                  # REST API route handlers
-    │   │   ├── analytics/        # Student & teacher analytics endpoints + CSV export
-    │   │   ├── attempts/         # Test runner autosave, events, grading & results
-    │   │   ├── papers/           # PDF upload, dedupe, and streaming
-    │   │   ├── questions/        # Question CRUD & verification gate
-    │   │   └── tests/            # Test builder, questions assignment & publishing
-    │   ├── student/              # Student dashboard, test runner, review & analytics
-    │   └── teacher/              # Teacher dashboard, editor, builder & analytics
-    ├── components/               # UI components, KaTeX renderer, and PDF cropper
-    ├── db/                       # Schema definitions & PGlite singleton
-    └── lib/                      # Pure grading engine, DTO projections, auth & shuffle
-```
+1. **Zero-Leak DTO Projection**:
+   - Question payloads served to students during an active test pass strictly through `toStudentQuestion()` in `src/lib/dto.ts`.
+   - Fields such as `answer`, `solution`, `difficulty`, and `extraction_notes` are strictly omitted from student API payloads.
+   - Enforced by automated leak tests in `src/lib/dto.leak.test.ts`.
+2. **Server-Side Atomic Grading**:
+   - Grading happens exclusively on the server inside a single database transaction (`POST /api/attempts/:id/submit`).
+3. **Randomized Shuffling**:
+   - Both question sequence and MCQ options (A/B/C/D) are shuffled per candidate attempt.
+4. **Auto-Submit Sweep Daemon**:
+   - Background 2-minute cron (`/api/cron/sweep-expired`) ensures tests are automatically closed and scored when time expires, even if the student's device is disconnected.
 
 ---
 
-## Answer-Key Leak Protection
+## License & Organization
 
-In this local-first architecture:
-1. **Single Choke Point**: Question payloads served to students pass strictly through `toStudentQuestion()` in `src/lib/dto.ts`, explicitly excluding `answer`, `solution`, and `difficulty`.
-2. **Automated Leak Tests**: `src/lib/dto.leak.test.ts` recursively traverses student payloads to guarantee zero answer-key leakage in student network responses.
-3. **Server-Side Grading**: `POST /api/attempts/:id/submit` is the only route that reads `questions.answer`, scoring responses atomically in a single transaction.
+Developed for **SRSMA (Sri Rama Seva Mandali Academy)**.  
+All rights reserved. For detailed operations, see **[README.production.md](README.production.md)**.

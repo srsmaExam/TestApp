@@ -44,6 +44,17 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
   const pastDeadline = Date.now() > new Date(attempt.deadlineAt).getTime();
   const wasAlreadyClosed = attempt.status !== 'in_progress';
 
+  // Read optional final answers from JSON body (enables 1-shot submit)
+  const rawBody = await req.text().catch(() => '');
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    // Ignore non-JSON or empty bodies
+  }
+
+  const finalAnswers = body && Array.isArray(body.answers) ? body.answers : undefined;
+
   // gradeAndCloseAttempt is idempotent on total_marks, so a submit racing the
   // background sweep reads back whichever landed first instead of clobbering it
   // or (as before) returning a hardcoded zero.
@@ -51,6 +62,7 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     db,
     attemptId,
     wasAlreadyClosed ? (attempt.status as 'submitted' | 'auto_submitted') : pastDeadline ? 'auto_submitted' : 'submitted',
+    finalAnswers,
   );
 
   return json({

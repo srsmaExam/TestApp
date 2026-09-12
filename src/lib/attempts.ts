@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@/db/client';
 import { attemptAnswers, attempts, questions, testQuestions, tests, type QuestionAnswer } from '@/db/schema';
 import { gradeAttempt, type GradingItem } from './grading';
@@ -35,6 +35,7 @@ export async function gradeAndCloseAttempt(
   db: Db,
   attemptId: string,
   status: CloseStatus,
+  finalAnswers?: AnswerUpdateItem[],
 ): Promise<CloseAttemptResult> {
   return withDbLock(async () => {
     const [attempt] = await db.select().from(attempts).where(eq(attempts.id, attemptId));
@@ -49,6 +50,15 @@ export async function gradeAndCloseAttempt(
         totalTimeS: attempt.totalTimeS ?? 0,
         graded: false,
       };
+    }
+
+    // If final answers are provided (from direct submit), persist them in batch before grading
+    if (finalAnswers && finalAnswers.length > 0 && attempt.status === 'in_progress') {
+      const inAttempt = new Set(attempt.questionOrder);
+      const accepted = finalAnswers.filter((a) => inAttempt.has(a.questionId));
+      if (accepted.length > 0) {
+        await saveAttemptAnswersBatch(db, attemptId, accepted);
+      }
     }
 
     const [test] = await db.select().from(tests).where(eq(tests.id, attempt.testId));
@@ -111,11 +121,32 @@ export async function gradeAndCloseAttempt(
     const totalTimeS = Math.min(test.durationS, Math.max(Math.round(totalSpentMs / 1000), elapsedSec));
 
     await db.transaction(async (tx) => {
-      for (const item of gradeResult.items) {
+      if (gradeResult.items.length > 0) {
+        const qIds = gradeResult.items.map((it) => it.questionId);
         await tx
           .update(attemptAnswers)
-          .set({ isCorrect: item.isCorrect, marksAwarded: String(item.marksAwarded), updatedAt: now })
-          .where(and(eq(attemptAnswers.attemptId, attemptId), eq(attemptAnswers.questionId, item.questionId)));
+          .set({
+            isCorrect: sql`CASE ${attemptAnswers.questionId}
+              ${sql.join(
+                gradeResult.items.map((it) =>
+                  it.isCorrect === null
+                    ? sql`WHEN ${it.questionId} THEN NULL`
+                    : it.isCorrect
+                      ? sql`WHEN ${it.questionId} THEN TRUE`
+                      : sql`WHEN ${it.questionId} THEN FALSE`,
+                ),
+                sql` `,
+              )}
+            END`,
+            marksAwarded: sql`CASE ${attemptAnswers.questionId}
+              ${sql.join(
+                gradeResult.items.map((it) => sql`WHEN ${it.questionId} THEN ${String(it.marksAwarded)}::numeric`),
+                sql` `,
+              )}
+            END`,
+            updatedAt: now,
+          })
+          .where(and(eq(attemptAnswers.attemptId, attemptId), inArray(attemptAnswers.questionId, qIds)));
       }
 
       await tx
@@ -139,3 +170,126 @@ export async function gradeAndCloseAttempt(
     };
   });
 }
+
+export type AnswerUpdateItem = {
+  questionId: string;
+  response?: {
+    key?: string;
+    value?: number | string;
+  } | null;
+  state?: 'not_seen' | 'seen_unanswered' | 'answered' | 'answered_flagged' | 'flagged_unanswered';
+  timeSpentMs?: number;
+  visitCount?: number;
+};
+
+function normalizeResponse(resp: AnswerUpdateItem['response']): Record<string, unknown> | null {
+  if (!resp) return null;
+  if (resp.value !== undefined && resp.value !== null && resp.value !== '') {
+    const num = Number(resp.value);
+    return {
+      key: resp.key,
+      value: Number.isNaN(num) ? resp.value : num,
+    };
+  }
+  if (resp.key) {
+    return { key: resp.key };
+  }
+  return null;
+}
+
+export async function saveAttemptAnswersBatch(
+  db: Db,
+  attemptId: string,
+  items: AnswerUpdateItem[],
+  now: Date = new Date(),
+): Promise<number> {
+  if (items.length === 0) return 0;
+
+  const qIds = items.map((it) => it.questionId);
+
+  // Single item: direct update without CASE overhead
+  if (items.length === 1) {
+    const it = items[0];
+    const updateFields: Record<string, unknown> = { updatedAt: now };
+
+    if (it.response !== undefined) {
+      updateFields.response = normalizeResponse(it.response);
+    }
+    if (it.state !== undefined) {
+      updateFields.state = it.state;
+    }
+    if (it.timeSpentMs !== undefined) {
+      updateFields.timeSpentMs = sql`greatest(${attemptAnswers.timeSpentMs}, ${it.timeSpentMs})`;
+    }
+    if (it.visitCount !== undefined) {
+      updateFields.visitCount = sql`greatest(${attemptAnswers.visitCount}, ${it.visitCount})`;
+    }
+
+    await db
+      .update(attemptAnswers)
+      .set(updateFields)
+      .where(and(eq(attemptAnswers.attemptId, attemptId), eq(attemptAnswers.questionId, it.questionId)));
+    return 1;
+  }
+
+  // Multiple items: single atomic batch update using CASE statements
+  const responseItems = items.filter((it) => it.response !== undefined);
+  const stateItems = items.filter((it) => it.state !== undefined);
+  const timeItems = items.filter((it) => it.timeSpentMs !== undefined);
+  const visitItems = items.filter((it) => it.visitCount !== undefined);
+
+  const updateFields: Record<string, unknown> = { updatedAt: now };
+
+  if (responseItems.length > 0) {
+    updateFields.response = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        responseItems.map((it) => {
+          const norm = normalizeResponse(it.response);
+          return norm === null
+            ? sql`WHEN ${it.questionId} THEN NULL::jsonb`
+            : sql`WHEN ${it.questionId} THEN ${JSON.stringify(norm)}::jsonb`;
+        }),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.response}
+    END`;
+  }
+
+  if (stateItems.length > 0) {
+    updateFields.state = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        stateItems.map((it) => sql`WHEN ${it.questionId} THEN ${it.state}::answer_state`),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.state}
+    END`;
+  }
+
+  if (timeItems.length > 0) {
+    updateFields.timeSpentMs = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        timeItems.map((it) => sql`WHEN ${it.questionId} THEN greatest(${attemptAnswers.timeSpentMs}, ${it.timeSpentMs})`),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.timeSpentMs}
+    END`;
+  }
+
+  if (visitItems.length > 0) {
+    updateFields.visitCount = sql`CASE ${attemptAnswers.questionId}
+      ${sql.join(
+        visitItems.map((it) => sql`WHEN ${it.questionId} THEN greatest(${attemptAnswers.visitCount}, ${it.visitCount})`),
+        sql` `,
+      )}
+      ELSE ${attemptAnswers.visitCount}
+    END`;
+  }
+
+  await db
+    .update(attemptAnswers)
+    .set(updateFields)
+    .where(and(eq(attemptAnswers.attemptId, attemptId), inArray(attemptAnswers.questionId, qIds)));
+
+  return items.length;
+}
+

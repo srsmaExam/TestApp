@@ -1,10 +1,10 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { apiStudent } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
-import { attemptAnswers, attempts } from '@/db/schema';
-import { gradeAndCloseAttempt } from '@/lib/attempts';
+import { attempts } from '@/db/schema';
+import { gradeAndCloseAttempt, saveAttemptAnswersBatch } from '@/lib/attempts';
 import { withDbLock } from '@/lib/db-lock';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -56,7 +56,7 @@ const handler = withApi<Ctx>(async (req, { params }) => {
   // Content-Type: text/plain, so the body is read as text and parsed by hand
   // rather than relying on req.json()'s content-type sniffing.
   const rawBody = await req.text().catch(() => '');
-  let body: unknown = {};
+  let body: unknown;
   try {
     body = rawBody ? JSON.parse(rawBody) : {};
   } catch {
@@ -82,46 +82,7 @@ const handler = withApi<Ctx>(async (req, { params }) => {
   }
 
   await withDbLock(async () => {
-    await db.transaction(async (tx) => {
-      for (const item of accepted) {
-        const updateFields: Record<string, unknown> = { updatedAt: now };
-
-        if (item.response !== undefined) {
-          if (item.response && item.response.value !== undefined && item.response.value !== null && item.response.value !== '') {
-            const num = Number(item.response.value);
-            updateFields.response = {
-              key: item.response.key,
-              value: Number.isNaN(num) ? item.response.value : num,
-            };
-          } else if (item.response && item.response.key) {
-            // An MCQ pick carries no `value`; keep the key rather than falling
-            // through and storing `{ key, value: '' }`.
-            updateFields.response = { key: item.response.key };
-          } else {
-            // Cleared, or an empty numeric box: store SQL NULL so grading and
-            // the result summary agree that nothing was attempted.
-            updateFields.response = null;
-          }
-        }
-
-        if (item.state !== undefined) {
-          updateFields.state = item.state;
-        }
-
-        if (item.timeSpentMs !== undefined) {
-          updateFields.timeSpentMs = sql`greatest(${attemptAnswers.timeSpentMs}, ${item.timeSpentMs})`;
-        }
-
-        if (item.visitCount !== undefined) {
-          updateFields.visitCount = sql`greatest(${attemptAnswers.visitCount}, ${item.visitCount})`;
-        }
-
-        await tx
-          .update(attemptAnswers)
-          .set(updateFields)
-          .where(and(eq(attemptAnswers.attemptId, attemptId), eq(attemptAnswers.questionId, item.questionId)));
-      }
-    });
+    await saveAttemptAnswersBatch(db, attemptId, accepted, now);
   });
 
   return json({ ok: true, count: accepted.length, savedAt: now.toISOString() });

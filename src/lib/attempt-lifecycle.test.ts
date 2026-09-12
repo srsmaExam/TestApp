@@ -5,7 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { and, eq, isNotNull, or, sql } from 'drizzle-orm';
 import * as schema from '@/db/schema';
-import { gradeAndCloseAttempt } from './attempts';
+import { gradeAndCloseAttempt, saveAttemptAnswersBatch } from './attempts';
 import type { Db } from '@/db/client';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
@@ -357,4 +357,60 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     const [att2] = await db.select().from(schema.attempts).where(eq(schema.attempts.id, attempt2Id));
     expect(att2.attemptNo).toBe(2);
   });
+
+  it('saveAttemptAnswersBatch updates multiple question responses in a single atomic batch', async () => {
+    const batchAttemptId = 'ba7c0000-0000-4000-8000-000000000001';
+    await db.insert(schema.attempts).values({
+      id: batchAttemptId,
+      testId,
+      studentId,
+      attemptNo: 3,
+      status: 'in_progress',
+      deadlineAt: new Date(Date.now() + 1800 * 1000),
+      questionOrder: [q1Id, q2Id, q3Id],
+    });
+
+    await db.insert(schema.attemptAnswers).values([
+      { attemptId: batchAttemptId, questionId: q1Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+      { attemptId: batchAttemptId, questionId: q2Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+      { attemptId: batchAttemptId, questionId: q3Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+    ]);
+
+    // Save batch of answers (Q1: MCQ, Q2: flagged with no response, Q3: numerical value)
+    const count = await saveAttemptAnswersBatch(db, batchAttemptId, [
+      { questionId: q1Id, response: { key: 'B' }, state: 'answered', timeSpentMs: 12000, visitCount: 1 },
+      { questionId: q2Id, response: null, state: 'flagged_unanswered', timeSpentMs: 5000, visitCount: 2 },
+      { questionId: q3Id, response: { value: 11.5 }, state: 'answered', timeSpentMs: 25000, visitCount: 1 },
+    ]);
+
+    expect(count).toBe(3);
+
+    const saved = await db
+      .select()
+      .from(schema.attemptAnswers)
+      .where(eq(schema.attemptAnswers.attemptId, batchAttemptId));
+
+    const q1Ans = saved.find((s) => s.questionId === q1Id);
+    const q2Ans = saved.find((s) => s.questionId === q2Id);
+    const q3Ans = saved.find((s) => s.questionId === q3Id);
+
+    expect(q1Ans?.response).toEqual({ key: 'B' });
+    expect(q1Ans?.state).toBe('answered');
+    expect(q1Ans?.timeSpentMs).toBe(12000);
+
+    expect(q2Ans?.response).toBeNull();
+    expect(q2Ans?.state).toBe('flagged_unanswered');
+    expect(q2Ans?.visitCount).toBe(2);
+
+    expect(q3Ans?.response).toEqual({ value: 11.5 });
+    expect(q3Ans?.state).toBe('answered');
+    expect(q3Ans?.timeSpentMs).toBe(25000);
+
+    // Grade and close this attempt
+    const gradeRes = await gradeAndCloseAttempt(db, batchAttemptId, 'submitted');
+    expect(gradeRes.graded).toBe(true);
+    // Q1 (+4), Q2 (0 unattempted), Q3 (+4) -> 8 marks
+    expect(gradeRes.totalMarks).toBe(8);
+  });
 });
+

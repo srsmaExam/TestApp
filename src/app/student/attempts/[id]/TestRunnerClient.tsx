@@ -586,13 +586,11 @@ export function TestRunnerClient({
       flushTimeSpent();
 
       try {
-        await fetch(`/api/attempts/${attemptId}/answers`, {
-          method: 'PATCH',
+        const res = await fetch(`/api/attempts/${attemptId}/submit`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(buildAnswersPayload()),
-        }).catch(() => {});
-
-        const res = await fetch(`/api/attempts/${attemptId}/submit`, { method: 'POST' });
+        });
         const data = await res.json().catch(() => ({}));
 
         // On expiry we always land on the result page — the server has closed

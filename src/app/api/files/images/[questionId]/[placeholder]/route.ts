@@ -1,21 +1,12 @@
 import { eq, and } from 'drizzle-orm';
-import fs from 'node:fs';
-import { Readable } from 'node:stream';
 import { apiSession } from '@/lib/auth';
 import { HttpError, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
 import { attemptAnswers, attempts, questionImages } from '@/db/schema';
-import { paperAbsPath, existsSync } from '@/lib/storage';
+import { readFileRecord } from '@/lib/storage';
 
 type Ctx = { params: Promise<{ questionId: string; placeholder: string }> };
 
-/**
- * Substitutes Supabase Storage's 1-hour signed URLs. Same access rule either
- * way: a teacher can always read a question image; a student can read one only
- * if the question is part of an attempt they own — never by guessing a path.
- * Files live under DATA_DIR, never under public/, so this check is the only
- * way to reach them.
- */
 export const GET = withApi<Ctx>(async (req, { params }) => {
   const session = await apiSession();
   const { questionId, placeholder } = await params;
@@ -37,13 +28,12 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     if (!owned) throw new HttpError(403, 'forbidden', 'Not entitled to this image.');
   }
 
-  if (!existsSync(image.storagePath)) {
-    throw new HttpError(410, 'file_missing', 'The image is registered but missing on disk.');
+  const file = await readFileRecord(image.storagePath);
+  if (!file) {
+    throw new HttpError(410, 'file_missing', 'The image is registered but missing.');
   }
 
-  const absPath = paperAbsPath(image.storagePath);
-  const stat = fs.statSync(absPath);
-  const etag = `"${Math.floor(stat.mtimeMs)}-${stat.size}"`;
+  const etag = `"${file.sha256 || file.size}"`;
 
   if (req.headers.get('if-none-match') === etag) {
     return new Response(null, {
@@ -55,13 +45,11 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     });
   }
 
-  const webStream = Readable.toWeb(fs.createReadStream(absPath)) as ReadableStream;
-
-  return new Response(webStream, {
+  return new Response(new Uint8Array(file.buffer), {
     status: 200,
     headers: {
-      'Content-Type': 'image/webp',
-      'Content-Length': String(stat.size),
+      'Content-Type': file.contentType || 'image/webp',
+      'Content-Length': String(file.size),
       'Cache-Control': 'no-cache, private, must-revalidate',
       ETag: etag,
     },

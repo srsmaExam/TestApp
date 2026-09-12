@@ -15,7 +15,7 @@ export default async function PapersPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Papers</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Source PDFs, stored locally under <code className="font-mono">data/papers/</code>.
+            Registered examination papers and source PDFs.
           </p>
         </div>
       </div>

@@ -17,7 +17,12 @@ export const PROMPTS_DIR = path.resolve(process.cwd(), 'prompts');
 
 export function ensureDataDirs(): void {
   for (const dir of [DATA_DIR, PAPERS_DIR, IMAGES_DIR, BACKUPS_DIR]) {
-    fs.mkdirSync(dir, { recursive: true });
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {
+      // In serverless / read-only environments (e.g. Vercel /var/task),
+      // filesystem creation is not permitted; data is persisted in PostgreSQL.
+    }
   }
 }
 

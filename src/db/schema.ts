@@ -254,7 +254,17 @@ export const attemptEvents = pgTable('attempt_events', {
   meta: jsonb('meta'),
 });
 
+export const storedFiles = pgTable('stored_files', {
+  key: text('key').primaryKey(),
+  data: text('data').notNull(),
+  contentType: text('content_type').notNull(),
+  sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+  sha256: text('sha256').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type Profile = typeof profiles.$inferSelect;
 export type Paper = typeof papers.$inferSelect;
 export type Question = typeof questions.$inferSelect;
 export type QuestionImage = typeof questionImages.$inferSelect;
+export type StoredFile = typeof storedFiles.$inferSelect;

@@ -5,6 +5,7 @@ import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
 import { attempts, questions, testQuestions, tests } from '@/db/schema';
 import { withDbLock } from '@/lib/db-lock';
+import { regradeTestAttempts } from '@/lib/attempts';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -39,12 +40,12 @@ export const PUT = withApi<Ctx>(async (req, { params }) => {
   const list = parsed.data.questions;
 
   // ---------------------------------------------------------------------
-  // Refuse to rewrite the question set of a test students have already sat.
-  //
-  // attempts.question_order is a materialised snapshot, but the result screen
-  // re-joins through test_questions to recover each question's marks — so
-  // dropping a row here made every historical attempt's result page throw
-  // `missing_question` and 500 forever, with no way back.
+  // Guard existing attempts:
+  // attempts.question_order is a materialised snapshot, and the result screen
+  // re-joins through test_questions to recover each question's marks.
+  // Dropping an already-attempted question breaks historical attempt pages.
+  // However, UPDATING the marking scheme (or adding questions) is supported
+  // and will automatically regrade completed attempts so students see updated marks.
   // ---------------------------------------------------------------------
   const [{ attemptCount }] = await db
     .select({ attemptCount: sql<number>`cast(count(*) as int)` })
@@ -52,13 +53,25 @@ export const PUT = withApi<Ctx>(async (req, { params }) => {
     .where(eq(attempts.testId, id));
 
   if (attemptCount > 0) {
-    throw new HttpError(
-      409,
-      'test_in_use',
-      `This test already has ${attemptCount} student attempt(s). Its question set is frozen so past results stay readable — duplicate the test to build a revised version.`,
-      { attemptCount },
-    );
+    const existingTestQs = await db
+      .select({ questionId: testQuestions.questionId })
+      .from(testQuestions)
+      .where(eq(testQuestions.testId, id));
+
+    const existingIds = new Set(existingTestQs.map((q) => q.questionId));
+    const newIds = new Set(list.map((q) => q.questionId));
+
+    const dropped = [...existingIds].filter((qid) => !newIds.has(qid));
+    if (dropped.length > 0) {
+      throw new HttpError(
+        409,
+        'test_in_use',
+        `This test already has ${attemptCount} student attempt(s). Questions cannot be removed from an active test. You can still update the marking scheme across existing questions.`,
+        { attemptCount, droppedCount: dropped.length },
+      );
+    }
   }
+
 
   // Duplicate positions or ids would otherwise surface as a raw unique/PK
   // violation from the insert, i.e. a bare 500.
@@ -133,5 +146,11 @@ export const PUT = withApi<Ctx>(async (req, { params }) => {
     });
   });
 
-  return json({ ok: true, count: list.length });
+  let regradedCount = 0;
+  if (attemptCount > 0) {
+    regradedCount = await regradeTestAttempts(db, id);
+  }
+
+  return json({ ok: true, count: list.length, regradedCount });
 });
+

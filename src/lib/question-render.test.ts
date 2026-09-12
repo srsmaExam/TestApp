@@ -47,4 +47,57 @@ describe('parseBody', () => {
   it('passes plain text through untouched when there is no math or image', () => {
     expect(parseBody('just plain text')).toEqual([{ kind: 'text', text: 'just plain text' }]);
   });
+
+  it('correctly parses a markdown distribution table surrounded by text', () => {
+    const raw = `For the following distribution:
+
+| Class | Frequency |
+| :--- | :--- |
+| 0-5 | 10 |
+| 5-10 | 15 |
+| 10-15 | 12 |
+| 15-20 | 20 |
+| 20-25 | 9 |
+
+The sum of lower limits of median class and modal class is`;
+
+    const segments = parseBody(raw);
+    expect(segments).toEqual([
+      { kind: 'text', text: 'For the following distribution:' },
+      {
+        kind: 'table',
+        headers: ['Class', 'Frequency'],
+        alignments: ['left', 'left'],
+        rows: [
+          ['0-5', '10'],
+          ['5-10', '15'],
+          ['10-15', '12'],
+          ['15-20', '20'],
+          ['20-25', '9'],
+        ],
+      },
+      { kind: 'text', text: 'The sum of lower limits of median class and modal class is' },
+    ]);
+  });
+
+  it('correctly parses table with mixed alignments and inline math', () => {
+    const raw = `| Column A | Column B | Column C |
+| :--- | :---: | ---: |
+| Left | Center | Right |
+| $x_1$ | $\\alpha$ | 100 |`;
+
+    const segments = parseBody(raw);
+    expect(segments).toEqual([
+      {
+        kind: 'table',
+        headers: ['Column A', 'Column B', 'Column C'],
+        alignments: ['left', 'center', 'right'],
+        rows: [
+          ['Left', 'Center', 'Right'],
+          ['$x_1$', '$\\alpha$', '100'],
+        ],
+      },
+    ]);
+  });
 });
+

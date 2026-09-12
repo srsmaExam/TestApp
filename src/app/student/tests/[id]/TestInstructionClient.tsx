@@ -52,8 +52,18 @@ export function TestInstructionClient({
     setLoading(true);
     setError(null);
 
+    // Request fullscreen immediately upon user click gesture
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } catch {
+      // Ignored if browser restricts
+    }
+
     try {
       // The attempt-creation route is /attempts, not /start. This pointed at a
+
       // route that has never existed, so every "I am ready to begin" 404'd,
       // Next answered with its HTML error page, and res.json() threw on the
       // leading '<' — surfacing to the student as a raw JSON parser error.

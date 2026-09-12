@@ -17,7 +17,11 @@ export const metadata: Metadata = {
     template: `%s · ${BRAND.orgName}`,
   },
   description: `${BRAND.productName} for ${BRAND.orgName}. Local build.`,
-  icons: { icon: '/favicon.svg' },
+  icons: {
+    icon: [{ url: '/brand/SRSMALogo.jpeg', type: 'image/jpeg' }],
+    shortcut: '/brand/SRSMALogo.jpeg',
+    apple: '/brand/SRSMALogo.jpeg',
+  },
 };
 
 export const viewport: Viewport = {
@@ -44,8 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
+        <link rel="icon" type="image/jpeg" href="/brand/SRSMALogo.jpeg" />
+        <link rel="shortcut icon" href="/brand/SRSMALogo.jpeg" />
+        <link rel="apple-touch-icon" href="/brand/SRSMALogo.jpeg" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
+
       <body>
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>

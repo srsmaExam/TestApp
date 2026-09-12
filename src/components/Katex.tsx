@@ -3,7 +3,8 @@
 import 'katex/contrib/mhchem';
 import katex from 'katex';
 import { useMemo } from 'react';
-import { parseBody } from '@/lib/question-render';
+import { cn } from '@/lib/cn';
+import { parseBody, parseInline, type TableSegment } from '@/lib/question-render';
 
 /** Renders a single LaTeX expression. Throws are caught and shown inline as a
  * red error rather than blowing up the whole page — the editor's live preview
@@ -33,20 +34,85 @@ export function KatexSpan({ tex, display = false }: { tex: string; display?: boo
       </span>
     );
   }
-  // KaTeX's output is its own trusted, self-generated markup (trust:false above
-  // means it also refuses \href/\includegraphics-style escapes within the TeX
-  // itself) — safe to inject as-is.
   return <span dangerouslySetInnerHTML={{ __html: result.html }} />;
 }
 
 export type ImageResolver = (placeholderId: string) => React.ReactNode;
 
+function InlineCellContent({ text, renderImage }: { text: string; renderImage: ImageResolver }) {
+  const parts = useMemo(() => parseInline(text), [text]);
+  return (
+    <>
+      {parts.map((p, idx) => {
+        if (p.kind === 'math') return <KatexSpan key={idx} tex={p.tex} display={p.display} />;
+        if (p.kind === 'image') return <span key={idx}>{renderImage(p.placeholderId)}</span>;
+        return <span key={idx}>{p.text}</span>;
+      })}
+    </>
+  );
+}
+
+function RenderedTable({
+  table,
+  renderImage,
+}: {
+  table: TableSegment;
+  renderImage: ImageResolver;
+}) {
+  return (
+    <div className="my-3 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-950">
+      <table className="min-w-full divide-y divide-slate-200 text-left text-xs sm:text-sm dark:divide-slate-800">
+        <thead className="bg-slate-50 text-slate-700 dark:bg-slate-900/90 dark:text-slate-200">
+          <tr>
+            {table.headers.map((h, hIdx) => {
+              const align = table.alignments[hIdx] || 'left';
+              return (
+                <th
+                  key={hIdx}
+                  scope="col"
+                  className={cn(
+                    'border-b border-slate-200 px-3.5 py-2.5 font-semibold whitespace-normal dark:border-slate-800',
+                    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left',
+                  )}
+                >
+                  <InlineCellContent text={h} renderImage={renderImage} />
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          {table.rows.map((row, rIdx) => (
+            <tr
+              key={rIdx}
+              className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-900/50"
+            >
+              {row.map((cell, cIdx) => {
+                const align = table.alignments[cIdx] || 'left';
+                return (
+                  <td
+                    key={cIdx}
+                    className={cn(
+                      'px-3.5 py-2 text-slate-700 whitespace-normal dark:text-slate-300',
+                      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left',
+                    )}
+                  >
+                    <InlineCellContent text={cell} renderImage={renderImage} />
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /**
  * Renders a full question `body`: plain text passed through as-is (whitespace-pre-wrap,
- * line breaks), $inline$ and $$display$$ math via KaTeX, and [[IMG:id]] placeholders
- * via the caller-supplied resolver — the editor resolves them to an <img>, the crop
- * tool resolves them to "unresolved" chips. (Note: standard Markdown like **bold** is
- * not parsed).
+ * line breaks), $inline$ and $$display$$ math via KaTeX, [[IMG:id]] placeholders
+ * via the caller-supplied resolver, and structured markdown tables.
  */
 export function QuestionBody({
   body,
@@ -64,8 +130,10 @@ export function QuestionBody({
       {segments.map((seg, i) => {
         if (seg.kind === 'math') return <KatexSpan key={i} tex={seg.tex} display={seg.display} />;
         if (seg.kind === 'image') return <span key={i}>{renderImage(seg.placeholderId)}</span>;
+        if (seg.kind === 'table') return <RenderedTable key={i} table={seg} renderImage={renderImage} />;
         return <span key={i}>{seg.text}</span>;
       })}
     </div>
   );
 }
+

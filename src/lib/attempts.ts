@@ -293,3 +293,103 @@ export async function saveAttemptAnswersBatch(
   return items.length;
 }
 
+/**
+ * Regrades all completed/submitted attempts for a test.
+ * Used when a teacher modifies the marking scheme for a test that already has student attempts,
+ * ensuring all students immediately see their scores recalculated according to the new scheme.
+ */
+export async function regradeTestAttempts(db: Db, testId: string): Promise<number> {
+  return withDbLock(async () => {
+    const attemptRows = await db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(and(eq(attempts.testId, testId), sql`${attempts.status} <> 'in_progress'`));
+
+    if (attemptRows.length === 0) return 0;
+
+    const questionRows = await db
+      .select({
+        id: questions.id,
+        type: questions.type,
+        answer: questions.answer,
+        marksCorrect: testQuestions.marksCorrect,
+        marksWrong: testQuestions.marksWrong,
+        marksUnattempted: testQuestions.marksUnattempted,
+      })
+      .from(questions)
+      .innerJoin(
+        testQuestions,
+        and(eq(testQuestions.questionId, questions.id), eq(testQuestions.testId, testId)),
+      );
+
+    const qMap = new Map(questionRows.map((q) => [q.id, q]));
+
+    for (const att of attemptRows) {
+      const userAnswers = await db
+        .select()
+        .from(attemptAnswers)
+        .where(eq(attemptAnswers.attemptId, att.id));
+
+      const gradingItems: GradingItem[] = [];
+      for (const ans of userAnswers) {
+        const q = qMap.get(ans.questionId);
+        if (!q) continue;
+
+        gradingItems.push({
+          questionId: ans.questionId,
+          type: q.type,
+          answerKey: q.answer as QuestionAnswer | null,
+          response: ans.response as { key?: string; value?: number | string } | null,
+          marksCorrect: Number(q.marksCorrect ?? 4),
+          marksWrong: Number(q.marksWrong ?? -1),
+          marksUnattempted: Number(q.marksUnattempted ?? 0),
+        });
+      }
+
+      const gradeResult = gradeAttempt(gradingItems);
+      const now = new Date();
+
+      await db.transaction(async (tx) => {
+        if (gradeResult.items.length > 0) {
+          const qIds = gradeResult.items.map((it) => it.questionId);
+          await tx
+            .update(attemptAnswers)
+            .set({
+              isCorrect: sql`CASE ${attemptAnswers.questionId}
+                ${sql.join(
+                  gradeResult.items.map((it) =>
+                    it.isCorrect === null
+                      ? sql`WHEN ${it.questionId} THEN NULL`
+                      : it.isCorrect
+                        ? sql`WHEN ${it.questionId} THEN TRUE`
+                        : sql`WHEN ${it.questionId} THEN FALSE`,
+                  ),
+                  sql` `,
+                )}
+              END`,
+              marksAwarded: sql`CASE ${attemptAnswers.questionId}
+                ${sql.join(
+                  gradeResult.items.map((it) => sql`WHEN ${it.questionId} THEN ${String(it.marksAwarded)}::numeric`),
+                  sql` `,
+                )}
+              END`,
+              updatedAt: now,
+            })
+            .where(and(eq(attemptAnswers.attemptId, att.id), inArray(attemptAnswers.questionId, qIds)));
+        }
+
+        await tx
+          .update(attempts)
+          .set({
+            totalMarks: String(gradeResult.totalMarks),
+            maxMarks: String(gradeResult.maxMarks),
+          })
+          .where(eq(attempts.id, att.id));
+      });
+    }
+
+    return attemptRows.length;
+  });
+}
+
+

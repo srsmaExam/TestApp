@@ -5,8 +5,9 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { and, eq, isNotNull, or, sql } from 'drizzle-orm';
 import * as schema from '@/db/schema';
-import { gradeAndCloseAttempt, saveAttemptAnswersBatch } from './attempts';
+import { gradeAndCloseAttempt, regradeTestAttempts, saveAttemptAnswersBatch } from './attempts';
 import type { Db } from '@/db/client';
+
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const MIGRATIONS_DIR = path.join(ROOT, 'drizzle');
@@ -411,6 +412,32 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     expect(gradeRes.graded).toBe(true);
     // Q1 (+4), Q2 (0 unattempted), Q3 (+4) -> 8 marks
     expect(gradeRes.totalMarks).toBe(8);
+
+    // Now test changing the marking scheme to +1, 0
+    await db
+      .update(schema.testQuestions)
+      .set({ marksCorrect: '1', marksWrong: '0', marksUnattempted: '0' })
+      .where(eq(schema.testQuestions.testId, testId));
+
+    const regradedCount = await regradeTestAttempts(db, testId);
+    expect(regradedCount).toBeGreaterThanOrEqual(1);
+
+    // Verify student's attempt was updated: Q1 (+1), Q2 (0), Q3 (+1) -> 2 marks
+    const [regradedAttempt] = await db
+      .select()
+      .from(schema.attempts)
+      .where(eq(schema.attempts.id, batchAttemptId));
+    expect(Number(regradedAttempt.totalMarks)).toBe(2);
+    expect(Number(regradedAttempt.maxMarks)).toBe(3);
+
+    const regradedAnswers = await db
+      .select()
+      .from(schema.attemptAnswers)
+      .where(eq(schema.attemptAnswers.attemptId, batchAttemptId));
+
+    const q1Regraded = regradedAnswers.find((s) => s.questionId === q1Id);
+    expect(Number(q1Regraded?.marksAwarded)).toBe(1);
   });
 });
+
 

@@ -392,11 +392,18 @@ export function TestRunnerClient({
     // button showing the wrong icon.
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
 
+    // Ensure fullscreen state is accurate and try entering fullscreen if not active
+    setIsFullscreen(Boolean(document.fullscreenElement));
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
+
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -1179,6 +1186,37 @@ export function TestRunnerClient({
           </Card>
         </div>
       )}
+
+      {/* Fullscreen Required Barrier */}
+      {!isFullscreen && status === 'in_progress' && !submitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
+          <Card className="max-w-md border-amber-300 shadow-2xl dark:border-amber-700">
+            <CardBody className="p-6 text-center space-y-4">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+                <Maximize2 className="size-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Full Screen Mode Required
+                </h3>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  This examination must be taken in full screen mode to ensure academic integrity. Please enter full screen to continue answering questions.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={toggleFullscreen}
+              >
+                <Maximize2 className="mr-2 size-4" />
+                Enter Full Screen & Continue Exam
+              </Button>
+            </CardBody>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
+

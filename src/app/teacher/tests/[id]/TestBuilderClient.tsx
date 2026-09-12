@@ -16,9 +16,11 @@ import {
   Save,
   Send,
   Settings,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
 } from 'lucide-react';
+
 import {
   Alert,
   Badge,
@@ -261,15 +263,168 @@ export function TestBuilderClient({
     updateAssigned(copy);
   };
 
+  // Bulk selection and marking states
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showMarkingModal, setShowMarkingModal] = useState(false);
+  const [markingScope, setMarkingScope] = useState<'all' | 'selected' | 'mcq' | 'integer' | 'subject'>('all');
+  const [markingSubject, setMarkingSubject] = useState<'physics' | 'chemistry' | 'maths' | 'biology'>('physics');
+  const [schemeMode, setSchemeMode] = useState<'split' | 'uniform'>('split');
+  const [mcqCorrect, setMcqCorrect] = useState(4);
+  const [mcqWrong, setMcqWrong] = useState(-1);
+  const [mcqUnattempted, setMcqUnattempted] = useState(0);
+  const [numCorrect, setNumCorrect] = useState(4);
+  const [numWrong, setNumWrong] = useState(0);
+  const [numUnattempted, setNumUnattempted] = useState(0);
+  const [uniformCorrect, setUniformCorrect] = useState(4);
+  const [uniformWrong, setUniformWrong] = useState(-1);
+  const [uniformUnattempted, setUniformUnattempted] = useState(0);
+
+  const toggleSelectQuestion = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === assigned.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(assigned.map((q) => q.questionId)));
+    }
+  };
+
+  const applyPreset = (preset: 'jee' | 'neet' | 'cbse' | '2m' | '3m' | '4m' | '5m') => {
+    if (preset === 'jee') {
+      setSchemeMode('split');
+      setMcqCorrect(4);
+      setMcqWrong(-1);
+      setMcqUnattempted(0);
+      setNumCorrect(4);
+      setNumWrong(0);
+      setNumUnattempted(0);
+    } else if (preset === 'neet') {
+      setSchemeMode('uniform');
+      setUniformCorrect(4);
+      setUniformWrong(-1);
+      setUniformUnattempted(0);
+    } else if (preset === 'cbse') {
+      setSchemeMode('uniform');
+      setUniformCorrect(1);
+      setUniformWrong(0);
+      setUniformUnattempted(0);
+    } else if (preset === '2m') {
+      setSchemeMode('uniform');
+      setUniformCorrect(2);
+      setUniformWrong(0);
+      setUniformUnattempted(0);
+    } else if (preset === '3m') {
+      setSchemeMode('uniform');
+      setUniformCorrect(3);
+      setUniformWrong(0);
+      setUniformUnattempted(0);
+    } else if (preset === '4m') {
+      setSchemeMode('uniform');
+      setUniformCorrect(4);
+      setUniformWrong(0);
+      setUniformUnattempted(0);
+    } else if (preset === '5m') {
+      setSchemeMode('uniform');
+      setUniformCorrect(5);
+      setUniformWrong(0);
+      setUniformUnattempted(0);
+    }
+  };
+
+  const handleApplyBulkMarks = () => {
+    const updated = assigned.map((q) => {
+      let matches = false;
+      if (markingScope === 'all') matches = true;
+      else if (markingScope === 'selected') matches = selectedIds.has(q.questionId);
+      else if (markingScope === 'mcq') matches = q.type === 'mcq';
+      else if (markingScope === 'integer') matches = q.type === 'integer';
+      else if (markingScope === 'subject') matches = q.subject === markingSubject;
+
+      if (!matches) return q;
+
+      if (schemeMode === 'uniform') {
+        return {
+          ...q,
+          marksCorrect: uniformCorrect,
+          marksWrong: uniformWrong,
+          marksUnattempted: uniformUnattempted,
+        };
+      } else {
+        if (q.type === 'mcq') {
+          return {
+            ...q,
+            marksCorrect: mcqCorrect,
+            marksWrong: mcqWrong,
+            marksUnattempted: mcqUnattempted,
+          };
+        } else {
+          return {
+            ...q,
+            marksCorrect: numCorrect,
+            marksWrong: numWrong,
+            marksUnattempted: numUnattempted,
+          };
+        }
+      }
+    });
+
+    updateAssigned(updated);
+    setShowMarkingModal(false);
+    toast.success(`Marking scheme applied. Click "Save" to persist changes to the test.`);
+  };
+
+
+  const affectedQuestionsCount = useMemo(() => {
+    return assigned.filter((q) => {
+      if (markingScope === 'all') return true;
+      if (markingScope === 'selected') return selectedIds.has(q.questionId);
+      if (markingScope === 'mcq') return q.type === 'mcq';
+      if (markingScope === 'integer') return q.type === 'integer';
+      if (markingScope === 'subject') return q.subject === markingSubject;
+      return false;
+    }).length;
+  }, [assigned, markingScope, selectedIds, markingSubject]);
+
+  const projectedMaxMarks = useMemo(() => {
+    return assigned.reduce((sum, q) => {
+      let matches = false;
+      if (markingScope === 'all') matches = true;
+      else if (markingScope === 'selected') matches = selectedIds.has(q.questionId);
+      else if (markingScope === 'mcq') matches = q.type === 'mcq';
+      else if (markingScope === 'integer') matches = q.type === 'integer';
+      else if (markingScope === 'subject') matches = q.subject === markingSubject;
+
+      if (!matches) return sum + Number(q.marksCorrect ?? 4);
+
+      if (schemeMode === 'uniform') {
+        return sum + Number(uniformCorrect);
+      } else {
+        return sum + Number(q.type === 'mcq' ? mcqCorrect : numCorrect);
+      }
+    }, 0);
+  }, [assigned, markingScope, selectedIds, markingSubject, schemeMode, uniformCorrect, mcqCorrect, numCorrect]);
+
   // Add question from picker
   const addQuestion = (q: BankQuestion) => {
+    const isMcq = q.type === 'mcq';
+    const c = schemeMode === 'uniform' ? uniformCorrect : isMcq ? mcqCorrect : numCorrect;
+    const w = schemeMode === 'uniform' ? uniformWrong : isMcq ? mcqWrong : numWrong;
+    const u = schemeMode === 'uniform' ? uniformUnattempted : isMcq ? mcqUnattempted : numUnattempted;
+
     const newAssigned: AssignedQuestion = {
       testId: test.id,
       questionId: q.id,
       position: assigned.length + 1,
-      marksCorrect: 4,
-      marksWrong: -1,
-      marksUnattempted: 0,
+      marksCorrect: c,
+      marksWrong: w,
+      marksUnattempted: u,
       subject: q.subject,
       type: q.type,
       status: q.status,
@@ -292,19 +447,11 @@ export function TestBuilderClient({
   // Remove question
   const removeQuestion = (questionId: string) => {
     updateAssigned(assigned.filter((q) => q.questionId !== questionId));
-  };
-
-  // Bulk set marks preset. JEE Main gives numerical questions no negative
-  // marking; the button label says so rather than claiming a flat +4/-1/0.
-  const applyJeePresetMarks = () => {
-    updateAssigned(
-      assigned.map((q) => ({
-        ...q,
-        marksCorrect: 4,
-        marksWrong: q.type === 'mcq' ? -1 : 0,
-        marksUnattempted: 0,
-      })),
-    );
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(questionId);
+      return next;
+    });
   };
 
   // Update marks for individual question
@@ -345,6 +492,10 @@ export function TestBuilderClient({
 
       setQuestionsDirty(false);
       setSaveSuccess(true);
+      if (data?.regradedCount && data.regradedCount > 0) {
+        toast.success(`Saved! Marking scheme updated and ${data.regradedCount} student attempt(s) were automatically regraded with the new marks.`);
+      }
+
       setTimeout(() => setSaveSuccess(false), 2500);
       return true;
     } catch (err) {
@@ -354,6 +505,7 @@ export function TestBuilderClient({
       setSaving(false);
     }
   };
+
 
   // Save Settings
   const saveSettings = async (e: React.FormEvent) => {
@@ -639,9 +791,16 @@ export function TestBuilderClient({
               Use the arrows to reorder questions. Scoring can be set per question.
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={applyJeePresetMarks}>
-                <Sparkles className="mr-1 size-3.5 text-amber-500" />
-                Apply JEE defaults (MCQ +4/−1/0 · Numerical +4/0/0)
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setMarkingScope(selectedIds.size > 0 ? 'selected' : 'all');
+                  setShowMarkingModal(true);
+                }}
+              >
+                <SlidersHorizontal className="mr-1.5 size-3.5 text-brand-600 dark:text-brand-400" />
+                Marking Scheme
               </Button>
               <Button variant="primary" size="sm" onClick={() => setActiveTab('picker')}>
                 <Plus className="mr-1 size-3.5" />
@@ -668,15 +827,79 @@ export function TestBuilderClient({
             </Card>
           ) : (
             <div className="space-y-2">
+              {/* Question Selection Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900/60">
+                <label className="flex cursor-pointer items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={assigned.length > 0 && selectedIds.size === assigned.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < assigned.length;
+                    }}
+                    onChange={toggleSelectAll}
+                    className="size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700"
+                  />
+                  <span>Select All ({assigned.length})</span>
+                </label>
+
+                <div className="flex items-center gap-2">
+                  {selectedIds.size > 0 ? (
+                    <>
+                      <span className="font-semibold text-brand-600 dark:text-brand-400">
+                        {selectedIds.size} selected
+                      </span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setMarkingScope('selected');
+                          setShowMarkingModal(true);
+                        }}
+                      >
+                        <SlidersHorizontal className="mr-1 size-3 text-brand-600" />
+                        Set Marks for {selectedIds.size} Selected
+                      </Button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedIds(new Set())}
+                        className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      >
+                        Clear
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500">
+                      Select questions to set marks in bulk or use the &quot;Marking Scheme&quot; button
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {assigned.map((q, idx) => (
-                <Card key={q.questionId} className="transition-all hover:border-slate-300">
+                <Card
+                  key={q.questionId}
+                  className={`transition-all hover:border-slate-300 ${
+                    selectedIds.has(q.questionId)
+                      ? 'border-brand-300 ring-2 ring-brand-500/30 dark:border-brand-700'
+                      : ''
+                  }`}
+                >
                   <CardBody className="p-3 sm:p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       {/* Left: Position & Question details */}
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(q.questionId)}
+                          onChange={() => toggleSelectQuestion(q.questionId)}
+                          className="mt-1.5 size-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700"
+                          aria-label={`Select question ${q.position}`}
+                        />
                         <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-slate-900 text-xs font-bold text-white dark:bg-slate-700">
                           {q.position}
                         </div>
+
 
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -882,30 +1105,37 @@ export function TestBuilderClient({
                 // Batch add all filtered verified questions
                 const verifiedOnly = filteredBank.filter((q) => q.status === 'verified');
                 if (verifiedOnly.length === 0) return;
-                const newItems: AssignedQuestion[] = verifiedOnly.map((q, i) => ({
-                  testId: test.id,
-                  questionId: q.id,
-                  position: assigned.length + i + 1,
-                  marksCorrect: 4,
-                  marksWrong: q.type === 'mcq' ? -1 : 0,
-                  marksUnattempted: 0,
-                  subject: q.subject,
-                  type: q.type,
-                  status: q.status,
-                  body: q.body,
-                  options: q.options,
-                  humanCode: q.humanCode,
-                  paperId: q.paperId,
-                  paperTitle: q.paperTitle,
-                  paperCode: q.paperCode,
-                  sourceQno: q.sourceQno,
-                  sourcePage: q.sourcePage,
-                  difficulty: q.difficulty,
-                  expectedTimeS: q.expectedTimeS,
-                  chapter: q.chapter,
-                  topic: q.topic,
-                }));
+                const newItems: AssignedQuestion[] = verifiedOnly.map((q, i) => {
+                  const isMcq = q.type === 'mcq';
+                  const c = schemeMode === 'uniform' ? uniformCorrect : isMcq ? mcqCorrect : numCorrect;
+                  const w = schemeMode === 'uniform' ? uniformWrong : isMcq ? mcqWrong : numWrong;
+                  const u = schemeMode === 'uniform' ? uniformUnattempted : isMcq ? mcqUnattempted : numUnattempted;
+                  return {
+                    testId: test.id,
+                    questionId: q.id,
+                    position: assigned.length + i + 1,
+                    marksCorrect: c,
+                    marksWrong: w,
+                    marksUnattempted: u,
+                    subject: q.subject,
+                    type: q.type,
+                    status: q.status,
+                    body: q.body,
+                    options: q.options,
+                    humanCode: q.humanCode,
+                    paperId: q.paperId,
+                    paperTitle: q.paperTitle,
+                    paperCode: q.paperCode,
+                    sourceQno: q.sourceQno,
+                    sourcePage: q.sourcePage,
+                    difficulty: q.difficulty,
+                    expectedTimeS: q.expectedTimeS,
+                    chapter: q.chapter,
+                    topic: q.topic,
+                  };
+                });
                 updateAssigned([...assigned, ...newItems]);
+
               }}
               disabled={filteredBank.filter((q) => q.status === 'verified').length === 0}
             >
@@ -1248,6 +1478,300 @@ export function TestBuilderClient({
           </div>
         </Dialog>
       )}
+
+      {/* Bulk Marking Scheme Modal */}
+      {showMarkingModal && (
+        <Dialog
+          isOpen={showMarkingModal}
+          onClose={() => setShowMarkingModal(false)}
+          size="lg"
+          title={
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="size-5 text-brand-600 dark:text-brand-400" />
+              <span>Bulk Marking Scheme</span>
+            </div>
+          }
+          description="Configure and apply marking rules in bulk. Changes take effect on the test and any previous student attempts will be automatically re-scored."
+          footer={
+            <div className="flex w-full items-center justify-between">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Will affect <strong className="text-slate-900 dark:text-slate-100">{affectedQuestionsCount}</strong> of {assigned.length} questions
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setShowMarkingModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleApplyBulkMarks}>
+                  Apply Marking Scheme
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-4 py-2">
+            {/* Quick Presets */}
+            <div>
+              <Label>Quick Presets</Label>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('jee')}>
+                  <Sparkles className="mr-1 size-3 text-amber-500" />
+                  JEE Main (+4 / -1 / 0 · Num: +4 / 0 / 0)
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('neet')}>
+                  NEET (+4 / -1 / 0)
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('cbse')}>
+                  Single Mark (+1 / 0 / 0)
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('2m')}>
+                  +2 / 0 / 0
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('3m')}>
+                  +3 / 0 / 0
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('4m')}>
+                  +4 / 0 / 0
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => applyPreset('5m')}>
+                  +5 / 0 / 0
+                </Button>
+
+              </div>
+            </div>
+
+            {/* Scope Selection */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="markingScope">Apply Scheme To</Label>
+                <Select
+                  id="markingScope"
+                  value={markingScope}
+                  onChange={(e) => setMarkingScope(e.target.value as any)}
+                >
+                  <option value="all">All Questions in Test ({assigned.length})</option>
+                  {selectedIds.size > 0 && (
+                    <option value="selected">Selected Questions Only ({selectedIds.size})</option>
+                  )}
+                  <option value="mcq">
+                    All MCQ Questions ({assigned.filter((q) => q.type === 'mcq').length})
+                  </option>
+                  <option value="integer">
+                    All Numerical Questions ({assigned.filter((q) => q.type === 'integer').length})
+                  </option>
+                  <option value="subject">By Subject...</option>
+                </Select>
+              </div>
+
+              {markingScope === 'subject' ? (
+                <div>
+                  <Label htmlFor="markingSubject">Select Subject</Label>
+                  <Select
+                    id="markingSubject"
+                    value={markingSubject}
+                    onChange={(e) => setMarkingSubject(e.target.value as any)}
+                  >
+                    <option value="physics">Physics ({subjectCounts.physics})</option>
+                    <option value="chemistry">Chemistry ({subjectCounts.chemistry})</option>
+                    <option value="maths">Mathematics ({subjectCounts.maths})</option>
+                    <option value="biology">Biology ({subjectCounts.biology})</option>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <Label>Scoring Rule Mode</Label>
+                  <div className="flex gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setSchemeMode('split')}
+                      className={`flex-1 rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                        schemeMode === 'split'
+                          ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-300'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      MCQ vs Numerical
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSchemeMode('uniform')}
+                      className={`flex-1 rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                        schemeMode === 'uniform'
+                          ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-300'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      Uniform for All
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Inputs */}
+            {schemeMode === 'uniform' ? (
+              <Card className="bg-slate-50/50 p-4 dark:bg-slate-900/40">
+                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Custom Marking Scheme
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label htmlFor="uniCorrect" className="text-emerald-700 dark:text-emerald-400">
+                      + Correct Marks
+                    </Label>
+                    <Input
+                      id="uniCorrect"
+                      type="number"
+                      step="any"
+                      value={uniformCorrect}
+                      onChange={(e) => setUniformCorrect(Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="uniWrong" className="text-red-600 dark:text-red-400">
+                      − Wrong (Penalty)
+                    </Label>
+                    <Input
+                      id="uniWrong"
+                      type="number"
+                      step="any"
+                      value={uniformWrong}
+                      onChange={(e) => setUniformWrong(Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="uniUnatt" className="text-slate-600 dark:text-slate-400">
+                      Unattempted
+                    </Label>
+                    <Input
+                      id="uniUnatt"
+                      type="number"
+                      step="any"
+                      value={uniformUnattempted}
+                      onChange={(e) => setUniformUnattempted(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                <Card className="bg-slate-50/50 p-3.5 dark:bg-slate-900/40">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-400">
+                      Multiple Choice Questions (MCQ)
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      {assigned.filter((q) => q.type === 'mcq').length} in test
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="mcqCorr" className="text-emerald-700 dark:text-emerald-400">
+                        + Correct
+                      </Label>
+                      <Input
+                        id="mcqCorr"
+                        type="number"
+                        step="any"
+                        value={mcqCorrect}
+                        onChange={(e) => setMcqCorrect(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mcqWr" className="text-red-600 dark:text-red-400">
+                        − Wrong
+                      </Label>
+                      <Input
+                        id="mcqWr"
+                        type="number"
+                        step="any"
+                        value={mcqWrong}
+                        onChange={(e) => setMcqWrong(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mcqUn" className="text-slate-600 dark:text-slate-400">
+                        Unattempted
+                      </Label>
+                      <Input
+                        id="mcqUn"
+                        type="number"
+                        step="any"
+                        value={mcqUnattempted}
+                        onChange={(e) => setMcqUnattempted(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="bg-slate-50/50 p-3.5 dark:bg-slate-900/40">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                      Numerical Value Questions
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      {assigned.filter((q) => q.type === 'integer').length} in test
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="numCorr" className="text-emerald-700 dark:text-emerald-400">
+                        + Correct
+                      </Label>
+                      <Input
+                        id="numCorr"
+                        type="number"
+                        step="any"
+                        value={numCorrect}
+                        onChange={(e) => setNumCorrect(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="numWr" className="text-red-600 dark:text-red-400">
+                        − Wrong
+                      </Label>
+                      <Input
+                        id="numWr"
+                        type="number"
+                        step="any"
+                        value={numWrong}
+                        onChange={(e) => setNumWrong(Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="numUn" className="text-slate-600 dark:text-slate-400">
+                        Unattempted
+                      </Label>
+                      <Input
+                        id="numUn"
+                        type="number"
+                        step="any"
+                        value={numUnattempted}
+                        onChange={(e) => setNumUnattempted(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Impact stats */}
+            <div className="flex items-center justify-between rounded-md border border-brand-200 bg-brand-50/60 p-3 text-xs text-brand-950 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-200">
+              <div>
+                <span className="font-semibold">Calculated Total Test Max Marks:</span>{' '}
+                <span className="font-bold text-brand-700 dark:text-brand-300">{projectedMaxMarks} marks</span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Current: {totalMaxMarks} marks
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              💡 Note: If students have already taken this test, saving will automatically re-score all their attempts so they immediately see the updated marks.
+            </p>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }
+

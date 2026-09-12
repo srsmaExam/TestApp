@@ -40,8 +40,14 @@ export function isExternalDb(): boolean {
  */
 async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
   if (isExternalDb()) {
-    const connectionString = process.env.DATABASE_URL!;
-    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    const rawUrl = process.env.DATABASE_URL!.trim();
+    const isLocalhost = rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1');
+
+    // Strip sslmode query parameter to prevent pg-connection-string from overriding
+    // our explicit ssl config with an empty object {} that forces strict CA checking and
+    // triggers SELF_SIGNED_CERT_IN_CHAIN on cloud providers like Supabase.
+    const sanitizedUrl = rawUrl.replace(/([?&])sslmode=[^&]+(&|$)/, (m, p1, p2) => (p1 === '?' && p2 ? '?' : ''));
+
     const sslOption =
       process.env.DATABASE_SSL === 'false'
         ? false
@@ -52,7 +58,7 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
     const pool =
       globalForDb.__vtpPgPool ??
       new Pool({
-        connectionString,
+        connectionString: sanitizedUrl,
         ssl: sslOption,
         max: Number(process.env.DATABASE_POOL_MAX ?? 10),
         idleTimeoutMillis: 30_000,

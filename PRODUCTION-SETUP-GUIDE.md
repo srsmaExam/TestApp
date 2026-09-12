@@ -1,211 +1,169 @@
-# Complete Production Setup & Deployment Guide
-
-This guide provides end-to-end instructions for deploying the **Vidya Test Prep / SRSMA JEE & NEET Test Platform** to production while preserving the zero-config local development setup.
-
----
-
-## 0. Key Production Architecture Decisions
-
-1. **Dual-Engine Database Layer**:
-   - **Local Mode**: When `DATABASE_URL` is unset, the app uses embedded **PGlite** (`./data/pgdata`) with zero cloud dependencies and zero setup.
-   - **Production Mode**: When `DATABASE_URL` is provided, the application connects to a pooled **PostgreSQL** instance (Supabase, Neon, Railway, or AWS RDS) automatically.
-2. **Authentication Flow (Active & Live)**:
-   - **Students**: Sign in at `/login` by entering their mobile number (supports India `+91` and international country codes). **No OTP or Gmail verification is required for now**. Accounts are auto-provisioned or retrieved instantly.
-   - **Persistent 90-Day Login**: Sessions are preserved via signed HTTP-only cookies with a 90-day lifetime. Returning students and teachers are automatically recognized and routed directly to their dashboard without being prompted to re-login.
-   - **Faculty / Teachers**: Sign in at the restricted staff portal at `/SRSMA` using username and password.
-3. **Timer Sweep Cron**:
-   - Background sweep endpoint at `/api/cron/sweep-expired` auto-submits exams when students run out of time or close their browser.
+# Production Setup & Deployment Guide (Supabase + Vercel)
+**Project**: SRSMA Exam Platform (`srsmaExam`)  
+**Target Environment**: Supabase (PostgreSQL) + Vercel (Next.js Serverless)  
+**Host OS**: Windows (PowerShell)  
+**Cost**: **$0.00 / month (100% Free Forever Tier)**
 
 ---
 
-## Step 1: Set Up a Production PostgreSQL Database
+## 0. Is "100% Free" a Problem? (Free-Tier Feasibility Analysis)
 
-Choose any managed PostgreSQL provider (free-tier available):
+**Short answer: No, it will not be a problem at all.** You can run this entire platform completely free. Here is the breakdown:
 
-### Option A: Supabase (Recommended — Free Tier)
-1. Go to [database.new](https://database.new) and create a free project (e.g. region: `South Asia (Mumbai)`).
-2. Go to **Project Settings** → **Database** → **Connection string**.
-3. Select **URI** mode and copy the connection string.
-   - Use the **Transaction Pooler** or **Session Pooler** string (port `6543` or `5432`):
-     ```
-     postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
-     ```
-4. Note down your database password.
+| Service | Free Tier Limits | How SRSMA Uses It | Status |
+|---|---|---|---|
+| **Supabase PostgreSQL** | 500 MB database, 50,000 monthly active users, 5 GB bandwidth. | All student profiles, exam papers, KaTeX questions, options, and scorecards take < 20 MB for hundreds of tests. | ✅ **Plenty of room** |
+| **Vercel Hosting** | 100 GB bandwidth/month, unlimited serverless requests, free automatic SSL & custom domain. | Test runner and dashboards consume minimal bandwidth. | ✅ **100% Free** |
+| **Exam Sweep Cron** | Vercel Hobby tier allows native cron only once per day (`0 0 * * *`). | Use **[cron-job.org](https://cron-job.org)** (100% free forever) to ping the sweep endpoint every 2 minutes. | ✅ **100% Free** |
 
-### Option B: Neon (Serverless Postgres — Free Tier)
-1. Sign up at [neon.tech](https://neon.tech) and create a project.
-2. Copy the pooled connection string from the dashboard:
-   ```
-   postgresql://[USER]:[PASSWORD]@[ENDPOINT].neon.tech/[DBNAME]?sslmode=require
-   ```
-
-### Option C: Railway or Self-Hosted Docker
-- In Railway, click **New** → **Database** → **PostgreSQL**, and copy `DATABASE_URL`.
+> [!TIP]
+> **Bonus Benefit of Free Cron**: Supabase free projects pause after 7 days of complete inactivity. Having `cron-job.org` ping your `/api/cron/sweep-expired` endpoint every 2 minutes keeps your Supabase database alive and awake 24/7 so it **never pauses**!
 
 ---
 
-## Step 2: Configure Production Environment Variables
+## 1. Special Characters in Database Password (Resolved)
 
-Generate a secure random session secret in your terminal:
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+In PostgreSQL connection URIs, `@` is the delimiter that separates credentials from the server host.
+- **Your Supabase Database Password**: `SRSMA@108!!`
+- **Special Characters**:
+  - `@` is encoded to `%40`
+  - `!` is encoded to `%21`
+- **Your Encoded Password**: **`SRSMA%40108%21%21`**
+
+Your complete, ready-to-use Supabase Connection String:
+```
+postgresql://postgres.dpxjyeofofgizlfvwvkv:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
-Create your production environment configuration (or enter these in your hosting platform dashboard):
-
-| Variable | Description | Example |
-|---|---|---|
-| `DATABASE_URL` | PostgreSQL connection string from Step 1 | `postgresql://postgres:pass@host:5432/dbname?sslmode=require` |
-| `SESSION_SECRET` | 32+ character random string to sign JWT cookies | `vK8_w39F...random_string` |
-| `COOKIE_SECURE` | Set to `true` to require HTTPS cookies | `true` |
-| `CRON_SECRET` | Secret key to protect the sweep cron endpoint | `my-secret-sweep-key-2026` |
-| `DATA_DIR` | Directory for PDFs and cropped diagram images | `./data` (or persistent volume path `/mnt/data`) |
-| `NEXT_PUBLIC_APP_URL` | Public production URL | `https://study.srsma.in` |
-
-*(Refer to [`.env.production.example`](file:///.env.production.example) for a pre-formatted template).*
+*(Notice port `6543` and user `postgres.dpxjyeofofgizlfvwvkv`: this uses Supabase's Supavisor Transaction Pooler, which is required for Vercel serverless connections).*
 
 ---
 
-## Step 3: Run Database Migrations & Seed Faculty Administrator
+## 2. Step-by-Step Deployment Guide
 
-Before launching the web server, initialize the schema and create the faculty administrator account.
+### Step 1: Run Database Migrations (From Windows PowerShell)
 
-Run from your local development machine (or deployment CI/CD pipeline) with `DATABASE_URL` pointing to your production database:
+Before launching the site, run the schema migrations from your local development machine to create all tables in your Supabase database.
 
-### 1. Run Schema Migrations:
-```bash
-# Windows PowerShell:
-$env:DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@YOUR_HOST:5432/postgres?sslmode=require"
+Open **PowerShell** in `c:\Users\panga\OneDrive\Desktop\Seva\SRSMA\Study_App` and run:
+
+```powershell
+$env:DATABASE_URL="postgresql://postgres.dpxjyeofofgizlfvwvkv:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require"
 npm run migrate
-
-# Linux / macOS:
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@YOUR_HOST:5432/postgres?sslmode=require" npm run migrate
 ```
-*Output: `[migrate] all migrations applied successfully.`*
 
-### 2. Create the Faculty Administrator:
-```bash
-# Windows PowerShell:
-$env:DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@YOUR_HOST:5432/postgres?sslmode=require"
+*Expected output:*
+```
+[migrate] all migrations applied successfully.
+```
+
+---
+
+### Step 2: Seed the Master Faculty Account (SRSMA)
+
+Create the verified teacher account used to log in at the staff portal (`/SRSMA`):
+
+In **PowerShell**, run:
+
+```powershell
+$env:DATABASE_URL="postgresql://postgres.dpxjyeofofgizlfvwvkv:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require"
 $env:ADMIN_USERNAME="Teacher"
-$env:ADMIN_PASSWORD="YourSecurePasswordHere!"
-$env:ADMIN_FULLNAME="Head of Faculty"
-$env:ADMIN_EMAIL="admin@srsma.edu"
+$env:ADMIN_PASSWORD="SRSMA@108"
+$env:ADMIN_FULLNAME="SRSMA"
+$env:ADMIN_EMAIL="exams.srsma@gmail.com"
 npm run seed:admin
-
-# Linux / macOS:
-DATABASE_URL="postgresql://..." ADMIN_USERNAME="Teacher" ADMIN_PASSWORD="YourSecurePasswordHere!" ADMIN_FULLNAME="Head of Faculty" ADMIN_EMAIL="admin@srsma.edu" npm run seed:admin
 ```
-*Output: `[seed-admin] created new faculty admin account: "Teacher"`*
 
-*(Note: Unlike `npm run seed`, `seed:admin` inserts only the verified faculty account and leaves mock tests and demo student accounts completely clean).*
+*Expected output:*
+```
+[seed-admin] provisioning faculty admin: "Teacher" (exams.srsma@gmail.com)...
+[seed-admin] created new faculty admin account: "Teacher"
+[seed-admin] done. Staff can now log in at /SRSMA with these credentials.
+```
+
+> [!NOTE]
+> Your faculty web login credentials will be:
+> - **URL**: `https://your-domain.vercel.app/SRSMA`
+> - **Username**: `Teacher`
+> - **Password**: `SRSMA@108`
 
 ---
 
-## Step 4: Deploy the Web Application
+### Step 3: Push Code to GitHub
 
-### Deployment Option 1: Vercel (Fastest Serverless Hosting)
-1. Push your repository to GitHub / GitLab.
-2. Import the repository in [vercel.com/new](https://vercel.com/new).
-3. In **Environment Variables**, add:
-   - `DATABASE_URL`
-   - `SESSION_SECRET`
-   - `COOKIE_SECURE` = `true`
-   - `CRON_SECRET`
-   - `DISABLE_SWEEP_TIMER` = `true`
-4. Click **Deploy**.
+Commit your changes and push them to your repository:
 
-#### Setting up the Auto-Submit Cron on Vercel:
-Create or verify `vercel.json` in the project root:
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/sweep-expired",
-      "schedule": "*/2 * * * *"
-    }
-  ]
-}
-```
-
-### Deployment Option 2: Railway or Render (Recommended for Attached Disk Storage)
-When uploading 30–60 MB source PDFs and diagram crops, a platform with persistent disk storage keeps all files in one place:
-1. Connect your GitHub repository to Railway or Render.
-2. Attach a **Persistent Volume** mounted at `/data`.
-3. Set `DATA_DIR=/data`.
-4. Add the environment variables (`DATABASE_URL`, `SESSION_SECRET`, `COOKIE_SECURE=true`, etc.).
-5. Start command: `npm run build && npm run start`.
-
-### Deployment Option 3: Self-Hosted Linux VPS (Ubuntu / Debian / Nginx)
-1. Install Node.js 20+ and PM2:
-   ```bash
-   sudo apt update && sudo apt install -y nodejs npm
-   sudo npm install -g pm2
-   ```
-2. Clone repository and install dependencies:
-   ```bash
-   git clone <repo-url> /var/www/study-app
-   cd /var/www/study-app
-   npm install
-   ```
-3. Create `.env.production` with your settings.
-4. Run migrations and build:
-   ```bash
-   npm run migrate
-   npm run build
-   ```
-5. Start with PM2:
-   ```bash
-   pm2 start npm --name "srsma-app" -- start
-   pm2 save
-   pm2 startup
-   ```
-6. Point Nginx reverse proxy to `http://127.0.0.1:3000`.
-
----
-
-## Step 5: Schedule the Auto-Submit Cron Sweep
-
-In CBT examinations, students whose countdown timer expires must have their active attempts automatically closed and scored even if they disconnect or close their tab.
-
-### If hosted on Vercel:
-Vercel automatically invokes `/api/cron/sweep-expired` based on `vercel.json`.
-
-### If using an external cron monitor (cron-job.org / EasyCron):
-1. Create a new cron job triggering every 1 to 2 minutes.
-2. URL: `https://your-domain.com/api/cron/sweep-expired?key=YOUR_CRON_SECRET`
-3. Method: `GET` or `POST`.
-
-### If using Linux crontab:
-```bash
-*/2 * * * * curl -s -X POST -H "Authorization: Bearer YOUR_CRON_SECRET" https://your-domain.com/api/cron/sweep-expired > /dev/null
+```powershell
+git add .
+git commit -m "Configure production credentials and Vercel compatibility"
+git push origin main
 ```
 
 ---
 
-## Step 6: Production Verification Checklist
+### Step 4: Import and Configure Project in Vercel
 
-Follow these steps to verify your live deployment:
+1. Go to [vercel.com/new](https://vercel.com/new) and log in with your GitHub account.
+2. Select your repository and click **Import**.
+3. Leave Framework Preset as **Next.js**.
+4. Under **Environment Variables**, add the following 7 variables:
 
-- [ ] **Persistent Student Login**:
-  - Open `https://your-domain.com/login`.
-  - Enter mobile number (e.g. `9876543210`).
-  - Click **Sign in as Student**.
-  - Verify redirection to `/student`.
-  - Close the browser, reopen `https://your-domain.com`, and verify you remain logged in without any prompt.
-- [ ] **Faculty Portal**:
-  - Open `https://your-domain.com/SRSMA`.
-  - Sign in with your seeded administrator credentials.
-  - Verify access to `/teacher` dashboard.
-- [ ] **Paper & Question Digitization**:
-  - In `/teacher/papers`, upload a sample JEE question paper PDF.
-  - In `/teacher/questions/upload`, paste extracted Gemini JSON questions.
-  - Verify and crop diagrams using the canvas tool.
-- [ ] **Test Runner & Grading**:
-  - Create and publish a mock test in `/teacher/tests`.
-  - In student mode, launch the test at `/student/tests/[id]`.
-  - Answer questions, observe the 5-state NTA question palette, and submit.
-  - Verify instant scorecard generation and KaTeX worked solutions.
-- [ ] **Local Mode Unaffected**:
-  - In local development without `DATABASE_URL`, run `npm run dev`.
-  - Verify that embedded PGlite and local development continue functioning with zero dependencies.
+| Variable Name | Value | Description |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://postgres.dpxjyeofofgizlfvwvkv:SRSMA%40108%21%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require` | Supabase Transaction Pooler connection string |
+| `DATABASE_POOL_MAX` | `10` | Max connection pool limit per serverless container |
+| `SESSION_SECRET` | `kO87M9iPWSqCTtHasbSjHQ1Sfbru4TFFbw35n4tKxQA` | Secret key for 90-day student/faculty auth cookies |
+| `COOKIE_SECURE` | `true` | Enforces HTTPS-only cookies in production |
+| `CRON_SECRET` | `cee0fa379c396c15290ea1a528c9cc92` | Security key for the auto-submit sweep endpoint |
+| `DISABLE_SWEEP_TIMER` | `true` | Disables in-process setInterval timer for Vercel serverless |
+| `NEXT_PUBLIC_APP_URL` | `https://your-project.vercel.app` *(or your custom domain)* | Base application URL |
+
+5. Click **Deploy**. Vercel will build and launch your production site.
+
+---
+
+### Step 5: Set Up the Free 2-Minute Sweep Cron (100% Free)
+
+In CBT exams, when a student's countdown timer expires or if they disconnect, the platform automatically submits and scores their test attempt.
+
+Because Vercel's free Hobby plan restricts native crons to once daily (`0 0 * * *`), use **[cron-job.org](https://cron-job.org)** (completely free) to ping the sweep endpoint every 2 minutes:
+
+1. Create a free account at [cron-job.org](https://cron-job.org).
+2. Click **Create Cronjob**.
+3. Fill in the fields:
+   - **Title**: `SRSMA Exam Timer Sweep`
+   - **URL**: `https://your-project.vercel.app/api/cron/sweep-expired?key=cee0fa379c396c15290ea1a528c9cc92`
+   - **Execution Schedule**: Every `2` minutes (or `1` minute).
+   - **Request Method**: `GET`
+4. Click **Create**.
+
+*This will run 24/7 without cost, auto-submit expired exams, and keep your Supabase database continuously active so it never goes to sleep!*
+
+---
+
+## 3. Production Verification Checklist
+
+Once deployed on Vercel, verify all features:
+
+- [ ] **Faculty Login**:
+  - Visit `https://your-project.vercel.app/SRSMA`.
+  - Enter username `Teacher` and password `SRSMA@108`.
+  - Verify access to the `/teacher` management dashboard.
+- [ ] **Student Mobile Login**:
+  - Visit `https://your-project.vercel.app/login`.
+  - Enter a mobile number (e.g. `9876543210`).
+  - Verify you are signed in and routed to `/student`.
+  - Close the browser and reopen the site to confirm your 90-day persistent session.
+- [ ] **Exam Submission & Scoring**:
+  - Start an exam under `/student`.
+  - Answer questions and submit.
+  - Check that instant scorecard, KaTeX formulas, and rank analytics render properly.
+- [ ] **Cron Sweep Endpoint**:
+  - In your browser, test:
+    ```
+    https://your-project.vercel.app/api/cron/sweep-expired?key=cee0fa379c396c15290ea1a528c9cc92
+    ```
+  - Verify JSON response: `{"ok":true,"closedCount":0,...}`.
+- [ ] **Local Development Mode Intact**:
+  - On your local PC without `DATABASE_URL` set, run `npm run dev`.
+  - Confirm local development continues working with embedded PGlite.

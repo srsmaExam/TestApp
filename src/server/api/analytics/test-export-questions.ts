@@ -21,8 +21,9 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     total_marks: number;
   }>(
     `SELECT student_id, total_marks
-     FROM attempts
+     FROM attempts a
      WHERE test_id = $1 AND status <> 'in_progress' AND total_marks IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = a.student_id AND p.is_provisional = true)
      ORDER BY total_marks DESC`,
     [testId],
   );
@@ -40,7 +41,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     `SELECT aa.question_id, a.student_id, aa.is_correct
      FROM attempt_answers aa
      JOIN attempts a ON a.id = aa.attempt_id
-     WHERE a.test_id = $1 AND a.status <> 'in_progress'`,
+     JOIN profiles p ON p.id = a.student_id
+     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND p.is_provisional = false`,
     [testId],
   );
 
@@ -97,6 +99,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
      FROM test_questions tq
      JOIN questions q ON q.id = tq.question_id
      LEFT JOIN attempts a ON a.test_id = tq.test_id AND a.status <> 'in_progress'
+       AND NOT EXISTS (SELECT 1 FROM profiles pp WHERE pp.id = a.student_id AND pp.is_provisional = true)
      LEFT JOIN attempt_answers aa ON aa.attempt_id = a.id AND aa.question_id = tq.question_id
      WHERE tq.test_id = $1
      GROUP BY tq.position, q.human_code, q.subject, q.chapter, q.topic, q.type, q.difficulty, q.expected_time_s, tq.question_id

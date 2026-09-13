@@ -38,6 +38,7 @@ export async function authenticate(username: string, password: string): Promise<
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    isProvisional: user.isProvisional,
   };
 }
 
@@ -110,7 +111,12 @@ export async function loginWithPhone(
       await db.update(profiles).set({ phone: fullPhone }).where(sql`${profiles.id} = ${user.id}`);
     }
   } else {
-    // Auto-provision a new student account so students can begin immediately
+    // Auto-provision a new student account so students can begin immediately.
+    // FBR-03: this account previously carried the same entitlements as a real
+    // enrolled student — it could see and attempt every published test and
+    // read every answer key from the result page, with zero credentials.
+    // It is now provisional: un-entitled until a teacher converts it. Keep
+    // `canLogin: true` — the frictionless landing-page funnel is intentional.
     const fullName = `Student ${cleanDigits.slice(-4)}`;
     let username = `student_${cleanDigits}`;
     let email = `${cleanDigits}@student.srsma.local`;
@@ -135,9 +141,10 @@ export async function loginWithPhone(
         username,
         email,
         phone: fullPhone,
-        batch: 'General',
+        batch: 'Prospective',
         isActive: true,
         canLogin: true,
+        isProvisional: true,
       })
       .returning();
 
@@ -149,6 +156,7 @@ export async function loginWithPhone(
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    isProvisional: user.isProvisional,
   };
 
   await issueSession(session);
@@ -172,6 +180,7 @@ export async function requireSession(): Promise<Session> {
       role: profiles.role,
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(sql`${profiles.id} = ${session.userId}`)
@@ -187,6 +196,7 @@ export async function requireSession(): Promise<Session> {
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    isProvisional: user.isProvisional,
   };
 }
 
@@ -204,6 +214,7 @@ export async function requireTeacher(): Promise<Session> {
       role: profiles.role,
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(sql`${profiles.id} = ${session.userId}`)
@@ -219,6 +230,7 @@ export async function requireTeacher(): Promise<Session> {
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    isProvisional: user.isProvisional,
   };
 }
 
@@ -236,6 +248,7 @@ export async function requireStudent(): Promise<Session> {
       role: profiles.role,
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(sql`${profiles.id} = ${session.userId}`)
@@ -251,6 +264,7 @@ export async function requireStudent(): Promise<Session> {
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    isProvisional: user.isProvisional,
   };
 }
 
@@ -276,6 +290,7 @@ export async function apiSession(): Promise<Session> {
       role: profiles.role,
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(sql`${profiles.id} = ${session.userId}`)
@@ -290,6 +305,7 @@ export async function apiSession(): Promise<Session> {
     username: user.username,
     fullName: user.fullName,
     role: user.role,
+    isProvisional: user.isProvisional,
   };
 }
 

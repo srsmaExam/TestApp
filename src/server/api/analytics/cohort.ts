@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { apiTeacher } from '@/lib/auth';
 import { json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
@@ -8,10 +8,13 @@ export const GET = withApi(async () => {
   await apiTeacher();
   const db = await getDb();
 
+  // FBR-03: provisional (self-service phone-login) accounts must never
+  // contaminate cohort statistics — a fake profile skews every real
+  // student's rank, percentile and batch average in the same cohort.
   const [studentCount] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
     .from(profiles)
-    .where(eq(profiles.role, 'student'));
+    .where(and(eq(profiles.role, 'student'), eq(profiles.isProvisional, false)));
 
   const [testCount] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
@@ -40,7 +43,8 @@ export const GET = withApi(async () => {
      FROM attempt_answers aa
      JOIN attempts a ON a.id = aa.attempt_id
      JOIN questions q ON q.id = aa.question_id
-     WHERE a.status <> 'in_progress' AND aa.response IS NOT NULL
+     JOIN profiles p ON p.id = a.student_id
+     WHERE a.status <> 'in_progress' AND aa.response IS NOT NULL AND p.is_provisional = false
      GROUP BY q.subject, COALESCE(q.chapter, 'General')
      HAVING count(aa.question_id) >= 5
      ORDER BY accuracy_pct ASC, total_answers DESC
@@ -76,7 +80,7 @@ export const GET = withApi(async () => {
      FROM profiles p
      JOIN attempts a ON a.student_id = p.id AND a.status <> 'in_progress'
      LEFT JOIN v_test_ranks r ON r.test_id = a.test_id AND r.student_id = a.student_id AND r.attempt_no = a.attempt_no
-     WHERE p.role = 'student'
+     WHERE p.role = 'student' AND p.is_provisional = false
      GROUP BY p.id, p.full_name, p.username, p.batch
      ORDER BY avg_score DESC
      LIMIT 25`,
@@ -109,7 +113,7 @@ export const GET = withApi(async () => {
      FROM profiles p
      LEFT JOIN attempts a ON a.student_id = p.id AND a.status <> 'in_progress'
      LEFT JOIN v_test_ranks r ON r.test_id = a.test_id AND r.student_id = a.student_id AND r.attempt_no = a.attempt_no
-     WHERE p.role = 'student'
+     WHERE p.role = 'student' AND p.is_provisional = false
      GROUP BY p.batch
      ORDER BY avg_score DESC NULLS LAST`,
   );

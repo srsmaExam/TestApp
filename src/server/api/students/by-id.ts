@@ -16,6 +16,10 @@ const UpdateStudentSchema = z.object({
   isActive: z.boolean().optional(),
   canLogin: z.boolean().optional(),
   newPassword: z.string().min(4).optional(),
+  // FBR-03: "Convert to enrolled student" — clears the provisional flag so
+  // the account is entitled to the enrolled question bank and counted in
+  // cohort statistics. Always sent together with a real `batch`.
+  isProvisional: z.boolean().optional(),
 });
 
 /**
@@ -38,6 +42,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
       createdAt: profiles.createdAt,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(and(eq(profiles.id, studentId), eq(profiles.role, 'student')));
@@ -99,6 +104,7 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
   if (parsed.data.batch !== undefined) updates.batch = parsed.data.batch || null;
   if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
   if (parsed.data.canLogin !== undefined) updates.canLogin = parsed.data.canLogin;
+  if (parsed.data.isProvisional !== undefined) updates.isProvisional = parsed.data.isProvisional;
 
   if (parsed.data.email !== undefined && parsed.data.email !== existing.email) {
     const emailConflict = await db
@@ -130,6 +136,7 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
       createdAt: profiles.createdAt,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(eq(profiles.id, studentId));

@@ -50,6 +50,7 @@ type Student = {
   isActive: boolean;
   canLogin: boolean;
   createdAt: string;
+  isProvisional: boolean;
   testsTaken: number;
   avgScore: number;
   avgPercentile: number | null;
@@ -76,6 +77,13 @@ export function StudentsView() {
   const [search, setSearch] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  // FBR-03: self-service phone-login accounts ("Prospective leads") are kept
+  // in a separate tab from the enrolled roster so they never dilute batch
+  // rosters or get mistaken for real students.
+  const [enrollmentTab, setEnrollmentTab] = useState<'enrolled' | 'provisional'>('enrolled');
+  const [convertTarget, setConvertTarget] = useState<Student | null>(null);
+  const [convertBatch, setConvertBatch] = useState('');
+  const [convertSubmitting, setConvertSubmitting] = useState(false);
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -137,6 +145,7 @@ export function StudentsView() {
       if (search) params.set('search', search);
       if (selectedBatch) params.set('batch', selectedBatch);
       if (selectedStatus !== 'all') params.set('status', selectedStatus);
+      params.set('enrollment', enrollmentTab);
 
       const res = await fetch(`/api/students?${params.toString()}`);
       const json = await res.json();
@@ -161,7 +170,7 @@ export function StudentsView() {
       loadStudents();
     }, 250);
     return () => clearTimeout(handle);
-  }, [page, search, selectedBatch, selectedStatus]);
+  }, [page, search, selectedBatch, selectedStatus, enrollmentTab]);
 
   // Selection handlers
   function toggleSelect(id: string) {
@@ -338,6 +347,35 @@ export function StudentsView() {
     }
   }
 
+  // FBR-03: convert a self-service phone-login lead into a real enrolled
+  // student — clears is_provisional and assigns a real batch in one step, so
+  // the account becomes entitled to the enrolled question bank and starts
+  // counting in cohort statistics.
+  async function handleConvert(e: React.FormEvent) {
+    e.preventDefault();
+    if (!convertTarget) return;
+    setConvertSubmitting(true);
+    try {
+      const res = await fetch(`/api/students/${convertTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isProvisional: false, batch: convertBatch || 'General' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to convert student');
+
+      toast.success(`${convertTarget.fullName} is now an enrolled student in "${convertBatch || 'General'}"`);
+      setConvertTarget(null);
+      setConvertBatch('');
+      loadStudents();
+      loadBatches();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setConvertSubmitting(false);
+    }
+  }
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -386,6 +424,40 @@ export function StudentsView() {
           subtext="Permitted to sign in"
           icon={<UserCheck className="size-4" />}
         />
+      </div>
+
+      {/* Enrollment Tabs — FBR-03: keep self-service phone-login leads out of
+          the enrolled roster until a teacher explicitly converts them. */}
+      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={() => {
+            setEnrollmentTab('enrolled');
+            setPage(1);
+          }}
+          className={`border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${
+            enrollmentTab === 'enrolled'
+              ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Enrolled Roster
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEnrollmentTab('provisional');
+            setPage(1);
+          }}
+          className={`border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${
+            enrollmentTab === 'provisional'
+              ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+          title="Self-service phone-login accounts not yet converted to enrolled students"
+        >
+          Prospective Leads
+        </button>
       </div>
 
       {/* Search & Filters Card */}
@@ -539,6 +611,20 @@ export function StudentsView() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {s.isProvisional ? (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                              setConvertTarget(s);
+                              setConvertBatch('');
+                            }}
+                            title="Convert to a real enrolled student"
+                          >
+                            <UserCheck className="size-3.5" />
+                            <span className="hidden sm:inline">Convert to Enrolled</span>
+                          </Button>
+                        ) : null}
                         <Button
                           variant="secondary"
                           size="sm"
@@ -850,6 +936,49 @@ export function StudentsView() {
         confirmText={activeToggleTarget?.isActive ? 'Deactivate Account' : 'Activate Account'}
         tone={activeToggleTarget?.isActive ? 'danger' : 'brand'}
       />
+
+      {/* 6. Convert Prospective Lead to Enrolled Student — FBR-03 */}
+      <Dialog
+        isOpen={convertTarget !== null}
+        onClose={() => !convertSubmitting && setConvertTarget(null)}
+        title={`Convert ${convertTarget?.fullName} to an Enrolled Student`}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              type="button"
+              disabled={convertSubmitting}
+              onClick={() => setConvertTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="convert-student-form" disabled={convertSubmitting}>
+              {convertSubmitting ? <Spinner className="mr-1.5 size-3.5" /> : null}
+              Convert to Enrolled
+            </Button>
+          </div>
+        }
+      >
+        <form id="convert-student-form" onSubmit={handleConvert} className="space-y-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            This account signed up through the self-service phone login and currently cannot see or
+            attempt any enrolled test, and never receives answer keys. Converting it makes{' '}
+            {convertTarget?.fullName} a real enrolled student in the batch below.
+          </p>
+          <Label>Batch</Label>
+          <Input
+            value={convertBatch}
+            onChange={(e) => setConvertBatch(e.target.value)}
+            placeholder="e.g. JEE-2027-A (defaults to General)"
+            list="convert-batch-list"
+          />
+          <datalist id="convert-batch-list">
+            {batches.map((b) => (
+              <option key={b.name} value={b.name} />
+            ))}
+          </datalist>
+        </form>
+      </Dialog>
     </div>
   );
 }

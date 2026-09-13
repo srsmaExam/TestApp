@@ -53,6 +53,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .from(attempts)
     .where(and(eq(attempts.testId, attempt.testId), sql`status <> 'in_progress'`));
 
+  const isProvisionalViewer = session.role === 'student' && session.isProvisional === true;
+
   const qIds = attempt.questionOrder;
   const optionOrders = (attempt.optionOrders as Record<string, string[]>) ?? {};
 
@@ -143,6 +145,12 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       if (isCorrect) subjectScores[q.subject].correct += 1;
     }
 
+    // FBR-03: a provisional (self-service phone-login) account must never
+    // receive the answer key or worked solution — that is the entire question
+    // bank's confidentiality, one attempt at a time. Omit the keys entirely
+    // rather than sending `null`, which would still confirm the field exists.
+    const disclosure = isProvisionalViewer ? {} : { answer: q.answer, solution: q.solution };
+
     return {
       id: q.id,
       position: index + 1,
@@ -150,8 +158,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       body: q.body,
       type: q.type,
       options,
-      answer: q.answer,
-      solution: q.solution,
+      ...disclosure,
       difficulty: q.difficulty,
       expectedTimeS: q.expectedTimeS,
       subject: q.subject,

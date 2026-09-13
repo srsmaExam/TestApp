@@ -1,10 +1,60 @@
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { apiTeacher } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { hashPassword } from '@/lib/password';
 import { getDb } from '@/db/client';
 import { profiles } from '@/db/schema';
+
+/**
+ * Builds the WHERE clause and its positional-parameter array from a single
+ * source of truth, so the placeholder index emitted in the SQL text can never
+ * drift from the array slot it is meant to bind to.
+ *
+ * FBR-01: the previous version derived `$4` for `batch` independently of
+ * whether `search` had already claimed `$3`, so "batch without search" sent 3
+ * parameters for a statement requiring 4 ("bind message supplies 3
+ * parameters, but prepared statement "" requires 4"). Building both from the
+ * same `params` array makes that class of bug structurally impossible.
+ */
+export function buildStudentListFilter(
+  search: string,
+  batch: string,
+  status: string,
+  pageSize: number,
+  offset: number,
+  // FBR-03: 'enrolled' (default) hides self-service phone-login accounts not
+  // yet converted by a teacher — they are not real students and must not
+  // dilute the roster. 'provisional' is the dedicated "Prospective leads"
+  // tab; 'all' is only for the rare case a teacher wants both together.
+  enrollment: 'enrolled' | 'provisional' | 'all' = 'enrolled',
+): { sqlFragment: string; params: unknown[] } {
+  const params: unknown[] = [pageSize, offset];
+  const clauses: string[] = [];
+
+  if (search) {
+    params.push(`%${search}%`);
+    const i = params.length;
+    clauses.push(
+      `AND (p.full_name ILIKE $${i} OR p.username ILIKE $${i} OR p.email ILIKE $${i} OR p.phone ILIKE $${i})`,
+    );
+  }
+
+  if (batch === 'General') {
+    clauses.push(`AND (p.batch IS NULL OR p.batch = 'General')`);
+  } else if (batch) {
+    params.push(batch);
+    clauses.push(`AND p.batch = $${params.length}`);
+  }
+
+  if (status === 'active') clauses.push(`AND p.is_active = true`);
+  else if (status === 'inactive') clauses.push(`AND p.is_active = false`);
+
+  if (enrollment === 'enrolled') clauses.push(`AND p.is_provisional = false`);
+  else if (enrollment === 'provisional') clauses.push(`AND p.is_provisional = true`);
+
+  return { sqlFragment: clauses.join('\n       '), params };
+}
 
 const CreateStudentSchema = z.object({
   fullName: z.string().trim().min(2, 'Full name must be at least 2 characters').max(100),
@@ -33,6 +83,9 @@ export const GET = withApi(async (req) => {
   const search = url.searchParams.get('search')?.trim() ?? '';
   const batch = url.searchParams.get('batch')?.trim() ?? '';
   const status = url.searchParams.get('status')?.trim() ?? 'all';
+  const enrollmentParam = url.searchParams.get('enrollment')?.trim();
+  const enrollment: 'enrolled' | 'provisional' | 'all' =
+    enrollmentParam === 'provisional' || enrollmentParam === 'all' ? enrollmentParam : 'enrolled';
 
   const db = await getDb();
 
@@ -63,6 +116,14 @@ export const GET = withApi(async (req) => {
     conditions.push(eq(profiles.isActive, false));
   }
 
+  // FBR-03: "Prospective leads" (provisional, self-service phone-login
+  // accounts) are quarantined out of the default roster.
+  if (enrollment === 'enrolled') {
+    conditions.push(eq(profiles.isProvisional, false));
+  } else if (enrollment === 'provisional') {
+    conditions.push(eq(profiles.isProvisional, true));
+  }
+
   const whereClause = and(...conditions);
 
   const [{ count }] = await db
@@ -74,6 +135,8 @@ export const GET = withApi(async (req) => {
   const offset = (page - 1) * pageSize;
 
   // Student details joined with aggregated attempt stats
+  const { sqlFragment, params } = buildStudentListFilter(search, batch, status, pageSize, offset, enrollment);
+
   const studentsQuery = await db.$client.query<{
     id: string;
     full_name: string;
@@ -84,6 +147,7 @@ export const GET = withApi(async (req) => {
     is_active: boolean;
     can_login: boolean;
     created_at: string;
+    is_provisional: boolean;
     tests_taken: number;
     avg_score: number | null;
     avg_percentile: number | null;
@@ -99,6 +163,7 @@ export const GET = withApi(async (req) => {
        p.is_active,
        p.can_login,
        p.created_at,
+       p.is_provisional,
        COUNT(a.id) FILTER (WHERE a.status <> 'in_progress') AS tests_taken,
        ROUND(AVG(a.total_marks) FILTER (WHERE a.status <> 'in_progress')::numeric, 1) AS avg_score,
        ROUND(AVG(r.percentile)::numeric, 1) AS avg_percentile,
@@ -107,19 +172,11 @@ export const GET = withApi(async (req) => {
      LEFT JOIN attempts a ON a.student_id = p.id
      LEFT JOIN v_test_ranks r ON r.test_id = a.test_id AND r.student_id = a.student_id AND r.attempt_no = a.attempt_no
      WHERE p.role = 'student'
-       ${search ? `AND (p.full_name ILIKE $3 OR p.username ILIKE $3 OR p.email ILIKE $3 OR p.phone ILIKE $3)` : ''}
-       ${batch ? (batch === 'General' ? `AND (p.batch IS NULL OR p.batch = 'General')` : `AND p.batch = $4`) : ''}
-       ${status === 'active' ? `AND p.is_active = true` : status === 'inactive' ? `AND p.is_active = false` : ''}
+       ${sqlFragment}
      GROUP BY p.id
      ORDER BY p.created_at DESC
      LIMIT $1 OFFSET $2`,
-    search && batch && batch !== 'General'
-      ? [pageSize, offset, `%${search}%`, batch]
-      : search
-        ? [pageSize, offset, `%${search}%`]
-        : batch && batch !== 'General'
-          ? [pageSize, offset, batch]
-          : [pageSize, offset],
+    params,
   );
 
   const students = studentsQuery.rows.map((r) => ({
@@ -132,6 +189,7 @@ export const GET = withApi(async (req) => {
     isActive: r.is_active,
     canLogin: r.can_login,
     createdAt: r.created_at,
+    isProvisional: r.is_provisional,
     testsTaken: Number(r.tests_taken ?? 0),
     avgScore: r.avg_score !== null ? Number(r.avg_score) : 0,
     avgPercentile: r.avg_percentile !== null ? Number(r.avg_percentile) : null,

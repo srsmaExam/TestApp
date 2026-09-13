@@ -18,6 +18,10 @@ const patchTestSchema = z.object({
   shuffleOptions: z.boolean().optional(),
   resultsPolicy: z.enum(['immediate', 'on_release']).optional(),
   isPublished: z.boolean().optional(),
+  // FBR-03: 'public' is the only audience a provisional (self-service
+  // phone-login) account may see or attempt — reserve it for a deliberate
+  // public diagnostic, never the default.
+  audience: z.enum(['enrolled', 'public']).optional(),
 });
 
 export const GET = withApi<Ctx>(async (req, { params }) => {

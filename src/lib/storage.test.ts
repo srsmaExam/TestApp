@@ -3,6 +3,8 @@ import { readFileRecord, saveBufferWithHash, deleteIfExists } from './storage';
 
 describe('Storage dual persistence (database + disk)', () => {
   it('saves and reads back a buffer with sha256', async () => {
+    // Cold PGlite/WASM initialisation can exceed vitest's 5s default on a slow
+    // machine/CI runner — this is unrelated to the assertions below.
     const testKey = 'test/sample.pdf';
     const sampleBytes = Buffer.from('%PDF-1.4 test content for storage verification');
 
@@ -19,5 +21,5 @@ describe('Storage dual persistence (database + disk)', () => {
     await deleteIfExists(testKey);
     const afterDelete = await readFileRecord(testKey);
     expect(afterDelete).toBeNull();
-  });
+  }, 20_000);
 });

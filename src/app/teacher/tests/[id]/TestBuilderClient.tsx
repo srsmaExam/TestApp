@@ -162,6 +162,11 @@ export function TestBuilderClient({
   const [shuffleQuestions, setShuffleQuestions] = useState(test.shuffleQuestions);
   const [shuffleOptions, setShuffleOptions] = useState(test.shuffleOptions);
   const [resultsPolicy, setResultsPolicy] = useState(test.resultsPolicy);
+  // FBR-03: 'enrolled' (default) tests are invisible to provisional
+  // (self-service phone-login) accounts. 'public' is for a deliberate public
+  // diagnostic only — those accounts never see answer keys or solutions
+  // regardless of this setting (enforced server-side in attempts/result.ts).
+  const [audience, setAudience] = useState<'enrolled' | 'public'>(test.audience ?? 'enrolled');
 
   // Picker filters
   const [filterPaper, setFilterPaper] = useState<string>('all');
@@ -527,6 +532,7 @@ export function TestBuilderClient({
           shuffleQuestions,
           shuffleOptions,
           resultsPolicy,
+          audience,
         }),
       });
 
@@ -1296,6 +1302,23 @@ export function TestBuilderClient({
                   <option value="immediate">Immediate (Show answers & solutions right after submit)</option>
                   <option value="on_release">On Release (Hide solutions until teacher clicks &apos;Release Results&apos;)</option>
                 </Select>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+                <Label htmlFor="audience">Audience</Label>
+                <Select
+                  id="audience"
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value as 'enrolled' | 'public')}
+                >
+                  <option value="enrolled">Enrolled students only (default)</option>
+                  <option value="public">Public (self-service phone-login accounts, e.g. a diagnostic)</option>
+                </Select>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  A phone number that has never been enrolled by a teacher can only see and attempt
+                  &apos;Public&apos; tests. They never receive the answer key or worked solutions, regardless of
+                  the results policy above.
+                </p>
               </div>
 
               <div className="space-y-2 border-t border-slate-100 pt-4 dark:border-slate-800">

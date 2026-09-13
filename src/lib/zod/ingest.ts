@@ -110,6 +110,10 @@ export const IngestSolutionItem = z
     sourceQno: z.number().int().positive(),
     sourcePage: z.number().int().positive().nullable().optional(),
     subject: z.enum(['physics', 'chemistry', 'maths', 'biology']).optional(),
+    // FBR-02: for standalone questions (no paperId), `sourceQno` alone is not
+    // unique — every batch's "question 1" collides. `humanCode` is unique per
+    // question and lets the ingest route target exactly one row.
+    humanCode: z.string().trim().min(1).optional(),
     answer: z.string().nullable().optional(),
     solution: z.string().min(1, 'solution cannot be empty'),
     imagePlaceholders: z.array(ImagePlaceholder).default([]),

@@ -3,14 +3,11 @@ import { notFound } from 'next/navigation';
 import { getDb } from '@/db/client';
 import { papers } from '@/db/schema';
 import { getAllExtractionPrompts, getTruncationRecoveryPrompt } from '@/lib/prompts';
-import { IngestView } from './IngestView';
+import { IngestView } from '../papers/[id]/ingest/IngestView';
 
-export const metadata = { title: 'Ingest questions & solutions' };
-
-export default async function IngestPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function TeacherPaperIngestView({ paperId }: { paperId: string }) {
   const db = await getDb();
-  const [paper] = await db.select().from(papers).where(eq(papers.id, id));
+  const [paper] = await db.select().from(papers).where(eq(papers.id, paperId));
   if (!paper) notFound();
 
   const promptsByKind = getAllExtractionPrompts();

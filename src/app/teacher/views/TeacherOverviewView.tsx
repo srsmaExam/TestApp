@@ -5,7 +5,7 @@ import { getDb } from '@/db/client';
 import { papers, profiles, questions, tests } from '@/db/schema';
 import { Card, CardBody } from '@/components/ui';
 
-export default async function TeacherOverviewPage() {
+export async function TeacherOverviewView() {
   const db = await getDb();
   const [[paperCount], [questionCount], [verifiedCount], [studentCount], [testCount]] = await Promise.all([
     db.select({ n: sql<number>`count(*)` }).from(papers),

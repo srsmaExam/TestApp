@@ -6,7 +6,7 @@ import { attempts, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
 import { Badge, buttonClass, Card, CardBody, EmptyState } from '@/components/ui';
 
-export default async function StudentDashboardPage() {
+export async function StudentDashboardView() {
   const session = await getSession();
   if (!session) return null;
 

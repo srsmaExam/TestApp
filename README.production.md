@@ -490,19 +490,20 @@ No more than 12 Serverless Functions can be added to a Deployment on the Hobby p
 ```
 In default Next.js App Router applications, each independent `route.ts` file under `src/app/api/` is compiled into a standalone Serverless Function (`.func` bundle). Because this platform features 39 modular API endpoints (auth, tests, questions, attempts, analytics, cron, media, papers), a default setup generated 39 separate Lambda functions, instantly failing Vercel's deployment validator and prompting for a paid Pro upgrade ($20/seat/month).
 
-### 9.2 The Unified API Router Solution (`src/app/api/[[...slug]]`)
-To ensure the platform remains **100% free forever ($0.00/month)** without compromising modularity, all 39 API routes are dispatched through a single, high-performance catch-all router:
-- **Route Handler**: [`src/app/api/[[...slug]]/route.ts`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/api/[[...slug]]/route.ts)
-- **Router Engine**: [`src/server/api/router.ts`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/server/api/router.ts)
-- **Handler Modules**: Cleanly separated under [`src/server/api/`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/server/api/)
+### 9.2 The Unified Router Architecture (`/api`, `/student`, `/teacher`)
+To ensure the platform remains **100% free forever ($0.00/month)** without compromising modularity, all API routes and application pages are dispatched through high-performance catch-all routers and static pre-rendering:
+- **API Router (1 Function)**: [`src/app/api/[[...slug]]/route.ts`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/api/[[...slug]]/route.ts) dispatches all 39 API routes.
+- **Student Portal (1 Function)**: [`src/app/student/[[...slug]]/page.tsx`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/student/[[...slug]]/page.tsx) dispatches tests, CBT runner, scorecard, and analytics.
+- **Faculty Portal (1 Function)**: [`src/app/teacher/[[...slug]]/page.tsx`](file:///c:/Users/panga/OneDrive/Desktop/Seva/SRSMA/Study_App/src/app/teacher/[[...slug]]/page.tsx) dispatches overview, test builder, question bank, papers, verify studio, and analytics.
+- **Public & Auth Pages (0 Functions - Static CDN)**: `/`, `/boardChallenge`, `/login`, and `/SRSMA` are statically pre-rendered (`○ (Static)`).
 
 **Impact on Function Count**:
-- Previous: **39 API functions + dynamic pages = ~60 functions** (deployment blocked).
-- Consolidated: **1 unified API function + dynamic pages = ~2–3 functions total** (well under the 12-function cap).
+- Default App Router: **39 API functions + 23 dynamic pages = 62 functions** (severely blocked on Hobby tier).
+- Consolidated Architecture: **1 API function + 1 Student function + 1 Faculty function = 3 functions total** (75% below the 12-function cap, leaving 9 functions of headroom).
 
 ### 9.3 Performance & Zero Latency Regression
-Consolidating API handlers into a single function not only avoids paid plans, but **significantly improves real-world performance**:
-1. **Shared Warm Container**: In a 39-function setup, a student logging in, starting a test, and submitting answers hits three separate cold Lambdas. With the unified router, the Lambda environment (database connection pool, auth tokens, compiled Zod schemas) stays warm across the entire user journey.
-2. **Reduced Cold Starts**: Cold start latency drops from occurring across 39 disparate routes to a single shared execution context.
-3. **Identical API Contracts**: All URLs (`/api/auth/login`, `/api/papers/[id]/pdf`, `/api/cron/sweep-expired`, etc.) remain identical. No frontend, mobile, or external cron modifications are required.
+Consolidating handlers into unified routers not only avoids paid plans, but **significantly improves real-world performance**:
+1. **Shared Warm Container**: In a multi-function setup, a student logging in, starting a test, and submitting answers hits three separate cold Lambdas. With the unified router, the Lambda environment (database connection pool, auth tokens, compiled Zod schemas) stays warm across the entire user journey.
+2. **Reduced Cold Starts**: Cold start latency drops from occurring across dozens of disparate routes to a single shared execution context.
+3. **Identical URL & API Contracts**: All URLs (`/teacher/tests/[id]`, `/student/attempts/[id]/result`, `/api/auth/login`, etc.) remain 100% identical. No frontend, mobile, or external cron modifications are required.
 4. **Resilient Dual Storage**: Uploaded question papers (PDFs) and diagrams are stored with sha256 deduplication in Supabase PostgreSQL (`stored_files` table), completely eliminating read-only filesystem errors (`ENOENT: mkdir /var/task/data`) on serverless runtimes.

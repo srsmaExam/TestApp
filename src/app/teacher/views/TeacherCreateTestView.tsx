@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Alert, Button, buttonClass, Card, CardBody, CardHeader, CardTitle, Input, Label, Select, Spinner, Textarea } from '@/components/ui';
 import { fromLocalInputValue } from '@/lib/datetime';
 
-export default function CreateTestPage() {
+export function TeacherCreateTestView() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

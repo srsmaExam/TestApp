@@ -1,7 +1,7 @@
 import { requireStudent } from '@/lib/auth';
-import { StudentAnalyticsClient } from './StudentAnalyticsClient';
+import { StudentAnalyticsClient } from '../analytics/StudentAnalyticsClient';
 
-export default async function StudentAnalyticsPage() {
+export async function StudentAnalyticsView() {
   const session = await requireStudent();
   return <StudentAnalyticsClient studentName={session.fullName} />;
 }

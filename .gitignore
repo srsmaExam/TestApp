@@ -22,6 +22,9 @@ dev_out.log
 # Generated at dev/build time by scripts/copy-pdf-worker.mjs
 /public/pdf.worker.min.mjs
 
+# Root PDFs
+/*.pdf
+
 # OS / editor
 Thumbs.db
 .DS_Store

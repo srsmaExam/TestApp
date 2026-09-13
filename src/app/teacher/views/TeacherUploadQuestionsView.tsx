@@ -2,11 +2,9 @@ import { Suspense } from 'react';
 import { getAllExtractionPrompts, getTruncationRecoveryPrompt } from '@/lib/prompts';
 import { getDb } from '@/db/client';
 import { papers } from '@/db/schema';
-import { UploadQuestionsView } from './UploadQuestionsView';
+import { UploadQuestionsView } from '../questions/upload/UploadQuestionsView';
 
-export const metadata = { title: 'Upload questions & solutions' };
-
-export default async function UploadQuestionsPage() {
+export async function TeacherUploadQuestionsView() {
   const promptsByKind = getAllExtractionPrompts();
   const truncationPrompt = getTruncationRecoveryPrompt();
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Input, Label } from '@/components/ui';
 
 export function TeacherLoginForm() {
@@ -11,6 +11,14 @@ export function TeacherLoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/papers')
+      .then((res) => {
+        if (res.ok) router.replace('/teacher');
+      })
+      .catch(() => {});
+  }, [router]);
 
   const notice =
     params.get('reason') === 'session_expired'

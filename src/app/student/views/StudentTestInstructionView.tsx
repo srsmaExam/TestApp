@@ -3,15 +3,10 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { requireStudent } from '@/lib/auth';
 import { getDb } from '@/db/client';
 import { attempts, questions, testQuestions, tests } from '@/db/schema';
-import { TestInstructionClient, type MarkingRule } from './TestInstructionClient';
+import { TestInstructionClient, type MarkingRule } from '../tests/[id]/TestInstructionClient';
 
-export default async function StudentTestInstructionPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export async function StudentTestInstructionView({ testId }: { testId: string }) {
   const session = await requireStudent();
-  const { id } = await params;
   const db = await getDb();
 
   const [test] = await db
@@ -28,16 +23,13 @@ export default async function StudentTestInstructionPage({
     })
     .from(tests)
     .leftJoin(testQuestions, eq(testQuestions.testId, tests.id))
-    .where(eq(tests.id, id))
+    .where(eq(tests.id, testId))
     .groupBy(tests.id);
 
   if (!test || !test.isPublished) {
     notFound();
   }
 
-  // The instructions screen used to print a hardcoded +4 / -1 / 0, which is
-  // simply wrong for any test with a custom scheme. Read the real marks and
-  // collapse them into the distinct rules actually in play.
   const assigned = await db
     .select({
       type: questions.type,
@@ -48,7 +40,7 @@ export default async function StudentTestInstructionPage({
     })
     .from(testQuestions)
     .innerJoin(questions, eq(questions.id, testQuestions.questionId))
-    .where(eq(testQuestions.testId, id))
+    .where(eq(testQuestions.testId, testId))
     .orderBy(asc(testQuestions.position));
 
   const ruleMap = new Map<string, MarkingRule>();
@@ -75,7 +67,7 @@ export default async function StudentTestInstructionPage({
   const [{ attemptsUsed }] = await db
     .select({ attemptsUsed: sql<number>`cast(count(*) as int)` })
     .from(attempts)
-    .where(and(eq(attempts.testId, id), eq(attempts.studentId, session.userId)));
+    .where(and(eq(attempts.testId, testId), eq(attempts.studentId, session.userId)));
 
   return (
     <TestInstructionClient

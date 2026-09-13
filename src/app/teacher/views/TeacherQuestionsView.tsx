@@ -2,11 +2,9 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { Lightbulb, UploadCloud } from 'lucide-react';
 import { buttonClass } from '@/components/ui';
-import { QuestionsListView } from './QuestionsListView';
+import { QuestionsListView } from '../questions/QuestionsListView';
 
-export const metadata = { title: 'Question bank' };
-
-export default function QuestionsPage() {
+export function TeacherQuestionsView() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">

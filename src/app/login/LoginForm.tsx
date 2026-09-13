@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Input, Label } from '@/components/ui';
 
 const COUNTRY_CODES = [
@@ -41,6 +41,14 @@ export function LoginForm() {
       : null;
 
   const effectiveCountryCode = selectedCode === 'other' ? customCode : selectedCode;
+
+  useEffect(() => {
+    fetch('/api/analytics/student/me')
+      .then((res) => {
+        if (res.ok) router.replace('/student');
+      })
+      .catch(() => {});
+  }, [router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

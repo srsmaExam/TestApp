@@ -4,9 +4,9 @@ import { BarChart3, Clock, HelpCircle, Plus, Users } from 'lucide-react';
 import { getDb } from '@/db/client';
 import { attempts, testQuestions, tests } from '@/db/schema';
 import { Badge, buttonClass, Card, CardBody, EmptyState } from '@/components/ui';
-import { TeacherTestsClientActions } from './TeacherTestsClientActions';
+import { TeacherTestsClientActions } from '../tests/TeacherTestsClientActions';
 
-export default async function TeacherTestsPage() {
+export async function TeacherTestsView() {
   const db = await getDb();
 
   const allTests = await db

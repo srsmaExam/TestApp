@@ -1,10 +1,8 @@
 import { Suspense } from 'react';
 import { requireTeacher } from '@/lib/auth';
-import { StudentsView } from './StudentsView';
+import { StudentsView } from '../students/StudentsView';
 
-export const metadata = { title: 'Students & Batches' };
-
-export default async function StudentsPage() {
+export async function TeacherStudentsView() {
   await requireTeacher();
   return (
     <div>

@@ -18,8 +18,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { BRAND } from '@/config/branding';
-import { getSession } from '@/lib/session';
-import { homeFor } from '@/lib/auth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata = {
@@ -42,11 +40,12 @@ export const metadata = {
   },
 };
 
-export default async function BoardChallengePage() {
-  const session = await getSession();
-  const destination = session ? homeFor(session.role) : '/login';
-  const ctaLabel = session ? 'Go to My Dashboard' : 'Take the Challenge Now';
-  const ctaSubtext = session ? 'Signed in • Click to access tests' : 'Instant Student Login • No Password Needed';
+export const dynamic = 'force-static';
+
+export default function BoardChallengePage() {
+  const destination = '/login';
+  const ctaLabel = 'Take the Challenge Now';
+  const ctaSubtext = 'Instant Student Login • No Password Needed';
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 transition-colors selection:bg-amber-400 selection:text-slate-950 dark:bg-[#071120] dark:text-slate-100">
@@ -107,7 +106,7 @@ export default async function BoardChallengePage() {
                 className="group inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-sm transition hover:border-amber-400 hover:bg-amber-400/30 hover:text-slate-950 active:scale-95 sm:px-5 sm:py-2.5 sm:text-base dark:text-amber-300 dark:hover:text-white"
               >
                 <LogIn className="size-3.5 sm:size-5" />
-                <span>{session ? 'Dashboard' : 'Login'}</span>
+                <span>Login</span>
                 <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5 sm:size-4" />
               </Link>
             </div>
@@ -508,7 +507,7 @@ export default async function BoardChallengePage() {
               href={destination}
               className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-3 text-sm font-black text-slate-950 shadow-md shadow-amber-500/25 active:scale-95"
             >
-              <span>{session ? 'Go to Dashboard' : 'Take Challenge'}</span>
+              <span>Take Challenge</span>
               <ArrowRight className="size-4" />
             </Link>
           </div>

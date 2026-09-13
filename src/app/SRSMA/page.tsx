@@ -1,37 +1,13 @@
 import Image from 'next/image';
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
 import { BRAND } from '@/config/branding';
-import { sql } from 'drizzle-orm';
-import { getDb } from '@/db/client';
-import { profiles } from '@/db/schema';
-import { clearSession, getSession } from '@/lib/session';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TeacherLoginForm } from './TeacherLoginForm';
 
 export const metadata = { title: 'Faculty Portal | SRSMA' };
+export const dynamic = 'force-static';
 
-export default async function TeacherSecretLoginPage() {
-  const session = await getSession();
-  if (session && session.role === 'teacher') {
-    const db = await getDb();
-    const [user] = await db
-      .select({
-        id: profiles.id,
-        role: profiles.role,
-        isActive: profiles.isActive,
-        canLogin: profiles.canLogin,
-      })
-      .from(profiles)
-      .where(sql`${profiles.id} = ${session.userId}`)
-      .limit(1);
-
-    if (user && user.isActive && user.canLogin && user.role === 'teacher') {
-      redirect('/teacher');
-    } else {
-      await clearSession();
-    }
-  }
+export default function TeacherSecretLoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10 transition-colors dark:bg-[#090d16]">

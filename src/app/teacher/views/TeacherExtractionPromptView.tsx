@@ -1,9 +1,7 @@
 import { getAllExtractionPrompts, getTruncationRecoveryPrompt } from '@/lib/prompts';
-import { ExtractionPromptView } from './ExtractionPromptView';
+import { ExtractionPromptView } from '../extraction-prompt/ExtractionPromptView';
 
-export const metadata = { title: 'Extraction prompts' };
-
-export default function ExtractionPromptPage() {
+export function TeacherExtractionPromptView() {
   const promptsByKind = getAllExtractionPrompts();
   const truncationPrompt = getTruncationRecoveryPrompt();
 

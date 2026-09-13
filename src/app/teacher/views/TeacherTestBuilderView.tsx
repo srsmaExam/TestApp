@@ -2,13 +2,12 @@ import { notFound } from 'next/navigation';
 import { desc, eq } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 import { papers, questions, testQuestions, tests } from '@/db/schema';
-import { TestBuilderClient } from './TestBuilderClient';
+import { TestBuilderClient } from '../tests/[id]/TestBuilderClient';
 
-export default async function TestBuilderPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function TeacherTestBuilderView({ testId }: { testId: string }) {
   const db = await getDb();
 
-  const [test] = await db.select().from(tests).where(eq(tests.id, id));
+  const [test] = await db.select().from(tests).where(eq(tests.id, testId));
   if (!test) notFound();
 
   // Load all registered papers for the picker filter
@@ -50,7 +49,7 @@ export default async function TestBuilderPage({ params }: { params: Promise<{ id
     .from(testQuestions)
     .innerJoin(questions, eq(questions.id, testQuestions.questionId))
     .leftJoin(papers, eq(questions.paperId, papers.id))
-    .where(eq(testQuestions.testId, id))
+    .where(eq(testQuestions.testId, testId))
     .orderBy(testQuestions.position);
 
   // Load all available questions in bank for the picker

@@ -4,7 +4,7 @@ import { getDb } from '@/db/client';
 import { profiles } from '@/db/schema';
 import { verifyPassword } from './password';
 import { clearSession, getSession, issueSession, type Role, type Session } from './session';
-import { HttpError } from './http';
+import { HttpError, isUniqueViolation } from './http';
 
 export type { Session, Role };
 export { getSession, clearSession };
@@ -87,14 +87,29 @@ export async function loginWithPhone(
 
   const db = await getDb();
 
-  // Look for existing profile matching phone (full phone, clean digits) or demo student fallback
+  // FBR-05: look for an existing profile matching phone. Every write path
+  // now normalises to E.164 before storing, so this three-way OR only exists
+  // for rows written before that fix shipped — a bare `= fullPhone` equality
+  // will be sufficient once every historical row has been through
+  // `npm run backfill:phone-e164`. Deliberately NO `.limit(1)`: the old code
+  // silently picked whichever row Postgres's query plan reached first, which
+  // could differ between requests as the plan flipped between a seq-scan and
+  // an index-scan — the same phone number could authenticate as a different
+  // student on different days. A collision here must never be guessed.
   const matches = await db
     .select()
     .from(profiles)
     .where(
       sql`${profiles.phone} = ${fullPhone} OR ${profiles.phone} = ${cleanDigits} OR ${profiles.phone} = ${'+' + cleanDigits} OR (${cleanDigits} = '9876543210' AND lower(${profiles.username}) = 'student')`,
-    )
-    .limit(1);
+    );
+
+  if (matches.length > 1) {
+    throw new HttpError(
+      409,
+      'phone_ambiguous',
+      'More than one account is registered to this phone number. Please sign in with your username instead.',
+    );
+  }
 
   let user = matches[0];
 
@@ -133,22 +148,33 @@ export async function loginWithPhone(
       email = `${cleanDigits}_${Date.now().toString().slice(-4)}@student.srsma.local`;
     }
 
-    const [created] = await db
-      .insert(profiles)
-      .values({
-        role: 'student',
-        fullName,
-        username,
-        email,
-        phone: fullPhone,
-        batch: 'Prospective',
-        isActive: true,
-        canLogin: true,
-        isProvisional: true,
-      })
-      .returning();
+    try {
+      const [created] = await db
+        .insert(profiles)
+        .values({
+          role: 'student',
+          fullName,
+          username,
+          email,
+          phone: fullPhone,
+          batch: 'Prospective',
+          isActive: true,
+          canLogin: true,
+          isProvisional: true,
+        })
+        .returning();
 
-    user = created;
+      user = created;
+    } catch (err) {
+      // Two auto-provision requests for the same brand-new phone number,
+      // essentially simultaneously — profiles_phone_idx (schema.ts) rejects
+      // the loser rather than creating a second account. That request can
+      // simply retry the login and find the row the winner just created.
+      if (isUniqueViolation(err)) {
+        throw new HttpError(409, 'login_conflict', 'Please try signing in again.');
+      }
+      throw err;
+    }
   }
 
   const session: Session = {

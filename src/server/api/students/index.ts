@@ -1,7 +1,7 @@
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { apiTeacher } from '@/lib/auth';
-import { HttpError, json, withApi } from '@/lib/http';
+import { apiTeacher, normalizePhone } from '@/lib/auth';
+import { HttpError, isUniqueViolation, json, withApi } from '@/lib/http';
 import { hashPassword } from '@/lib/password';
 import { getDb } from '@/db/client';
 import { profiles } from '@/db/schema';
@@ -223,45 +223,74 @@ export const POST = withApi(async (req) => {
   const { fullName, username, email, phone, batch, password } = parsed.data;
   const db = await getDb();
 
-  // Check unique username & email
+  // FBR-05: store E.164 only, so "+919876543210", "919876543210" and
+  // "9876543210" can never coexist as separate rows for the same real phone.
+  const normalizedPhone = phone && phone.trim() ? normalizePhone('+91', phone.trim()).fullPhone : null;
+
+  // Check unique username, email & phone. `username`/`email` are DB-unique
+  // already; `phone` also is (profiles_phone_idx), but only on the
+  // as-normalized string, and a wrong guess on a collision is an account
+  // takeover — so this is checked proactively rather than left to a raw
+  // 23505 on insert.
+  const conditions = [eq(profiles.username, username), eq(profiles.email, email)];
+  if (normalizedPhone) conditions.push(eq(profiles.phone, normalizedPhone));
+
   const existing = await db
-    .select({ id: profiles.id, username: profiles.username, email: profiles.email })
+    .select({ id: profiles.id, username: profiles.username, email: profiles.email, phone: profiles.phone, fullName: profiles.fullName })
     .from(profiles)
-    .where(or(eq(profiles.username, username), eq(profiles.email, email)));
+    .where(or(...conditions));
 
   if (existing.length > 0) {
     if (existing.some((e) => e.username.toLowerCase() === username.toLowerCase())) {
       throw new HttpError(409, 'username_taken', `Username "${username}" is already in use.`);
     }
-    throw new HttpError(409, 'email_taken', `Email "${email}" is already registered.`);
+    if (existing.some((e) => e.email.toLowerCase() === email.toLowerCase())) {
+      throw new HttpError(409, 'email_taken', `Email "${email}" is already registered.`);
+    }
+    const holder = existing.find((e) => e.phone === normalizedPhone);
+    throw new HttpError(
+      409,
+      'phone_taken',
+      `Phone "${phone}" is already registered to ${holder?.fullName ?? 'another student'}.`,
+    );
   }
 
   const passwordHash = await hashPassword(password);
 
-  const [student] = await db
-    .insert(profiles)
-    .values({
-      role: 'student',
-      fullName,
-      username,
-      email,
-      phone: phone ? phone.trim() : null,
-      batch: batch || null,
-      passwordHash,
-      isActive: true,
-      canLogin: true,
-    })
-    .returning({
-      id: profiles.id,
-      fullName: profiles.fullName,
-      username: profiles.username,
-      email: profiles.email,
-      phone: profiles.phone,
-      batch: profiles.batch,
-      isActive: profiles.isActive,
-      canLogin: profiles.canLogin,
-      createdAt: profiles.createdAt,
-    });
+  let student;
+  try {
+    [student] = await db
+      .insert(profiles)
+      .values({
+        role: 'student',
+        fullName,
+        username,
+        email,
+        phone: normalizedPhone,
+        batch: batch || null,
+        passwordHash,
+        isActive: true,
+        canLogin: true,
+      })
+      .returning({
+        id: profiles.id,
+        fullName: profiles.fullName,
+        username: profiles.username,
+        email: profiles.email,
+        phone: profiles.phone,
+        batch: profiles.batch,
+        isActive: profiles.isActive,
+        canLogin: profiles.canLogin,
+        createdAt: profiles.createdAt,
+      });
+  } catch (err) {
+    // The proactive check above closes the common case; this backstops the
+    // insert race — two requests passing the check for the same phone at once.
+    if (isUniqueViolation(err)) {
+      throw new HttpError(409, 'phone_taken', `Phone "${phone}" was just registered to another student.`);
+    }
+    throw err;
+  }
 
   return json({ student }, 201);
 });

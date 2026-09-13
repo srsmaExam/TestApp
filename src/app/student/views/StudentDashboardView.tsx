@@ -5,6 +5,7 @@ import { getDb } from '@/db/client';
 import { attempts, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
 import { Badge, buttonClass, Card, CardBody, EmptyState } from '@/components/ui';
+import { StudentChrome } from '../StudentChrome';
 
 export async function StudentDashboardView() {
   const session = await getSession();
@@ -86,7 +87,8 @@ export async function StudentDashboardView() {
     });
 
   return (
-    <div className="space-y-8">
+    <StudentChrome session={session}>
+      <div className="space-y-8">
       {/* Welcome Banner */}
       <div className="rounded-xl bg-gradient-to-r from-brand-900 to-brand-700 p-6 text-white shadow-sm dark:from-brand-950 dark:to-brand-800">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -243,6 +245,7 @@ export async function StudentDashboardView() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </StudentChrome>
   );
 }

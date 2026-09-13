@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@/db/client';
 import { attemptAnswers, attempts, questions, testQuestions, tests, type QuestionAnswer } from '@/db/schema';
-import { gradeAttempt, type GradingItem } from './grading';
+import { gradeAttempt, isGradeableResponse, type GradingItem } from './grading';
 import { withDbLock } from './db-lock';
 
 export type CloseStatus = 'submitted' | 'auto_submitted';
@@ -204,6 +204,23 @@ export async function saveAttemptAnswersBatch(
   now: Date = new Date(),
 ): Promise<number> {
   if (items.length === 0) return 0;
+
+  // FBR-07: server-side invariant, because the client UI is not the only
+  // writer. A response the grader can actually score must never persist
+  // alongside `state: 'not_seen' | 'seen_unanswered'` — that combination is
+  // exactly how a student's selection was silently graded wrong while every
+  // UI surface (palette, pre-submit summary) told them it was unattempted.
+  // Repair rather than reject: a mid-exam 422 must never block a save. The
+  // response shape carries either `key` (mcq) or `value` (integer) depending
+  // on question type, so gradeability is checked generically here rather
+  // than requiring a `questions` join on every answer-save write.
+  items = items.map((it) => {
+    if (it.response === undefined || it.state === undefined) return it;
+    if (it.state !== 'not_seen' && it.state !== 'seen_unanswered') return it;
+    const looksGradeable =
+      isGradeableResponse('mcq', it.response) || isGradeableResponse('integer', it.response);
+    return looksGradeable ? { ...it, state: 'answered' as const } : it;
+  });
 
   const qIds = items.map((it) => it.questionId);
 

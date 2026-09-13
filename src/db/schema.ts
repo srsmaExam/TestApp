@@ -49,7 +49,17 @@ export const profiles = pgTable('profiles', {
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   username: text('username').notNull().unique(),
-  phone: text('phone'),
+  // FBR-05: enforced in the DB by the partial unique index `profiles_phone_idx`
+  // (drizzle/0004_add_phone.sql — `WHERE phone IS NOT NULL`, so multiple NULLs
+  // are allowed). `.unique()` here is documentation only — this file creates
+  // no tables — but it was previously absent, which is exactly why nobody
+  // noticed the DB already had a real constraint. That constraint only
+  // catches an *exact* duplicate string, though: "+919876543210",
+  // "919876543210" and "9876543210" are three different strings for the same
+  // real number and can all exist as separate rows. Every write path MUST
+  // normalize through normalizePhone() before it reaches this column, or the
+  // index gives false confidence.
+  phone: text('phone').unique(),
   passwordHash: text('password_hash'),
   canLogin: boolean('can_login').notNull().default(true),
   // FBR-03: true for self-service accounts auto-provisioned by phone login

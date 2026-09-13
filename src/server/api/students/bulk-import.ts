@@ -1,6 +1,6 @@
-import { inArray } from 'drizzle-orm';
+import { and, inArray, isNotNull } from 'drizzle-orm';
 import { apiTeacher } from '@/lib/auth';
-import { HttpError, json, withApi } from '@/lib/http';
+import { HttpError, isUniqueViolation, json, withApi } from '@/lib/http';
 import { hashPassword } from '@/lib/password';
 import { parseStudentCsv } from '@/lib/student-csv';
 import { getDb } from '@/db/client';
@@ -48,10 +48,25 @@ export const POST = withApi(async (req) => {
     .from(profiles)
     .where(inArray(profiles.email, emails));
 
+  // FBR-05: missed by the preliminary report — bulk-import validated intra-CSV
+  // username/email collisions but never checked phone at all, against either
+  // the CSV or the DB. parseStudentCsv() already normalises and catches
+  // intra-CSV phone duplicates; this catches a CSV row colliding with an
+  // already-enrolled student's phone.
+  const phones = validRows.map((r) => r.phone).filter((p): p is string => Boolean(p));
+  const existingPhones =
+    phones.length > 0
+      ? await db
+          .select({ phone: profiles.phone, fullName: profiles.fullName })
+          .from(profiles)
+          .where(and(isNotNull(profiles.phone), inArray(profiles.phone, phones)))
+      : [];
+
   const collisionErrors: Array<{ row: number; field: string; message: string }> = [];
 
   const existingUserSet = new Set(existingUsers.map((u) => u.username.toLowerCase()));
   const existingEmailSet = new Set(existingEmails.map((u) => u.email.toLowerCase()));
+  const existingPhoneMap = new Map(existingPhones.map((p) => [p.phone as string, p.fullName]));
 
   for (const row of validRows) {
     if (existingUserSet.has(row.username.toLowerCase())) {
@@ -66,6 +81,13 @@ export const POST = withApi(async (req) => {
         row: row.rowNumber,
         field: 'email',
         message: `Email "${row.email}" already exists in the system.`,
+      });
+    }
+    if (row.phone && existingPhoneMap.has(row.phone)) {
+      collisionErrors.push({
+        row: row.rowNumber,
+        field: 'phone',
+        message: `Phone "${row.phone}" is already registered to ${existingPhoneMap.get(row.phone)}.`,
       });
     }
   }
@@ -95,11 +117,21 @@ export const POST = withApi(async (req) => {
   );
 
   // Insert all in a transaction
-  await db.transaction(async (tx) => {
-    for (const row of toInsert) {
-      await tx.insert(profiles).values(row);
+  try {
+    await db.transaction(async (tx) => {
+      for (const row of toInsert) {
+        await tx.insert(profiles).values(row);
+      }
+    });
+  } catch (err) {
+    // Backstops the insert race the proactive check above can't catch — two
+    // imports (or an import racing a manual student creation) claiming the
+    // same phone at once.
+    if (isUniqueViolation(err)) {
+      throw new HttpError(409, 'db_conflicts', 'A phone number in this CSV was just registered by another request. Please retry.');
     }
-  });
+    throw err;
+  }
 
   return json({
     success: true,

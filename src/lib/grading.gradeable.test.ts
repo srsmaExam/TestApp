@@ -60,6 +60,41 @@ describe('isGradeableResponse', () => {
   });
 });
 
+/**
+ * FBR-07: selecting an option (or typing a valid number) without pressing
+ * "Save & Next" used to leave `state: 'seen_unanswered'` while `response` was
+ * fully gradeable — the palette showed it red, the pre-submit summary counted
+ * it as unattempted, and the grader awarded marksWrong for it. The invariant
+ * this guards: a response the grader will actually score must never coexist
+ * with an "unanswered" state.
+ */
+describe('FBR-07 invariant: gradeable response implies an "answered" state', () => {
+  const ANSWERED_STATES = new Set(['answered', 'answered_flagged']);
+
+  function isConsistent(
+    type: 'mcq' | 'integer',
+    response: { key?: string; value?: number | string } | null,
+    state: 'not_seen' | 'seen_unanswered' | 'answered' | 'answered_flagged' | 'flagged_unanswered',
+  ): boolean {
+    return !isGradeableResponse(type, response) || ANSWERED_STATES.has(state);
+  }
+
+  it('flags the exact contradiction the bug produced', () => {
+    // What handleSelectOption used to write before FBR-07.
+    expect(isConsistent('mcq', { key: 'B' }, 'seen_unanswered')).toBe(false);
+  });
+
+  it('accepts the corrected transition', () => {
+    expect(isConsistent('mcq', { key: 'B' }, 'answered')).toBe(true);
+    expect(isConsistent('mcq', { key: 'B' }, 'answered_flagged')).toBe(true);
+  });
+
+  it('an ungradeable response is fine in any state', () => {
+    expect(isConsistent('integer', { value: 'abc' }, 'seen_unanswered')).toBe(true);
+    expect(isConsistent('integer', null, 'not_seen')).toBe(true);
+  });
+});
+
 describe('grading edge cases', () => {
   const base = { questionId: 'q1', marksCorrect: 4, marksWrong: -1, marksUnattempted: 0 } as const;
 

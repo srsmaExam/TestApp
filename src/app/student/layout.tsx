@@ -1,16 +1,14 @@
 import { requireStudent } from '@/lib/auth';
-import { AppShell, type NavItem } from '@/components/AppShell';
 
-const NAV: NavItem[] = [
-  { href: '/student', label: 'My tests', exact: true },
-  { href: '/student/analytics', label: 'Analytics' },
-];
-
+/**
+ * FBR-08: this layout used to also wrap every /student/* page in AppShell —
+ * including the exam runner, which put "My tests"/"Analytics" nav and a
+ * Logout button one tap away from a live, timed exam. It now only guards the
+ * route (redirecting anyone who isn't a signed-in student); each page decides
+ * for itself whether it needs app chrome via <StudentChrome>. See
+ * src/app/student/StudentChrome.tsx.
+ */
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireStudent();
-  return (
-    <AppShell session={session} nav={NAV}>
-      {children}
-    </AppShell>
-  );
+  await requireStudent();
+  return <>{children}</>;
 }

@@ -18,7 +18,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { BRAND } from '@/config/branding';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const metadata = {
   title: 'Board Readiness Challenge | Shri Ram Smart Minds Academy',
@@ -98,9 +97,8 @@ export default function BoardChallengePage() {
               </div>
             </div>
 
-            {/* Theme Toggle & Login Navigation Action */}
+            {/* Login Navigation Action */}
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <ThemeToggle />
               <Link
                 href={destination}
                 className="group inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-sm transition hover:border-amber-400 hover:bg-amber-400/30 hover:text-slate-950 active:scale-95 sm:px-5 sm:py-2.5 sm:text-base dark:text-amber-300 dark:hover:text-white"

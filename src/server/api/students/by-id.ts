@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, or } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import { apiTeacher, normalizePhone } from '@/lib/auth';
 import { HttpError, isUniqueViolation, json, withApi } from '@/lib/http';
@@ -97,7 +97,7 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
     throw new HttpError(404, 'not_found', 'Student profile not found.');
   }
 
-  const updates: Record<string, any> = {};
+  const updates: Record<string, unknown> = {};
 
   if (parsed.data.fullName !== undefined) updates.fullName = parsed.data.fullName;
   if (parsed.data.batch !== undefined) updates.batch = parsed.data.batch || null;

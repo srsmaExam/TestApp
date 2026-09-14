@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { apiTeacher } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
@@ -56,7 +56,7 @@ export const POST = withApi(async (req) => {
   }
 
   if (action === 'set_chapter') {
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       chapter: chapter || null,
       updatedAt: new Date(),
       lastEditedBy: session.userId,
@@ -152,7 +152,7 @@ export const POST = withApi(async (req) => {
           skipped.push({ id: q.id, humanCode: code, reason: 'MCQ requires at least 2 options' });
           continue;
         }
-        if (!('key' in q.answer) || !q.options.some((o) => o.key === (q.answer as any).key)) {
+        if (!('key' in q.answer) || !q.options.some((o) => o.key === (q.answer as { key: string }).key)) {
           skipped.push({ id: q.id, humanCode: code, reason: 'Answer key is not one of the options' });
           continue;
         }

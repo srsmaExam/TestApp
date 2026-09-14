@@ -28,7 +28,7 @@ export const POST = withApi(async (req) => {
   const { studentIds, batch } = parsed.data;
   const db = await getDb();
 
-  const res = await db
+  await db
     .update(profiles)
     .set({ batch: batch || null })
     .where(and(eq(profiles.role, 'student'), inArray(profiles.id, studentIds)));

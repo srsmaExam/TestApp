@@ -42,7 +42,7 @@ export const POST = withApi(async (req) => {
     })
     .where(eq(profiles.id, session.userId));
 
-  let solutions: Record<string, string | null> = {};
+  const solutions: Record<string, string | null> = {};
 
   if (attemptId) {
     const [attempt] = await db

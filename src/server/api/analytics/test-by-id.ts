@@ -159,7 +159,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
        COUNT(*)::int as count
      FROM attempt_answers aa
      JOIN attempts a ON a.id = aa.attempt_id
-     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND aa.response IS NOT NULL
+     JOIN profiles p ON p.id = a.student_id
+     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND aa.response IS NOT NULL AND p.is_provisional = false
      GROUP BY aa.question_id, aa.response->>'key'`,
     [testId],
   );
@@ -184,7 +185,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
        aa.is_correct
      FROM attempt_answers aa
      JOIN attempts a ON a.id = aa.attempt_id
-     WHERE a.test_id = $1 AND a.status <> 'in_progress'`,
+     JOIN profiles p ON p.id = a.student_id
+     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND p.is_provisional = false`,
     [testId],
   );
 
@@ -241,6 +243,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
      FROM test_questions tq
      JOIN questions q ON q.id = tq.question_id
      LEFT JOIN attempts a ON a.test_id = tq.test_id AND a.status <> 'in_progress'
+       AND NOT EXISTS (SELECT 1 FROM profiles pp WHERE pp.id = a.student_id AND pp.is_provisional = true)
      LEFT JOIN attempt_answers aa ON aa.attempt_id = a.id AND aa.question_id = tq.question_id
      WHERE tq.test_id = $1
      GROUP BY tq.question_id, tq.position, q.subject, q.chapter, q.topic, q.type, q.difficulty, q.body, q.expected_time_s

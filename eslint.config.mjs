@@ -80,6 +80,16 @@ export default tseslint.config(
 
       'preserve-caught-error': 'warn',
       'no-useless-assignment': 'warn',
+
+      // FBR-04: the exam runner's fullscreen barrier read a bare `status`
+      // identifier that resolved to the DOM global `window.status` (a legacy
+      // `string`, always ''), so `status === 'in_progress'` was always false
+      // and the barrier never rendered for any student on any platform. This
+      // typechecks cleanly — lib.dom.d.ts declares `status` on `Window` — so
+      // tsc cannot catch it. These globals are exactly the ones easy to
+      // shadow-by-accident in a component; this rule would have caught the
+      // line at build time.
+      'no-restricted-globals': ['error', 'status', 'name', 'length', 'event', 'closed'],
     },
   },
 );

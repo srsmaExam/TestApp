@@ -1,7 +1,7 @@
 import { and, desc, eq, ne, or } from 'drizzle-orm';
 import { z } from 'zod';
-import { apiTeacher } from '@/lib/auth';
-import { HttpError, json, withApi } from '@/lib/http';
+import { apiTeacher, normalizePhone } from '@/lib/auth';
+import { HttpError, isUniqueViolation, json, withApi } from '@/lib/http';
 import { hashPassword } from '@/lib/password';
 import { getDb } from '@/db/client';
 import { attempts, profiles, tests } from '@/db/schema';
@@ -16,6 +16,10 @@ const UpdateStudentSchema = z.object({
   isActive: z.boolean().optional(),
   canLogin: z.boolean().optional(),
   newPassword: z.string().min(4).optional(),
+  // FBR-03: "Convert to enrolled student" — clears the provisional flag so
+  // the account is entitled to the enrolled question bank and counted in
+  // cohort statistics. Always sent together with a real `batch`.
+  isProvisional: z.boolean().optional(),
 });
 
 /**
@@ -38,6 +42,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
       createdAt: profiles.createdAt,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(and(eq(profiles.id, studentId), eq(profiles.role, 'student')));
@@ -95,10 +100,10 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
   const updates: Record<string, any> = {};
 
   if (parsed.data.fullName !== undefined) updates.fullName = parsed.data.fullName;
-  if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone ? parsed.data.phone.trim() : null;
   if (parsed.data.batch !== undefined) updates.batch = parsed.data.batch || null;
   if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
   if (parsed.data.canLogin !== undefined) updates.canLogin = parsed.data.canLogin;
+  if (parsed.data.isProvisional !== undefined) updates.isProvisional = parsed.data.isProvisional;
 
   if (parsed.data.email !== undefined && parsed.data.email !== existing.email) {
     const emailConflict = await db
@@ -111,12 +116,40 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
     updates.email = parsed.data.email;
   }
 
+  // FBR-05: missed by the preliminary report — this was the only one of the
+  // four student write paths with no phone validation at all, silently
+  // storing whatever string was sent. Normalise, then check for a collision
+  // proactively (a wrong guess on ambiguity is an account takeover).
+  if (parsed.data.phone !== undefined) {
+    const normalizedPhone = parsed.data.phone && parsed.data.phone.trim()
+      ? normalizePhone('+91', parsed.data.phone.trim()).fullPhone
+      : null;
+
+    if (normalizedPhone && normalizedPhone !== existing.phone) {
+      const [holder] = await db
+        .select({ id: profiles.id, fullName: profiles.fullName })
+        .from(profiles)
+        .where(and(eq(profiles.phone, normalizedPhone), ne(profiles.id, studentId)));
+      if (holder) {
+        throw new HttpError(409, 'phone_taken', `Phone "${parsed.data.phone}" is already registered to ${holder.fullName}.`);
+      }
+    }
+    updates.phone = normalizedPhone;
+  }
+
   if (parsed.data.newPassword) {
     updates.passwordHash = await hashPassword(parsed.data.newPassword);
   }
 
   if (Object.keys(updates).length > 0) {
-    await db.update(profiles).set(updates).where(eq(profiles.id, studentId));
+    try {
+      await db.update(profiles).set(updates).where(eq(profiles.id, studentId));
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new HttpError(409, 'phone_taken', `Phone "${parsed.data.phone}" was just registered to another student.`);
+      }
+      throw err;
+    }
   }
 
   const [updated] = await db
@@ -130,6 +163,7 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
       createdAt: profiles.createdAt,
+      isProvisional: profiles.isProvisional,
     })
     .from(profiles)
     .where(eq(profiles.id, studentId));

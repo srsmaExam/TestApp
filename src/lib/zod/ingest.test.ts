@@ -228,4 +228,31 @@ describe('IngestSolutionsPayload', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts an optional humanCode for targeting a standalone question (FBR-02)', () => {
+    const result = IngestSolutionsPayload.safeParse({
+      solutions: [
+        {
+          sourceQno: 1,
+          humanCode: 'Q-260913-PHY-001-A1B2C3',
+          solution: 'Step 1: apply Newton\'s second law.',
+          imagePlaceholders: [],
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.solutions[0].humanCode).toBe('Q-260913-PHY-001-A1B2C3');
+    }
+  });
+
+  it('omits humanCode when not supplied, leaving it undefined rather than empty string', () => {
+    const result = IngestSolutionsPayload.safeParse({
+      solutions: [{ sourceQno: 1, solution: 'Solution text with no image tokens.', imagePlaceholders: [] }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.solutions[0].humanCode).toBeUndefined();
+    }
+  });
 });

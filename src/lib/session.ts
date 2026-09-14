@@ -16,6 +16,11 @@ export type Session = {
   username: string;
   fullName: string;
   role: Role;
+  // FBR-03: true for self-service phone-login accounts not yet converted to
+  // real enrolled students. Absent on cookies issued before this field
+  // existed — always treat `undefined` the same as `false` so a live session
+  // is never invalidated mid-exam by a shape change.
+  isProvisional?: boolean;
 };
 
 let cachedKey: Uint8Array | undefined;
@@ -53,6 +58,7 @@ export async function issueSession(session: Session): Promise<void> {
     username: session.username,
     fullName: session.fullName,
     role: session.role,
+    isProvisional: session.isProvisional ?? false,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(session.userId)
@@ -92,6 +98,9 @@ export async function getSession(): Promise<Session | null> {
       username: String(payload.username ?? ''),
       fullName: String(payload.fullName ?? ''),
       role: payload.role,
+      // Missing on cookies issued before FBR-03 — default to false rather
+      // than invalidating every live session on deploy.
+      isProvisional: payload.isProvisional === true,
     };
   } catch {
     return null;

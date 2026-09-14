@@ -16,6 +16,8 @@
     "restore": "tsx scripts/restore.ts",
     "reset": "tsx scripts/reset.ts",
     "regrade": "tsx scripts/regrade.ts",
+    "report:phone-dupes": "tsx scripts/report-phone-dupes.ts",
+    "backfill:phone-e164": "tsx scripts/backfill-phone-e164.ts",
     "lint": "eslint .",
     "test": "vitest run",
     "check-tokens": "node scripts/check-tokens.mjs",

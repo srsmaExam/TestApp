@@ -18,6 +18,14 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     throw new HttpError(404, 'not_found', 'Test not found or is not published yet.');
   }
 
+  // FBR-03: a provisional (self-service phone-login) account may only start
+  // audience = 'public' tests. This is enforced here — not just filtered out
+  // of the dashboard — because a client-side list is not an authorisation
+  // control; a direct POST to this endpoint must be refused independently.
+  if (session.isProvisional && test.audience !== 'public') {
+    throw new HttpError(403, 'enrollment_required', 'This test is only available to enrolled students.');
+  }
+
   const now = new Date();
   if (test.opensAt && new Date(test.opensAt) > now) {
     throw new HttpError(403, 'test_not_open', 'This test has not opened yet.', {

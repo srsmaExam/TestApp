@@ -49,9 +49,24 @@ export const profiles = pgTable('profiles', {
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   username: text('username').notNull().unique(),
-  phone: text('phone'),
+  // FBR-05: enforced in the DB by the partial unique index `profiles_phone_idx`
+  // (drizzle/0004_add_phone.sql — `WHERE phone IS NOT NULL`, so multiple NULLs
+  // are allowed). `.unique()` here is documentation only — this file creates
+  // no tables — but it was previously absent, which is exactly why nobody
+  // noticed the DB already had a real constraint. That constraint only
+  // catches an *exact* duplicate string, though: "+919876543210",
+  // "919876543210" and "9876543210" are three different strings for the same
+  // real number and can all exist as separate rows. Every write path MUST
+  // normalize through normalizePhone() before it reaches this column, or the
+  // index gives false confidence.
+  phone: text('phone').unique(),
   passwordHash: text('password_hash'),
   canLogin: boolean('can_login').notNull().default(true),
+  // FBR-03: true for self-service accounts auto-provisioned by phone login
+  // (e.g. the Board Readiness Challenge funnel) until a teacher converts them
+  // to a real enrolled student. Provisional accounts can only see/attempt
+  // tests.audience = 'public' and never receive answer keys or solutions.
+  isProvisional: boolean('is_provisional').notNull().default(false),
 });
 
 export const papers = pgTable('papers', {
@@ -174,6 +189,10 @@ export const tests = pgTable('tests', {
   resultsPolicy: text('results_policy').$type<'immediate' | 'on_release'>().notNull().default('immediate'),
   releasedAt: timestamp('released_at', { withTimezone: true }),
   isPublished: boolean('is_published').notNull().default(false),
+  // FBR-03: 'enrolled' (default) tests are invisible to provisional accounts;
+  // 'public' tests (the Board Readiness Challenge diagnostic) are the only
+  // ones a self-service phone-login account may see or attempt.
+  audience: text('audience').$type<'enrolled' | 'public'>().notNull().default('enrolled'),
   createdBy: uuid('created_by')
     .notNull()
     .references(() => profiles.id),

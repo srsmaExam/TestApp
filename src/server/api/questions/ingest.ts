@@ -47,9 +47,25 @@ export const POST = withApi(async (req) => {
     const unmatchedQnos: number[] = [];
 
     for (const sol of parsed.solutions) {
+      // FBR-02: for paper-scoped questions, (paperId, sourceQno) is unique
+      // (see the index at schema.ts). For standalone questions paperId IS
+      // NULL, so sourceQno alone matches every question ever uploaded as
+      // "question N" across every subject and batch. Matching on humanCode
+      // (globally unique) is the only safe way to target a standalone row.
       const condition = targetPaperId
         ? and(eq(questions.paperId, targetPaperId), eq(questions.sourceQno, sol.sourceQno))
-        : and(isNull(questions.paperId), eq(questions.sourceQno, sol.sourceQno));
+        : sol.humanCode
+          ? and(isNull(questions.paperId), eq(questions.humanCode, sol.humanCode))
+          : null;
+
+      if (!condition) {
+        throw new HttpError(
+          422,
+          'ambiguous_solution_target',
+          `Solution for Q${sol.sourceQno} needs a paperId or a humanCode — ` +
+            `"question number" alone is not unique across standalone uploads.`,
+        );
+      }
 
       const existing = await db
         .select({ id: questions.id, type: questions.type, answer: questions.answer })
@@ -59,6 +75,14 @@ export const POST = withApi(async (req) => {
       if (existing.length === 0) {
         unmatchedQnos.push(sol.sourceQno);
         continue;
+      }
+
+      if (existing.length > 1) {
+        throw new HttpError(
+          409,
+          'ambiguous_solution_target',
+          `Q${sol.sourceQno} matches ${existing.length} questions — refusing to update more than one.`,
+        );
       }
 
       for (const q of existing) {
@@ -96,6 +120,11 @@ export const POST = withApi(async (req) => {
     const humanCode = `${prefix}-${subjShort}-${String(q.sourceQno).padStart(3, '0')}-${randomSuffix}`;
 
     return {
+      // FBR-02: standalone questions have no uniqueness key beyond this
+      // random humanCode — (NULL, sourceQno) is guaranteed to collide across
+      // batches/subjects by design. The solutions-ingest path below refuses
+      // to update by sourceQno alone for exactly this reason; redesigning
+      // standalone-question identity itself is out of scope here.
       paperId: null,
       sourceQno: q.sourceQno,
       sourcePage: q.sourcePage ?? null,

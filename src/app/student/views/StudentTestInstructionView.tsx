@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { requireStudent } from '@/lib/auth';
 import { getDb } from '@/db/client';
 import { attempts, questions, testQuestions, tests } from '@/db/schema';
+import { StudentChrome } from '../StudentChrome';
 import { TestInstructionClient, type MarkingRule } from '../tests/[id]/TestInstructionClient';
 
 export async function StudentTestInstructionView({ testId }: { testId: string }) {
@@ -70,12 +71,14 @@ export async function StudentTestInstructionView({ testId }: { testId: string })
     .where(and(eq(attempts.testId, testId), eq(attempts.studentId, session.userId)));
 
   return (
-    <TestInstructionClient
-      test={test}
-      markingRules={[...ruleMap.values()]}
-      subjectCounts={[...subjectMap.entries()].map(([subject, count]) => ({ subject, count }))}
-      attemptsUsed={attemptsUsed}
-      studentName={session.fullName}
-    />
+    <StudentChrome session={session}>
+      <TestInstructionClient
+        test={test}
+        markingRules={[...ruleMap.values()]}
+        subjectCounts={[...subjectMap.entries()].map(([subject, count]) => ({ subject, count }))}
+        attemptsUsed={attemptsUsed}
+        studentName={session.fullName}
+      />
+    </StudentChrome>
   );
 }

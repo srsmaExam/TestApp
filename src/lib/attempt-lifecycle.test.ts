@@ -438,6 +438,76 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     const q1Regraded = regradedAnswers.find((s) => s.questionId === q1Id);
     expect(Number(q1Regraded?.marksAwarded)).toBe(1);
   });
+
+  it('FBR-07: saveAttemptAnswersBatch repairs a gradeable response saved with an "unanswered" state', async () => {
+    const repairAttemptId = 'ba7c0000-0000-4000-8000-000000000002';
+    await db.insert(schema.attempts).values({
+      id: repairAttemptId,
+      testId,
+      studentId,
+      attemptNo: 4,
+      status: 'in_progress',
+      deadlineAt: new Date(Date.now() + 1800 * 1000),
+      questionOrder: [q1Id, q2Id],
+    });
+
+    await db.insert(schema.attemptAnswers).values([
+      { attemptId: repairAttemptId, questionId: q1Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+      { attemptId: repairAttemptId, questionId: q2Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+    ]);
+
+    // Simulates a client (or a future regression) writing the exact
+    // contradiction FBR-07 fixed on the client: a real selection paired with
+    // `seen_unanswered`. The server must not persist that combination.
+    await saveAttemptAnswersBatch(db, repairAttemptId, [
+      { questionId: q1Id, response: { key: 'A' }, state: 'seen_unanswered' },
+      { questionId: q2Id, response: { value: 7 }, state: 'not_seen' },
+    ]);
+
+    const repaired = await db
+      .select()
+      .from(schema.attemptAnswers)
+      .where(eq(schema.attemptAnswers.attemptId, repairAttemptId));
+
+    const q1Repaired = repaired.find((s) => s.questionId === q1Id);
+    const q2Repaired = repaired.find((s) => s.questionId === q2Id);
+
+    expect(q1Repaired?.response).toEqual({ key: 'A' });
+    expect(q1Repaired?.state).toBe('answered');
+    expect(q2Repaired?.response).toEqual({ value: 7 });
+    expect(q2Repaired?.state).toBe('answered');
+  });
+
+  it('FBR-07: the repair never fires for a genuinely ungradeable response', async () => {
+    const repairAttemptId = 'ba7c0000-0000-4000-8000-000000000003';
+    await db.insert(schema.attempts).values({
+      id: repairAttemptId,
+      testId,
+      studentId,
+      attemptNo: 5,
+      status: 'in_progress',
+      deadlineAt: new Date(Date.now() + 1800 * 1000),
+      questionOrder: [q3Id],
+    });
+
+    await db.insert(schema.attemptAnswers).values([
+      { attemptId: repairAttemptId, questionId: q3Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+    ]);
+
+    // A half-typed "-" (draftValue only) is stored as a null response — must
+    // stay seen_unanswered, not be repaired into a false "answered".
+    await saveAttemptAnswersBatch(db, repairAttemptId, [
+      { questionId: q3Id, response: null, state: 'seen_unanswered' },
+    ]);
+
+    const [row] = await db
+      .select()
+      .from(schema.attemptAnswers)
+      .where(eq(schema.attemptAnswers.attemptId, repairAttemptId));
+
+    expect(row.response).toBeNull();
+    expect(row.state).toBe('seen_unanswered');
+  });
 });
 
 

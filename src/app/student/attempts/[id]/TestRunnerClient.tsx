@@ -351,10 +351,25 @@ export function TestRunnerClient({
       setIsOnline(false);
     };
 
+    // FBR-12: `sendBeacon` is explicitly guaranteed to survive page teardown;
+    // a `fetch` (what `syncWithServer` issues) is not — the browser may cancel
+    // it mid-flight as the page freezes. sendBeacon can only issue POST, and
+    // always labels the body text/plain — the route also exports POST and
+    // parses the body as text for exactly this.
+    const flushBeacon = () => {
+      flushTimeSpent();
+      const blob = new Blob([JSON.stringify(buildAnswersPayload())], { type: 'text/plain;charset=UTF-8' });
+      navigator.sendBeacon(`/api/attempts/${attemptId}/answers`, blob);
+    };
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        // Both: syncWithServer's fetch is the normal path (retried, observable
+        // errors), flushBeacon is the guarantee if the page is frozen before
+        // that fetch resolves — belt and suspenders, not a race.
         flushTimeSpent();
         syncWithServer();
+        flushBeacon();
         // Log event
         fetch(`/api/attempts/${attemptId}/events`, {
           method: 'POST',
@@ -371,16 +386,19 @@ export function TestRunnerClient({
       }
     };
 
+    // FBR-12: `pagehide` — not `beforeunload` — is the authoritative flush.
+    // `beforeunload` does not fire at all on iOS Safari, and registering it
+    // unconditionally disqualifies the page from the back/forward cache on
+    // every browser that has one, turning every in-app back gesture into a
+    // full reload. `pagehide` fires reliably on both platforms and doesn't
+    // carry that cost. `beforeunload` is kept only for the desktop
+    // "are you sure you want to leave" confirm dialog, which has no
+    // equivalent on `pagehide`.
+    const handlePageHide = () => {
+      flushBeacon();
+    };
+
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      flushTimeSpent();
-
-      // sendBeacon can only issue POST, and always labels the body
-      // text/plain — this used to target a PATCH-only route and 405 on every
-      // unload, silently, because a beacon has no readable response. The route
-      // now also exports POST and parses the body as text.
-      const blob = new Blob([JSON.stringify(buildAnswersPayload())], { type: 'text/plain;charset=UTF-8' });
-      navigator.sendBeacon(`/api/attempts/${attemptId}/answers`, blob);
-
       // An accidental Ctrl+W used to end the attempt with no warning.
       if (!submitStartedRef.current) {
         e.preventDefault();
@@ -392,16 +410,18 @@ export function TestRunnerClient({
     // button showing the wrong icon.
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
 
-    // Ensure fullscreen state is accurate and try entering fullscreen if not active
+    // FBR-04: this used to also call requestFullscreen() here, on mount. Every
+    // browser rejects fullscreen outside a direct user gesture, so that call
+    // threw a console error on every exam load and did nothing — fullscreen
+    // entry only ever works from the on-click toggle below (and from the
+    // instructions page, on click). Just sync the initial icon state.
     setIsFullscreen(Boolean(document.fullscreenElement));
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
 
@@ -410,6 +430,7 @@ export function TestRunnerClient({
       window.removeEventListener('offline', handleOffline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [attemptId, buildAnswersPayload, flushTimeSpent, syncWithServer]);
@@ -451,6 +472,16 @@ export function TestRunnerClient({
   };
 
   // Action: Select MCQ Option
+  //
+  // FBR-07: this used to write `response` without touching `state`. The
+  // grader keys off `response` alone (isGradeableResponse), so tapping an
+  // option and then jumping straight to another question via the palette
+  // (the fastest way to move on a phone) left the palette cell red
+  // ("Not Answered"), the pre-submit summary counting it as unattempted, and
+  // the grader awarding marksWrong for it — silently costing marks the
+  // student believed were safe. NTA CBT semantics are: selection is the
+  // save. "Save & Next" still exists as a review affordance, but it is no
+  // longer required for a selection to count.
   const handleSelectOption = (key: string) => {
     setQuestions((prev) => {
       const copy = [...prev];
@@ -459,6 +490,7 @@ export function TestRunnerClient({
         copy[currentIndex] = {
           ...q,
           response: { key },
+          state: q.state === 'flagged_unanswered' || q.state === 'answered_flagged' ? 'answered_flagged' : 'answered',
         };
       }
       return copy;
@@ -488,10 +520,16 @@ export function TestRunnerClient({
         // graded as an attempt.
         const num = Number(trimmed);
         const complete = trimmed !== '' && Number.isFinite(num);
+        // FBR-07: mirror handleSelectOption — a value that actually parses is
+        // "answered" the moment it's typed, matching what the grader will
+        // score. A half-typed "-" or "3." goes back to seen_unanswered so it
+        // never shows green before it is a real number.
+        const wasFlagged = q.state === 'flagged_unanswered' || q.state === 'answered_flagged';
         copy[currentIndex] = {
           ...q,
           response: complete ? { value: num } : null,
           draftValue: trimmed,
+          state: complete ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
       }
       return copy;
@@ -507,9 +545,10 @@ export function TestRunnerClient({
       const q = copy[currentIndex];
       if (q) {
         const hasResponse = q.response?.key || q.response?.value !== undefined;
+        const wasFlagged = q.state === 'flagged_unanswered' || q.state === 'answered_flagged';
         copy[currentIndex] = {
           ...q,
-          state: hasResponse ? 'answered' : 'seen_unanswered',
+          state: hasResponse ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
       }
       return copy;
@@ -704,7 +743,18 @@ export function TestRunnerClient({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-var(--app-header-h))] flex-col overflow-hidden bg-slate-100 font-sans text-slate-900 dark:bg-[#090d16] dark:text-slate-100">
+    // FBR-08: the runner used to be nested inside AppShell, which sizes to
+    // 100dvh minus only its own header — not the mobile nav strip, the
+    // outer <main> padding, or the footer it also sat inside. On a phone
+    // that made the document ~85px taller than the viewport (a page scroll
+    // stacked on top of the runner's own overflow-y-auto pane), and left
+    // "My tests"/Analytics/Logout permanently visible one tap away from a
+    // live, timed exam. The runner now renders bare (see StudentChrome.tsx)
+    // and owns the whole viewport itself.
+    <div
+      className="flex h-[100dvh] flex-col overflow-hidden bg-slate-100 font-sans text-slate-900 dark:bg-[#090d16] dark:text-slate-100"
+      style={{ overscrollBehavior: 'none' }}
+    >
       {/* 1. CBT Header Bar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3">
@@ -929,9 +979,14 @@ export function TestRunnerClient({
             ) : null}
           </div>
 
-          {/* 3. Bottom Action Navigation Bar */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6 dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2">
+          {/* 3. Bottom Action Navigation Bar.
+              FBR-08: this used to `flex-wrap` onto two rows at 360px, which
+              the runner's height math (subtracting only AppShell's header)
+              never accounted for — one more source of the nested-scroll
+              overflow. Scrolling horizontally on very narrow phones keeps
+              this bar at one predictable row height instead. */}
+          <div className="flex shrink-0 items-center justify-between gap-2 overflow-x-auto border-t border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
@@ -952,7 +1007,7 @@ export function TestRunnerClient({
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
@@ -1187,35 +1242,6 @@ export function TestRunnerClient({
         </div>
       )}
 
-      {/* Fullscreen Required Barrier */}
-      {!isFullscreen && status === 'in_progress' && !submitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
-          <Card className="max-w-md border-amber-300 shadow-2xl dark:border-amber-700">
-            <CardBody className="p-6 text-center space-y-4">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
-                <Maximize2 className="size-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Full Screen Mode Required
-                </h3>
-                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                  This examination must be taken in full screen mode to ensure academic integrity. Please enter full screen to continue answering questions.
-                </p>
-              </div>
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full"
-                onClick={toggleFullscreen}
-              >
-                <Maximize2 className="mr-2 size-4" />
-                Enter Full Screen & Continue Exam
-              </Button>
-            </CardBody>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

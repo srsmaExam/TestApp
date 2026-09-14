@@ -287,6 +287,14 @@ export function UploadQuestionsView({
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Match question numbers against a specific registered paper, or leave empty for standalone questions.
                   </p>
+                  {!targetPaperId && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+                      Standalone mode: a question number alone isn&apos;t unique across every subject and batch you&apos;ve
+                      uploaded. Add a <code className="font-mono">humanCode</code> field to each solution (copy it from the
+                      Questions Bank list) so we update the right question. Solutions without a paperId or humanCode are
+                      rejected rather than guessed.
+                    </p>
+                  )}
                 </div>
                 <div className="w-full sm:w-64">
                   <Select

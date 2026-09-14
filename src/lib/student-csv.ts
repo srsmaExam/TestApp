@@ -1,6 +1,7 @@
 /**
  * CSV parsing and validation for student bulk roster import.
  */
+import { normalizePhone } from './auth';
 
 export type StudentImportRow = {
   fullName: string;
@@ -108,6 +109,11 @@ export function parseStudentCsv(csvText: string): StudentImportValidationResult 
 
   const seenUsernames = new Set<string>();
   const seenEmails = new Set<string>();
+  // FBR-05: normalise to the same E.164 form every write path stores, so
+  // "+919876543210" and "9876543210" in two different rows are correctly
+  // recognised as the same phone number rather than sailing through as two
+  // "different" strings that later collide invisibly in the DB.
+  const seenPhones = new Set<string>();
 
   for (let i = 1; i < lines.length; i++) {
     const rowNum = i + 1;
@@ -166,12 +172,27 @@ export function parseStudentCsv(csvText: string): StudentImportValidationResult 
       seenEmails.add(email);
     }
 
+    let normalizedPhone: string | null = null;
+    if (phone) {
+      const { fullPhone, cleanDigits } = normalizePhone('+91', phone);
+      if (cleanDigits.length < 7 || cleanDigits.length > 15) {
+        hasRowError = true;
+        errors.push({ row: rowNum, field: 'phone', message: `Invalid phone number: "${phone}"` });
+      } else if (seenPhones.has(fullPhone)) {
+        hasRowError = true;
+        errors.push({ row: rowNum, field: 'phone', message: `Duplicate phone in CSV: "${phone}"` });
+      } else {
+        seenPhones.add(fullPhone);
+        normalizedPhone = fullPhone;
+      }
+    }
+
     if (!hasRowError) {
       validRows.push({
         fullName,
         username,
         email,
-        phone: phone || null,
+        phone: normalizedPhone,
         batch: batch || null,
         password,
         rowNumber: rowNum,

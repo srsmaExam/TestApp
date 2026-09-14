@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles } from 'lucide-react';
 import { getDb } from '@/db/client';
 import { attempts, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
 import { Badge, buttonClass, Card, CardBody, EmptyState } from '@/components/ui';
+import { StudentChrome } from '../StudentChrome';
 
 export async function StudentDashboardView() {
   const session = await getSession();
@@ -14,6 +15,17 @@ export async function StudentDashboardView() {
   const now = new Date();
 
   // 1. Fetch published tests with question count
+  //
+  // FBR-03: a provisional (self-service phone-login) account only ever sees
+  // audience = 'public' tests. This is a display filter, not the security
+  // boundary on its own — POST /api/tests/:id/attempts enforces the same
+  // predicate server-side, because a dashboard filter alone is not an
+  // authorisation control.
+  const visibilityConditions = [eq(tests.isPublished, true)];
+  if (session.isProvisional) {
+    visibilityConditions.push(eq(tests.audience, 'public'));
+  }
+
   const publishedTests = await db
     .select({
       id: tests.id,
@@ -29,7 +41,7 @@ export async function StudentDashboardView() {
     })
     .from(tests)
     .leftJoin(testQuestions, eq(testQuestions.testId, tests.id))
-    .where(eq(tests.isPublished, true))
+    .where(and(...visibilityConditions))
     .groupBy(tests.id)
     .orderBy(desc(tests.createdAt));
 
@@ -75,7 +87,8 @@ export async function StudentDashboardView() {
     });
 
   return (
-    <div className="space-y-8">
+    <StudentChrome session={session}>
+      <div className="space-y-8">
       {/* Welcome Banner */}
       <div className="rounded-xl bg-gradient-to-r from-brand-900 to-brand-700 p-6 text-white shadow-sm dark:from-brand-950 dark:to-brand-800">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -232,6 +245,7 @@ export async function StudentDashboardView() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </StudentChrome>
   );
 }

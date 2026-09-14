@@ -398,7 +398,7 @@ export default function BoardChallengePage() {
                       <span className="block font-extrabold text-amber-800 dark:text-amber-200">by IIT Alumni</span>
                     </div>
                     <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-300">
-                      Empowering young minds with deep conceptual learning, analytical problem solving, and personalized guidance for Board exams, JEE Mains &amp; Advanced, and NEET.
+                      Empowering young minds with deep conceptual learning, analytical problem solving, and personalized guidance for Board exams, Board Readiness Challenge, and NEET.
                     </p>
                   </div>
                 </div>

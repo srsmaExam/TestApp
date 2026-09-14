@@ -1,4 +1,4 @@
-# Audit & Bug Report — SRSMA JEE Mains Test Platform
+# Audit & Bug Report — SRSMA Board Readiness Challenge Test Platform
 
 **Audited:** 2026-08-30 · commit `e262dde` (branch `main`, clean tree)
 **Scope:** full repository — `src/` (35 route handlers, 24 pages/components), `drizzle/`, `scripts/`, `prompts/`, config.

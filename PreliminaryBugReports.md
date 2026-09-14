@@ -280,7 +280,7 @@ if (unresolvedImages === 'true') {
 }
 ```
 There are two structural flaws:
-1. **Option Placeholders Ignored:** In JEE Mains, diagrams frequently appear in multiple-choice options (e.g. circuits or graphs as Options A, B, C, D). These are stored in `questions.options`. The query only checks `questions.body`, completely ignoring placeholders in options or solutions.
+1. **Option Placeholders Ignored:** In Board Readiness Challenge, diagrams frequently appear in multiple-choice options (e.g. circuits or graphs as Options A, B, C, D). These are stored in `questions.options`. The query only checks `questions.body`, completely ignoring placeholders in options or solutions.
 2. **Multi-Image False Negative:** If a question contains two placeholders (e.g. `[[IMG:circuit_1]]` and `[[IMG:graph_2]]`), and the teacher has only cropped the first one, `question_images` has 1 row for that question. `NOT EXISTS (...)` evaluates to `FALSE`, so the question is **excluded** from the unresolved list!
 
 #### Impact
@@ -338,7 +338,7 @@ When a teacher uploads an 8 MB or 15 MB scanned JEE paper, Vercel's edge gateway
 The request never reaches Next.js or `papers/index.ts`. The teacher sees a generic "Network error: Could not connect to server" error.
 
 #### Impact
-Faculty cannot upload high-resolution official JEE Mains question papers directly in production.
+Faculty cannot upload high-resolution official Board Readiness Challenge question papers directly in production.
 
 #### Recommended Fix
 Integrate direct client-to-storage uploads (Supabase Storage bucket with pre-signed upload URLs), or compress PDFs client-side using `pdf-lib` before uploading.

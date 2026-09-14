@@ -97,7 +97,7 @@ export function TestInstructionClient({
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-400">
-            JEE Mains CBT Format
+            Board Readiness Challenge CBT Format
           </span>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{test.title}</h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Candidate: <strong className="text-slate-800 dark:text-slate-200">{studentName}</strong></p>

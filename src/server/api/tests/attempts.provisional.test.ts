@@ -133,7 +133,7 @@ describe('FBR-03 exploit path: provisional account entitlement', () => {
     // Enrolled-only test (the default) — must be unreachable to a provisional account.
     await db.insert(schema.tests).values({
       id: enrolledTestId,
-      title: 'JEE Main Mock Test 1',
+      title: 'Board Readiness Challenge Mock Test 1',
       durationS: 10800,
       maxAttempts: 1,
       isPublished: true,

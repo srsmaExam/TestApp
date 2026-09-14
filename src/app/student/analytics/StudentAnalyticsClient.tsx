@@ -124,12 +124,12 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Report</h1>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Track your progress and subject mastery across JEE mock tests.</p>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Track your progress and subject mastery across Board Readiness Challenge mock tests.</p>
         </div>
 
         <EmptyState
           title="No completed tests yet"
-          hint="Take and submit your first JEE test to unlock your percentile trend, subject accuracy radar, and chapter breakdown."
+          hint="Take and submit your first Board Readiness Challenge test to unlock your percentile trend, subject accuracy radar, and chapter breakdown."
           action={
             <Link href="/student" className={buttonClass('primary', 'md')}>
               Browse Available Tests

@@ -758,8 +758,8 @@ export function TestRunnerClient({
       {/* 1. CBT Header Bar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3">
-          <span className="flex size-8 items-center justify-center rounded-md bg-brand-700 text-xs font-bold text-white">
-            JEE
+          <span className="flex size-8 items-center justify-center rounded-md bg-brand-700 text-xs font-bold text-white" title="Board Readiness Challenge">
+            BRC
           </span>
           <div>
             <h1 className="line-clamp-1 text-sm font-bold text-slate-900 dark:text-slate-100">{testTitle}</h1>

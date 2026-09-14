@@ -76,7 +76,7 @@ export function PapersView({ initialPapers }: { initialPapers: Paper[] }) {
       )}
 
       {papers.length === 0 ? (
-        <EmptyState title="No papers registered yet" hint="Upload a scanned JEE paper PDF to get started." />
+        <EmptyState title="No papers registered yet" hint="Upload a scanned Board Readiness Challenge paper PDF to get started." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {papers.map((paper) => (
@@ -210,7 +210,7 @@ function UploadForm({ onCreated, onCancel }: { onCreated: (p: Paper) => void; on
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="JEE Main 2023 Jan 24 Shift 1"
+                placeholder="Board Readiness Challenge 2024 Shift 1"
                 required
               />
             </div>

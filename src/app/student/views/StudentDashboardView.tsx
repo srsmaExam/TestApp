@@ -81,7 +81,7 @@ export async function StudentDashboardView() {
       const resultsAvailable = test?.resultsPolicy === 'immediate' || Boolean(test?.releasedAt);
       return {
         ...a,
-        testTitle: test?.title ?? 'JEE Test',
+        testTitle: test?.title ?? 'Board Readiness Challenge Test',
         resultsAvailable,
       };
     });
@@ -95,7 +95,7 @@ export async function StudentDashboardView() {
           <div>
             <span className="inline-flex items-center rounded-full bg-brand-800/80 px-2.5 py-0.5 text-xs font-semibold text-accent-400 dark:bg-brand-900/90">
               <Sparkles className="mr-1 size-3" />
-              JEE Main Preparation
+              Board Readiness Challenge Preparation
             </span>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
               Welcome back, {session.fullName}!

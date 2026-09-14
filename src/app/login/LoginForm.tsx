@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Input, Label } from '@/components/ui';
+import { Dialog } from '@/components/Dialog';
+import { UserCheck, Sparkles } from 'lucide-react';
 
 const COUNTRY_CODES = [
   { code: '+91', label: '🇮🇳 India (+91)' },
@@ -26,6 +28,8 @@ const COUNTRY_CODES = [
   { code: 'other', label: '🌐 Other (Enter code)' },
 ];
 
+const CLASS_OPTIONS = ['8', '9', '10', '11', '12', '13'];
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -34,6 +38,12 @@ export function LoginForm() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Student Profile Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [selectedClass, setSelectedClass] = useState('10');
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const notice =
     params.get('reason') === 'session_expired'
@@ -47,8 +57,30 @@ export function LoginForm() {
       .then((res) => {
         if (res.ok) router.replace('/student');
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [router]);
+
+  async function executeLogin(fullName?: string, classLevel?: string) {
+    const cleanDigits = phone.replace(/\D/g, '');
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: cleanDigits,
+        countryCode: effectiveCountryCode,
+        fullName: fullName || undefined,
+        classLevel: classLevel || undefined,
+      }),
+    });
+
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body.message ?? 'Sign-in failed. Please verify your WhatsApp number.');
+    }
+
+    router.replace(body.homeUrl || '/student');
+    router.refresh();
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +89,7 @@ export function LoginForm() {
 
     const cleanDigits = phone.replace(/\D/g, '');
     if (cleanDigits.length < 7) {
-      setError('Please enter a valid phone number (at least 7 digits).');
+      setError('Please enter a valid WhatsApp number (at least 7 digits).');
       setBusy(false);
       return;
     }
@@ -69,7 +101,8 @@ export function LoginForm() {
     }
 
     try {
-      const res = await fetch('/api/auth/login', {
+      // Check whether this phone number already exists and has a submitted name & class
+      const checkRes = await fetch('/api/auth/check-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,109 +110,220 @@ export function LoginForm() {
           countryCode: effectiveCountryCode,
         }),
       });
-      const body = await res.json();
 
-      if (!res.ok) {
-        setError(body.message ?? 'Sign-in failed. Please verify your phone number.');
+      const checkData = await checkRes.json();
+      if (!checkRes.ok) {
+        setError(checkData.message ?? 'Failed to verify WhatsApp number.');
+        setBusy(false);
         return;
       }
 
-      router.replace(body.homeUrl || '/student');
-      router.refresh();
-    } catch {
-      setError('Could not reach the server. Please check your internet connection.');
-    } finally {
+      if (checkData.requiresDetails) {
+        // Prompt student for Name and Class
+        if (checkData.fullName) setStudentName(checkData.fullName);
+        if (checkData.classLevel) setSelectedClass(checkData.classLevel);
+        setShowModal(true);
+        setBusy(false);
+        return;
+      }
+
+      // Existing student with full profile -> sign in directly
+      await executeLogin();
+    } catch (err: any) {
+      setError(err.message || 'Could not reach the server. Please check your internet connection.');
+      setBusy(false);
+    }
+  }
+
+  async function onModalSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!studentName.trim()) {
+      setModalError('Please enter your name.');
+      return;
+    }
+
+    setBusy(true);
+    setModalError(null);
+
+    try {
+      await executeLogin(studentName.trim(), selectedClass);
+      setShowModal(false);
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to complete sign-in. Please try again.');
       setBusy(false);
     }
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-200/80 transition-colors dark:bg-slate-900 dark:ring-slate-800"
-      aria-label="Student sign in"
-    >
-      {notice ? (
-        <Alert tone="brand" className="mb-4 text-xs">
-          {notice}
-        </Alert>
-      ) : null}
-      {error ? (
-        <Alert tone="red" className="mb-4 text-xs" role="alert">
-          {error}
-        </Alert>
-      ) : null}
+    <>
+      <form
+        onSubmit={onSubmit}
+        className="rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-200/80 transition-colors dark:bg-slate-900 dark:ring-slate-800"
+        aria-label="Student sign in"
+      >
+        {notice ? (
+          <Alert tone="brand" className="mb-4 text-xs">
+            {notice}
+          </Alert>
+        ) : null}
+        {error ? (
+          <Alert tone="red" className="mb-4 text-xs" role="alert">
+            {error}
+          </Alert>
+        ) : null}
 
-      <div className="mb-5">
-        <Label htmlFor="phone-input" className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-          Mobile Number
-        </Label>
-        <div className="flex gap-2">
-          {/* Country Code Selector */}
-          <div className={selectedCode === 'other' ? 'w-28 flex-shrink-0' : 'w-36 flex-shrink-0'}>
-            <select
-              id="country-code-select"
-              aria-label="Country Code"
-              value={selectedCode}
-              onChange={(e) => setSelectedCode(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-100 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        <div className="mb-5">
+          <Label htmlFor="phone-input" className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            WhatsApp Number
+          </Label>
+          <div className="flex gap-2">
+            {/* Country Code Selector */}
+            <div className={selectedCode === 'other' ? 'w-28 flex-shrink-0' : 'w-36 flex-shrink-0'}>
+              <select
+                id="country-code-select"
+                aria-label="Country Code"
+                value={selectedCode}
+                onChange={(e) => setSelectedCode(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-100 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              >
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* If 'other' is selected, provide custom country code text input */}
+            {selectedCode === 'other' && (
+              <div className="w-20 flex-shrink-0">
+                <Input
+                  id="custom-country-code"
+                  placeholder="+XX"
+                  value={customCode}
+                  onChange={(e) => setCustomCode(e.target.value)}
+                  className="text-center font-mono text-sm"
+                  required
+                />
+              </div>
+            )}
+
+            {/* WhatsApp Number Input */}
+            <div className="flex-1">
+              <Input
+                id="phone-input"
+                name="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                autoFocus
+                value={phone}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^\d\s-]/g, '');
+                  setPhone(val);
+                }}
+                placeholder="e.g. 98765 43210"
+                className="text-base tracking-wide"
+                required
+              />
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+            Enter your WhatsApp number to sign in. Instant student access.
+          </p>
+        </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full rounded-xl bg-brand-700 py-2.5 text-base font-medium shadow-sm transition hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
+          disabled={busy}
+        >
+          {busy ? 'Signing in…' : 'Sign in as Student'}
+        </Button>
+      </form>
+
+      {/* Student Details Prompt Modal */}
+      <Dialog
+        isOpen={showModal}
+        onClose={() => !busy && setShowModal(false)}
+        size="sm"
+        title="Complete Your Profile"
+        description="Enter your name and class to personalize your test scorecard and detailed report."
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => setShowModal(false)}
             >
-              {COUNTRY_CODES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="student-details-form"
+              size="sm"
+              disabled={busy}
+              className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600"
+            >
+              {busy ? 'Saving…' : 'Continue to Test'}
+            </Button>
+          </div>
+        }
+      >
+        <form id="student-details-form" onSubmit={onModalSubmit} className="space-y-4 py-2">
+          {modalError && (
+            <Alert tone="red" className="text-xs">
+              {modalError}
+            </Alert>
+          )}
+
+          <div>
+            <Label htmlFor="student-name-input" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Full Name <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="student-name-input"
+              autoFocus
+              required
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              placeholder="e.g. Aditya Sharma"
+              className="text-sm"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="student-class-select" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Class <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="student-class-select"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            >
+              {CLASS_OPTIONS.map((cls) => (
+                <option key={cls} value={cls}>
+                  Class {cls} {cls === '10' ? '(Default)' : ''}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* If 'other' is selected, provide custom country code text input */}
-          {selectedCode === 'other' && (
-            <div className="w-20 flex-shrink-0">
-              <Input
-                id="custom-country-code"
-                placeholder="+XX"
-                value={customCode}
-                onChange={(e) => setCustomCode(e.target.value)}
-                className="text-center font-mono text-sm"
-                required
-              />
-            </div>
-          )}
-
-          {/* Phone Number Input */}
-          <div className="flex-1">
-            <Input
-              id="phone-input"
-              name="phone"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel-national"
-              autoFocus
-              value={phone}
-              onChange={(e) => {
-                // allow numbers and spaces
-                const val = e.target.value.replace(/[^\d\s-]/g, '');
-                setPhone(val);
-              }}
-              placeholder="e.g. 98765 43210"
-              className="text-base tracking-wide"
-              required
-            />
+          <div className="rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Sparkles className="size-3.5 shrink-0" />
+              Diagnostic Test Ready
+            </span>
+            <p className="mt-0.5 text-[11px] text-amber-700/90 dark:text-amber-400">
+              Your report will be customized based on your curriculum level.
+            </p>
           </div>
-        </div>
-        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-          Enter your registered or primary mobile number to sign in.
-        </p>
-      </div>
-
-      <Button
-        type="submit"
-        size="lg"
-        className="w-full rounded-xl bg-brand-700 py-2.5 text-base font-medium shadow-sm transition hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
-        disabled={busy}
-      >
-        {busy ? 'Signing in…' : 'Sign in as Student'}
-      </Button>
-    </form>
+        </form>
+      </Dialog>
+    </>
   );
 }

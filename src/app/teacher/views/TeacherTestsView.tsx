@@ -118,7 +118,7 @@ export async function TeacherTestsView() {
                     className={buttonClass('secondary', 'sm')}
                   >
                     <BarChart3 className="mr-1 size-3.5" />
-                    Analytics
+                    Report
                   </Link>
 
                   <TeacherTestsClientActions

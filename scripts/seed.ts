@@ -50,7 +50,7 @@ async function main() {
     id: '3677e721-0974-438b-a623-29b31ecf8e84',
     username: 'Teacher',
     fullName: 'Demo Teacher',
-    email: 'teacher@local.vidyatest.dev',
+    email: 'teacher@local.srsma.dev',
     role: 'teacher',
     passwordHash,
     canLogin: true,
@@ -60,7 +60,7 @@ async function main() {
     id: '8670658d-a920-4fb5-9623-e48d7921f30f',
     username: 'Student',
     fullName: 'Demo Student',
-    email: 'student@local.vidyatest.dev',
+    email: 'student@local.srsma.dev',
     role: 'student',
     passwordHash,
     canLogin: true,
@@ -72,7 +72,7 @@ async function main() {
     await upsertProfile(db, {
       username: `demo_student_${i + 1}`,
       fullName: DEMO_STUDENT_NAMES[i],
-      email: `demo${i + 1}@local.vidyatest.dev`,
+      email: `demo${i + 1}@local.srsma.dev`,
       role: 'student',
       passwordHash: null, // data-only: cannot log in
       canLogin: false,

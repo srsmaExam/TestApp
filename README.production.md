@@ -74,7 +74,7 @@ This platform replicates the exact National Testing Agency (NTA) JEE Mains testi
 ### 2.2 Student Authentication
 - **Access URL**: **`/login`** (or visiting the root URL `/`).
 - **Method**: Phone Number Authentication with country code selection:
-  - Default: 🇮🇳 **India (+91)** (enter 10-digit mobile number, e.g., `9876543210`).
+  - Default: 🇮🇳 **India (+91)** (enter 10-digit WhatsApp number, e.g., `9876543210`).
   - Supports 18+ international country codes (+1 US/Canada, +44 UK, +971 UAE, +65 Singapore, +61 Australia, +966 Saudi Arabia, etc.) or custom prefix.
 - **Session Duration**: **90-day persistent cookie**. Once a student logs in on their phone, tablet, or laptop, they stay logged in without needing to enter credentials every time they take a test.
 - **Access Control**: Faculty can instantly disable login or deactivate any student profile from `/teacher/students`.

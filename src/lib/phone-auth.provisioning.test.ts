@@ -115,4 +115,41 @@ describe('loginWithPhone provisioning (FBR-03)', () => {
     const session = await getSession();
     expect(session?.isProvisional).toBe(false);
   });
+
+  it('provisions student with custom fullName and classLevel when provided', async () => {
+    const { loginWithPhone } = await import('./auth');
+    const session = await loginWithPhone('+91', '9123456789', {
+      fullName: 'Rahul Sharma',
+      classLevel: '10',
+    });
+
+    expect(session.fullName).toBe('Rahul Sharma');
+    const [row] = await db.select().from(schema.profiles).where(eq(schema.profiles.id, session.userId));
+    expect(row.fullName).toBe('Rahul Sharma');
+    expect(row.classLevel).toBe('10');
+    expect(row.batch).toBe('Class 10');
+    expect(row.isProvisional).toBe(true);
+  });
+
+  it('updates student city, board, and whatsapp consent for detailed report', async () => {
+    const { loginWithPhone } = await import('./auth');
+    const session = await loginWithPhone('+91', '9123456780', {
+      fullName: 'Pooja Reddy',
+      classLevel: '12',
+    });
+
+    await db
+      .update(schema.profiles)
+      .set({
+        city: 'Hyderabad',
+        board: 'CBSE Board',
+        whatsappConsent: true,
+      })
+      .where(eq(schema.profiles.id, session.userId));
+
+    const [row] = await db.select().from(schema.profiles).where(eq(schema.profiles.id, session.userId));
+    expect(row.city).toBe('Hyderabad');
+    expect(row.board).toBe('CBSE Board');
+    expect(row.whatsappConsent).toBe(true);
+  });
 });

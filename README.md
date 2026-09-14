@@ -77,11 +77,10 @@ Open **[http://localhost:3000](http://localhost:3000)**. Faculty logs in at `/SR
 ## How to Use as a Teacher / Administrator
 
 ### 1. Manage Students & Batches (`/teacher/students`)
-- **View Roster**: Search by student name, mobile number, username, or email. Filter by batch.
-- **Add Individual Student**: Enter student name, 10-digit mobile number, email, and assign to a cohort batch.
-- **Bulk CSV Import**: Import hundreds of students at once. Required headers: `full_name, username, email, phone, batch, password`.
-- **Batch Assignment**: Select multiple students to assign them to batches (e.g., `JEE 2026 Batch A`).
-- **Account Controls**: Instantly toggle student access (Active/Inactive or Disable Login).
+- **View Roster**: Search by student name, WhatsApp number, username, or email. Filter by batch.
+- **Add Individual Student**: Enter student name, 10-digit WhatsApp number, email, and assign to a cohort batch.
+- **Bulk Upload via CSV**: Upload multiple students at once. Automatically maps CSV columns (`name`, `phone`/`mobile`, `email`, `batch`).
+- **Batch Management**: Filter students by batch, view active/inactive status, and check individual test attempt statistics.
 
 ### 2. Digitize Question Papers (`/teacher/papers` & `/teacher/questions/upload`)
 - **Upload PDF**: Upload official JEE Mains question paper PDFs under `/teacher/papers`.
@@ -110,7 +109,7 @@ Open **[http://localhost:3000](http://localhost:3000)**. Faculty logs in at `/SR
 ## How to Use as a Student
 
 ### 1. Sign In & Access Dashboard
-- Visit `/login` (or `/`), select your country code (🇮🇳 `+91`), enter your registered mobile number, and click **Sign in as Student**.
+- Visit `/login` (or `/`), select your country code (🇮🇳 `+91`), enter your registered WhatsApp number, and click **Sign in as Student**.
 - The dashboard (`/student`) displays all active and upcoming tests.
 
 ### 2. Take a CBT Exam (`/student/tests/[id]` → `/student/attempts/[id]`)

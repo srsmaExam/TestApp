@@ -8,6 +8,19 @@
  *   npm run migrate
  *   npx tsx scripts/migrate.ts
  */
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Load .env if present
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile(envPath);
+  } catch {
+    // Ignore if already loaded or invalid
+  }
+}
+
 import { closeDb, getDbBundle, runMigrations } from '../src/db/client';
 
 async function main() {

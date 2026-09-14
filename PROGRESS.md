@@ -1,4 +1,4 @@
-# Progress Log — Vidya Test Prep (Local Build)
+# Progress Log — Shri Ram Smart Minds Academy (Local Build)
 
 Status snapshot of the local-first JEE Test Platform build. See
 [JEE-Test-Platform-LLD.md](JEE-Test-Platform-LLD.md) for the production design

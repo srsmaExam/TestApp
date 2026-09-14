@@ -78,24 +78,17 @@ export function normalizePhone(
 export async function loginWithPhone(
   countryCode: string,
   rawPhone: string,
+  extraDetails?: { fullName?: string; classLevel?: string },
 ): Promise<Session> {
   const { fullPhone, cleanDigits } = normalizePhone(countryCode, rawPhone);
 
   if (cleanDigits.length < 7 || cleanDigits.length > 15) {
-    throw new HttpError(400, 'invalid_phone', 'Please enter a valid mobile number (7 to 15 digits).');
+    throw new HttpError(400, 'invalid_phone', 'Please enter a valid WhatsApp number (7 to 15 digits).');
   }
 
   const db = await getDb();
 
-  // FBR-05: look for an existing profile matching phone. Every write path
-  // now normalises to E.164 before storing, so this three-way OR only exists
-  // for rows written before that fix shipped — a bare `= fullPhone` equality
-  // will be sufficient once every historical row has been through
-  // `npm run backfill:phone-e164`. Deliberately NO `.limit(1)`: the old code
-  // silently picked whichever row Postgres's query plan reached first, which
-  // could differ between requests as the plan flipped between a seq-scan and
-  // an index-scan — the same phone number could authenticate as a different
-  // student on different days. A collision here must never be guessed.
+  // FBR-05: look for an existing profile matching phone.
   const matches = await db
     .select()
     .from(profiles)
@@ -107,7 +100,7 @@ export async function loginWithPhone(
     throw new HttpError(
       409,
       'phone_ambiguous',
-      'More than one account is registered to this phone number. Please sign in with your username instead.',
+      'More than one account is registered to this WhatsApp number. Please contact your administrator.',
     );
   }
 
@@ -118,21 +111,30 @@ export async function loginWithPhone(
       throw new HttpError(403, 'account_disabled', 'Your account has been deactivated. Please contact your administrator.');
     }
     if (user.role !== 'student') {
-      throw new HttpError(403, 'teacher_portal_required', 'This phone number belongs to a faculty account. Please sign in via the faculty portal at /SRSMA.');
+      throw new HttpError(403, 'teacher_portal_required', 'This WhatsApp number belongs to a faculty account. Please sign in via the faculty portal at /SRSMA.');
     }
 
-    // Keep phone populated if it was matched via demo fallback
+    const updates: Partial<typeof profiles.$inferInsert> = {};
     if (!user.phone) {
-      await db.update(profiles).set({ phone: fullPhone }).where(sql`${profiles.id} = ${user.id}`);
+      updates.phone = fullPhone;
+    }
+    if (extraDetails?.fullName?.trim()) {
+      updates.fullName = extraDetails.fullName.trim();
+    }
+    if (extraDetails?.classLevel?.trim()) {
+      updates.classLevel = extraDetails.classLevel.trim();
+      updates.batch = `Class ${extraDetails.classLevel.trim()}`;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(profiles).set(updates).where(sql`${profiles.id} = ${user.id}`);
+      user = { ...user, ...updates };
     }
   } else {
     // Auto-provision a new student account so students can begin immediately.
-    // FBR-03: this account previously carried the same entitlements as a real
-    // enrolled student — it could see and attempt every published test and
-    // read every answer key from the result page, with zero credentials.
-    // It is now provisional: un-entitled until a teacher converts it. Keep
-    // `canLogin: true` — the frictionless landing-page funnel is intentional.
-    const fullName = `Student ${cleanDigits.slice(-4)}`;
+    const fullName = extraDetails?.fullName?.trim() || `Student ${cleanDigits.slice(-4)}`;
+    const classLevel = extraDetails?.classLevel?.trim() || null;
+    const batch = extraDetails?.classLevel ? `Class ${extraDetails.classLevel.trim()}` : 'Prospective';
     let username = `student_${cleanDigits}`;
     let email = `${cleanDigits}@student.srsma.local`;
 
@@ -157,7 +159,8 @@ export async function loginWithPhone(
           username,
           email,
           phone: fullPhone,
-          batch: 'Prospective',
+          batch,
+          classLevel,
           isActive: true,
           canLogin: true,
           isProvisional: true,
@@ -166,10 +169,6 @@ export async function loginWithPhone(
 
       user = created;
     } catch (err) {
-      // Two auto-provision requests for the same brand-new phone number,
-      // essentially simultaneously — profiles_phone_idx (schema.ts) rejects
-      // the loser rather than creating a second account. That request can
-      // simply retry the login and find the row the winner just created.
       if (isUniqueViolation(err)) {
         throw new HttpError(409, 'login_conflict', 'Please try signing in again.');
       }

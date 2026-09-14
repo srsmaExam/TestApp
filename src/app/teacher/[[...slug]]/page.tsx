@@ -34,12 +34,12 @@ export async function generateMetadata({
   if (slug[0] === 'extraction-prompt') return { title: 'Extraction Prompts | SRSMA' };
   if (slug[0] === 'tests') {
     if (slug.length === 2 && slug[1] === 'new') return { title: 'Create New Test | SRSMA' };
-    if (slug.length === 3 && slug[2] === 'analytics') return { title: 'Test Analytics | SRSMA' };
+    if (slug.length === 3 && slug[2] === 'analytics') return { title: 'Test Report | SRSMA' };
     if (slug.length === 2) return { title: 'Test Builder | SRSMA' };
     return { title: 'Tests | SRSMA' };
   }
   if (slug[0] === 'students') return { title: 'Students & Batches | SRSMA' };
-  if (slug[0] === 'analytics') return { title: 'Cohort Analytics | SRSMA' };
+  if (slug[0] === 'analytics') return { title: 'Cohort Report | SRSMA' };
   return { title: 'Faculty Portal | SRSMA' };
 }
 

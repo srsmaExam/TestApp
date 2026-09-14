@@ -3,7 +3,7 @@ import type { Session } from '@/lib/session';
 
 const NAV: NavItem[] = [
   { href: '/student', label: 'My tests', exact: true },
-  { href: '/student/analytics', label: 'Analytics' },
+  { href: '/student/analytics', label: 'Report' },
 ];
 
 /**

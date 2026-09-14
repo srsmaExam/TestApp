@@ -101,13 +101,13 @@ export async function StudentDashboardView() {
               Welcome back, {session.fullName}!
             </h1>
             <p className="mt-0.5 text-xs text-brand-100 dark:text-brand-200">
-              Timed CBT tests, instant evaluation, and in-depth performance analytics.
+              Timed CBT tests, instant evaluation, and in-depth performance reports.
             </p>
           </div>
 
           <Link href="/student/analytics" className={buttonClass('accent', 'md')}>
             <Award className="mr-1.5 size-4" />
-            View My Analytics
+            View My Report
           </Link>
         </div>
       </div>

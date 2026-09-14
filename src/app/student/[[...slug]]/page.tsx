@@ -12,7 +12,7 @@ export async function generateMetadata({
 }) {
   const { slug } = await params;
   if (!slug || slug.length === 0) return { title: 'My Tests | SRSMA' };
-  if (slug[0] === 'analytics') return { title: 'Personal Analytics | SRSMA' };
+  if (slug[0] === 'analytics') return { title: 'Personal Report | SRSMA' };
   if (slug[0] === 'tests') return { title: 'Test Instructions | SRSMA' };
   if (slug[0] === 'attempts' && slug[2] === 'result') return { title: 'Scorecard & Solutions | SRSMA' };
   if (slug[0] === 'attempts') return { title: 'Test Runner | SRSMA' };

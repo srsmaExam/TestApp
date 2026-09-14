@@ -4,8 +4,10 @@ import { HttpError, json, withApi } from '@/lib/http';
 import { clientKey, rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 const PhoneLoginSchema = z.object({
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z.string().min(1, 'WhatsApp number is required'),
   countryCode: z.string().optional().default('+91'),
+  fullName: z.string().trim().optional(),
+  classLevel: z.string().trim().optional(),
 });
 
 const CredentialsLoginSchema = z.object({
@@ -27,19 +29,13 @@ export const POST = withApi(async (req) => {
   if (body && typeof body === 'object' && 'phone' in body && !('username' in body)) {
     const parsed = PhoneLoginSchema.safeParse(body);
     if (!parsed.success) {
-      throw new HttpError(400, 'invalid_request', 'Please enter a valid mobile number.');
+      throw new HttpError(400, 'invalid_request', 'Please enter a valid WhatsApp number.');
     }
 
-    const { phone, countryCode } = parsed.data;
+    const { phone, countryCode, fullName, classLevel } = parsed.data;
     const { fullPhone, cleanDigits } = normalizePhone(countryCode, phone);
 
     const byPhone = rateLimit(`login:p:${cleanDigits}`, PER_TARGET_LIMIT, PER_TARGET_WINDOW_MS);
-    // FBR-03/FBR-14: this is the only cap on new-account provisioning — an
-    // attacker who varies the phone number bypasses `byPhone` but still hits
-    // this per-IP limit. It is in-memory (rate-limit.ts) and therefore NOT
-    // enforceable across Vercel's serverless containers: a real bound needs
-    // the Postgres-backed limiter (FBR-14). Treat this as a speed bump, not a
-    // control, until that lands.
     const byClient = rateLimit(`login:c:${ip}`, PER_CLIENT_LIMIT, PER_CLIENT_WINDOW_MS);
 
     if (!byPhone.ok || !byClient.ok) {
@@ -52,7 +48,7 @@ export const POST = withApi(async (req) => {
       );
     }
 
-    const session = await loginWithPhone(countryCode, phone);
+    const session = await loginWithPhone(countryCode, phone, { fullName, classLevel });
     resetRateLimit(`login:p:${cleanDigits}`);
 
     return json({ ok: true, homeUrl: '/student', session });
@@ -87,7 +83,7 @@ export const POST = withApi(async (req) => {
     throw new HttpError(
       403,
       'forbidden',
-      'This portal is reserved for teachers and administrators. Students must sign in using their phone number at /login.',
+      'This portal is reserved for teachers and administrators. Students must sign in using their WhatsApp number at /login.',
     );
   }
 

@@ -53,9 +53,9 @@ Docker isn't installed, so a native Postgres service would be an extra install-a
 
 ---
 
-## 2. Branding — Vidya Test Prep
+## 2. Branding — Shri Ram Smart Minds Academy
 
-**Organization name:** `Vidya Test Prep`
+**Organization name:** `Shri Ram Smart Minds Academy`
 **Product line:** `JEE Mains Test Platform`
 **Palette:** deep blue `#1E3A8A` (primary) · amber `#F59E0B` (accent) · slate `#0F172A` text · `#F8FAFC` page ground
 
@@ -63,9 +63,9 @@ All of this goes in **one file**, `src/config/branding.ts`, and nowhere else —
 
 ```ts
 export const BRAND = {
-  orgName:    'Vidya Test Prep',
+  orgName:    'Shri Ram Smart Minds Academy',
   productName:'JEE Mains Test Platform',
-  shortName:  'VTP',
+  shortName:  'SRSMA',
   primary:    '#1E3A8A',
   accent:     '#F59E0B',
   logoMark:   '/brand/logo-mark.svg',
@@ -78,7 +78,7 @@ export const BRAND = {
 An open book under a lamp flame: literal coaching-centre iconography, legible at 16px favicon size.
 
 ```svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Vidya Test Prep">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Shri Ram Smart Minds Academy">
   <rect width="64" height="64" rx="14" fill="#1E3A8A"/>
   <path d="M32 11.5c3.6 3.3 5.4 6.3 5.4 9.1a5.4 5.4 0 1 1-10.8 0c0-2.8 1.8-5.8 5.4-9.1z" fill="#F59E0B"/>
   <path d="M11.5 33c6.6-2.9 13.3-2.9 19.9 0v17.4c-6.6-2.9-13.3-2.9-19.9 0z" fill="#fff"/>
@@ -89,7 +89,7 @@ An open book under a lamp flame: literal coaching-centre iconography, legible at
 
 ### Horizontal lockup — `public/brand/logo-lockup.svg`
 
-Same mark at 36px + `VIDYA TEST PREP` (600 weight, `.06em` tracking, `#0F172A`) with `JEE Mains Test Platform` beneath in 10px `#64748B`. Used in the app header and on the login page.
+Same mark at 36px + `SHRI RAM SMART MINDS ACADEMY` (600 weight, `.06em` tracking, `#0F172A`) with `JEE Mains Test Platform` beneath in 10px `#64748B`. Used in the app header and on the login page.
 
 Also produced: `public/favicon.svg` (the mark alone) and `src/app/icon.svg` for Next.js metadata.
 

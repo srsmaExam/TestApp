@@ -123,7 +123,7 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Analytics</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Report</h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Track your progress and subject mastery across JEE mock tests.</p>
         </div>
 
@@ -161,7 +161,7 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Analytics</h1>
+        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Report</h1>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
           Personalized performance curves and chapter mastery for <strong>{studentName}</strong>.
         </p>

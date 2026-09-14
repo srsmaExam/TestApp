@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, Sparkles } from 'lucide-react';
-import { Alert, Badge, buttonClass, Card, CardBody, Spinner } from '@/components/ui';
+import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Label } from '@/components/ui';
+import { Dialog } from '@/components/Dialog';
 import { QuestionBody } from '@/components/Katex';
 
 type ReviewQuestion = {
@@ -77,6 +78,66 @@ export function ResultReviewClient({
   // Filters
   const [filterSubject, setFilterSubject] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all'); // all, correct, wrong, unattempted, overtime
+
+  // Detailed Report Modal State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [city, setCity] = useState('');
+  const [board, setBoard] = useState('CBSE Board');
+  const [otherBoard, setOtherBoard] = useState('');
+  const [whatsappConsent, setWhatsappConsent] = useState(true);
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`srsma_report_${attemptId}`);
+      if (saved) setReportSubmitted(true);
+    }
+  }, [attemptId]);
+
+  async function handleReportSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!city.trim()) {
+      setReportError('Please enter your city.');
+      return;
+    }
+    if (board === 'Other' && !otherBoard.trim()) {
+      setReportError('Please enter your board name.');
+      return;
+    }
+    setSubmittingReport(true);
+    setReportError(null);
+
+    try {
+      const res = await fetch('/api/student/report-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: city.trim(),
+          board,
+          otherBoard: board === 'Other' ? otherBoard.trim() : undefined,
+          whatsappConsent,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || 'Failed to submit report details.');
+      }
+
+      setReportSubmitted(true);
+      setSubmittedSuccess(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`srsma_report_${attemptId}`, 'true');
+      }
+    } catch (err: any) {
+      setReportError(err.message || 'Could not submit report request.');
+    } finally {
+      setSubmittingReport(false);
+    }
+  }
 
   useEffect(() => {
     async function loadResult() {
@@ -163,7 +224,7 @@ export function ResultReviewClient({
           href={userRole === 'teacher' ? `/teacher/tests/${data.testId}/analytics` : '/student'}
           className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
         >
-          ← {userRole === 'teacher' ? 'Back to test analytics' : 'Back to tests'}
+          ← {userRole === 'teacher' ? 'Back to test report' : 'Back to tests'}
         </Link>
       </div>
 
@@ -275,6 +336,46 @@ export function ResultReviewClient({
               </Card>
             );
           })}
+      </div>
+
+      {/* Detailed Report Prompt Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-6 shadow-sm dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-brand-950/40 dark:to-orange-950/30">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-400/20 dark:text-amber-300">
+                <Sparkles className="size-3" />
+                Personalized Diagnostic Analysis
+              </span>
+              {reportSubmitted && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                  <CheckCircle2 className="size-3" />
+                  Report Requested
+                </span>
+              )}
+            </div>
+            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+              {reportSubmitted
+                ? 'Your Detailed Report is Being Prepared!'
+                : 'Unlock Your Detailed Performance & Improvement Report'}
+            </h2>
+            <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-300">
+              {reportSubmitted
+                ? 'Our mentors are compiling your weak-area breakdown and recommendations to send to your WhatsApp number.'
+                : 'Discover your subject-wise gaps, time-management efficiency, and tailored preparation roadmap sent to your WhatsApp.'}
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            onClick={() => setShowReportModal(true)}
+            className="shrink-0 rounded-xl bg-amber-500 px-5 py-2.5 font-bold text-slate-950 shadow-md transition hover:bg-amber-400 hover:shadow-amber-500/20 dark:bg-amber-400 dark:hover:bg-amber-300"
+          >
+            <FileText className="mr-2 size-4" />
+            {reportSubmitted ? 'Update Details' : 'View Detailed Report'}
+            <ArrowRight className="ml-1.5 size-4" />
+          </Button>
+        </div>
       </div>
 
       {/* 3. Detailed Question Solutions Section */}
@@ -519,6 +620,139 @@ export function ResultReviewClient({
           )}
         </div>
       </div>
+
+      {/* Detailed Report Request Modal */}
+      {/* Detailed Report Request Modal */}
+      <Dialog
+        isOpen={showReportModal}
+        onClose={() => !submittingReport && setShowReportModal(false)}
+        size="md"
+        title={submittedSuccess ? undefined : 'Get Your Detailed Diagnostic Report'}
+        description={
+          submittedSuccess
+            ? undefined
+            : 'Fill in your city and curriculum board so we can customize your performance analysis.'
+        }
+        footer={
+          submittedSuccess ? null : (
+            <div className="flex w-full justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={submittingReport}
+                onClick={() => setShowReportModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="report-details-form"
+                size="sm"
+                disabled={submittingReport}
+                className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600"
+              >
+                {submittingReport ? 'Sending…' : 'Send My Detailed Report'}
+              </Button>
+            </div>
+          )
+        }
+      >
+        {submittedSuccess ? (
+          <div className="space-y-4 p-4 text-center">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-400">
+              <CheckCircle2 className="size-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              Detailed Report Requested!
+            </h3>
+            <p className="mx-auto max-w-sm text-xs text-slate-600 dark:text-slate-300">
+              Thank you! Your personalized diagnostic report is being compiled by Shri Ram Smart Minds Academy faculty and will be sent to your WhatsApp number.
+            </p>
+            <div className="pt-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowReportModal(false);
+                  setSubmittedSuccess(false);
+                }}
+                className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600"
+              >
+                Review Solutions Below
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form id="report-details-form" onSubmit={handleReportSubmit} className="space-y-4 py-2">
+            {reportError && (
+              <Alert tone="red" className="text-xs">
+                {reportError}
+              </Alert>
+            )}
+
+            <div>
+              <Label htmlFor="report-city-input" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                City <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="report-city-input"
+                required
+                autoFocus
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Hyderabad"
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="report-board-select" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Your Board <span className="text-red-500">*</span>
+              </Label>
+              <select
+                id="report-board-select"
+                value={board}
+                onChange={(e) => setBoard(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="State Board">State Board</option>
+                <option value="CBSE Board">CBSE Board</option>
+                <option value="ICSE Board">ICSE Board</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {board === 'Other' && (
+              <div>
+                <Label htmlFor="report-other-board-input" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Specify Your Board <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="report-other-board-input"
+                  required
+                  value={otherBoard}
+                  onChange={(e) => setOtherBoard(e.target.value)}
+                  placeholder="e.g. Cambridge, IB, etc."
+                  className="text-sm"
+                />
+              </div>
+            )}
+
+            <div className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+              <input
+                id="report-whatsapp-consent"
+                type="checkbox"
+                checked={whatsappConsent}
+                onChange={(e) => setWhatsappConsent(e.target.checked)}
+                className="mt-0.5 size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900"
+              />
+              <Label htmlFor="report-whatsapp-consent" className="cursor-pointer text-xs leading-snug text-slate-600 dark:text-slate-300">
+                I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report.
+              </Label>
+            </div>
+          </form>
+        )}
+      </Dialog>
     </div>
   );
 }

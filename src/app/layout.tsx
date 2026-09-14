@@ -33,12 +33,15 @@ export const viewport: Viewport = {
 const themeInitScript = `
   (function() {
     try {
+      var path = window.location.pathname.toLowerCase();
+      var isBoardChallenge = path.startsWith('/boardchallenge');
       var saved = localStorage.getItem('theme');
-      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || ((!saved || saved === 'system') && prefersDark)) {
+      if (isBoardChallenge || saved === 'dark' || !saved || saved === 'system') {
         document.documentElement.classList.add('dark');
-      } else {
+      } else if (saved === 'light') {
         document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
       }
     } catch (e) {}
   })();

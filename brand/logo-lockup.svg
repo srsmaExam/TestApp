@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="56" viewBox="0 0 300 56" role="img" aria-label="Vidya Test Prep — JEE Mains Test Platform">
-  <title>Vidya Test Prep — JEE Mains Test Platform</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="56" viewBox="0 0 360 56" role="img" aria-label="Shri Ram Smart Minds Academy — Test Platform">
+  <title>Shri Ram Smart Minds Academy — Test Platform</title>
 
   <!-- mark, scaled 64 -> 44 -->
   <g transform="translate(4 6) scale(0.6875)">
@@ -13,7 +13,7 @@
   <!-- wordmark -->
   <text x="60" y="27"
         font-family="Segoe UI, Inter, system-ui, -apple-system, sans-serif"
-        font-size="17" font-weight="600" letter-spacing="1.1" fill="#0F172A">VIDYA TEST PREP</text>
+        font-size="14" font-weight="700" letter-spacing="0.8" fill="#0F172A">SHRI RAM SMART MINDS ACADEMY</text>
   <text x="60" y="42"
         font-family="Segoe UI, Inter, system-ui, -apple-system, sans-serif"
         font-size="10" font-weight="400" letter-spacing="0.3" fill="#64748B">JEE Mains Test Platform</text>

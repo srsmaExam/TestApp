@@ -47,7 +47,7 @@ export default function BoardChallengePage() {
   const ctaSubtext = 'Instant Student Login • No Password Needed';
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 transition-colors selection:bg-amber-400 selection:text-slate-950 dark:bg-[#071120] dark:text-slate-100">
+    <div className="dark relative min-h-screen w-full overflow-x-hidden bg-[#071120] text-slate-100 selection:bg-amber-400 selection:text-slate-950">
       {/* Background with Authentic Science Pattern & Navy Gradient */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <Image
@@ -56,18 +56,18 @@ export default function BoardChallengePage() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-top opacity-15 mix-blend-multiply brightness-95 dark:opacity-30 dark:mix-blend-screen dark:brightness-90"
+          className="object-cover object-top opacity-30 mix-blend-screen brightness-90"
         />
         {/* Ambient Gradient Glows */}
-        <div className="absolute left-1/2 -top-40 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-amber-500/10 blur-[140px] dark:bg-amber-500/15" />
-        <div className="absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-blue-600/10 blur-[150px] dark:bg-blue-600/20" />
-        <div className="absolute -right-32 top-1/2 h-96 w-96 rounded-full bg-orange-600/10 blur-[150px] dark:bg-orange-600/15" />
+        <div className="absolute left-1/2 -top-40 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-amber-500/15 blur-[140px]" />
+        <div className="absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-blue-600/20 blur-[150px]" />
+        <div className="absolute -right-32 top-1/2 h-96 w-96 rounded-full bg-orange-600/15 blur-[150px]" />
       </div>
 
       {/* Main Content Wrapper */}
       <div className="relative z-10 flex min-h-screen flex-col overflow-x-hidden">
         {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-colors dark:border-slate-800/80 dark:bg-[#071120]/95">
+        <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#071120]/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3.5 py-2.5 sm:px-6 sm:py-4">
             {/* Institute Identity: Shri Ram on Line 1, Smart Minds Academy on Line 2; Subtitle with by IIT Alumni on 2nd Line */}
             <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
@@ -264,7 +264,7 @@ export default function BoardChallengePage() {
                   </div>
                   <h3 className="mt-4 text-xl font-black text-slate-900 sm:text-2xl dark:text-white">Quick Student Login</h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-300">
-                    Sign in using your 10-digit mobile number. No complex passwords or email confirmations needed.
+                    Sign in using your 10-digit WhatsApp number. No complex passwords or email confirmations needed.
                   </p>
                 </div>
 

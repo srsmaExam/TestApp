@@ -719,7 +719,7 @@ export function StudentsView() {
             />
           </div>
           <div>
-            <Label>Mobile Number (for student login)</Label>
+            <Label>WhatsApp Number (for student login)</Label>
             <Input
               type="tel"
               value={createForm.phone}
@@ -778,7 +778,7 @@ export function StudentsView() {
       >
         <form id="import-csv-form" onSubmit={handleImportCsv} className="space-y-4">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Paste CSV text with columns: <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-800 dark:bg-slate-800 dark:text-slate-200">Full Name, Username, Email, Phone, Batch, Password</code>. Phone is used for student mobile login. Password defaults to <code className="font-mono">112345</code> if omitted.
+            Paste CSV text with columns: <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-800 dark:bg-slate-800 dark:text-slate-200">Full Name, Username, Email, Phone, Batch, Password</code>. Phone is used for student WhatsApp login. Password defaults to <code className="font-mono">112345</code> if omitted.
           </p>
 
           <Textarea
@@ -888,7 +888,7 @@ export function StudentsView() {
             />
           </div>
           <div>
-            <Label>Mobile Number (for student login)</Label>
+            <Label>WhatsApp Number (for student login)</Label>
             <Input
               type="tel"
               value={editForm.phone}

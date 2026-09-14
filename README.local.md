@@ -1,4 +1,4 @@
-# Vidya Test Prep — Local Build Quick Reference
+# Shri Ram Smart Minds Academy — Local Build Quick Reference
 
 This is the **local-first** edition of [JEE-Test-Platform-LLD.md](JEE-Test-Platform-LLD.md), described in [JEE-Test-Platform-Local-Build-Plan.md](JEE-Test-Platform-Local-Build-Plan.md). Everything — database, source PDFs, cropped images — lives under `data/` on this machine with zero cloud dependencies.
 

@@ -2,8 +2,8 @@
  * Branding configuration.
  */
 export const BRAND = {
-  orgName: 'SRSMA',
-  productName: 'JEE Mains Test Platform',
+  orgName: 'Shri Ram Smart Minds Academy',
+  productName: 'Board Readiness Challenge Test Platform',
   shortName: 'SRSMA',
 
   primary: '#1E3A8A',

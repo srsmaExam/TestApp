@@ -67,6 +67,10 @@ export const profiles = pgTable('profiles', {
   // to a real enrolled student. Provisional accounts can only see/attempt
   // tests.audience = 'public' and never receive answer keys or solutions.
   isProvisional: boolean('is_provisional').notNull().default(false),
+  city: text('city'),
+  board: text('board'),
+  whatsappConsent: boolean('whatsapp_consent').notNull().default(false),
+  classLevel: text('class_level'),
 });
 
 export const papers = pgTable('papers', {

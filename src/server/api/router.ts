@@ -35,6 +35,8 @@ import { NextResponse } from 'next/server';
 // 1. Auth Handlers
 import * as authLogin from './auth/login';
 import * as authLogout from './auth/logout';
+import * as authCheckPhone from './auth/check-phone';
+import * as studentReportDetails from './student/report-details';
 
 // 2. Cron Handlers
 import * as cronSweep from './cron/sweep-expired';
@@ -122,6 +124,11 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     if (s0 === 'auth') {
       if (s1 === 'login') return { handler: authLogin, params: {}, pattern: '/api/auth/login' };
       if (s1 === 'logout') return { handler: authLogout, params: {}, pattern: '/api/auth/logout' };
+      if (s1 === 'check-phone') return { handler: authCheckPhone, params: {}, pattern: '/api/auth/check-phone' };
+    }
+    // /api/student/*
+    if (s0 === 'student') {
+      if (s1 === 'report-details') return { handler: studentReportDetails, params: {}, pattern: '/api/student/report-details' };
     }
     // /api/cron/*
     if (s0 === 'cron' && s1 === 'sweep-expired') {
@@ -258,6 +265,8 @@ export async function dispatchApiRequest(req: NextRequest | Request, slug: strin
 export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/auth/login', verbs: ['POST'] },
   { pattern: '/api/auth/logout', verbs: ['POST'] },
+  { pattern: '/api/auth/check-phone', verbs: ['POST'] },
+  { pattern: '/api/student/report-details', verbs: ['POST'] },
   { pattern: '/api/cron/sweep-expired', verbs: ['GET', 'POST'] },
   { pattern: '/api/batches', verbs: ['GET'] },
   { pattern: '/api/students', verbs: ['GET', 'POST'] },

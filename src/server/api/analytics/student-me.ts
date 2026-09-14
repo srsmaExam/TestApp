@@ -18,7 +18,7 @@ export const GET = withApi(async () => {
     .where(eq(profiles.id, session.userId));
 
   const isReportUnlocked = Boolean(
-    profile && (!profile.isProvisional || (profile.whatsappConsent && profile.city)),
+    session.role === 'teacher' || (profile && profile.whatsappConsent && profile.city),
   );
 
   // Completed attempts by this student whose results are available.

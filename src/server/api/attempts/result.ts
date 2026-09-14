@@ -64,7 +64,6 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
 
   const hasUnlockedSolutions =
     session.role === 'teacher' ||
-    !studentProfile?.isProvisional ||
     Boolean(studentProfile?.whatsappConsent && studentProfile?.city);
 
   const qIds = attempt.questionOrder;

@@ -92,24 +92,19 @@ export function ResultReviewClient({
   const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved =
-        localStorage.getItem(`srsma_report_${attemptId}`) ||
-        localStorage.getItem('srsma_report_unlocked');
-      if (saved) setReportSubmitted(true);
-    }
-  }, [attemptId]);
-
-  useEffect(() => {
-    if (data?.isReportUnlocked) {
-      setReportSubmitted(true);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('srsma_report_unlocked', 'true');
-        localStorage.setItem(`srsma_report_${attemptId}`, 'true');
-        window.dispatchEvent(new Event('srsma_report_unlocked'));
+    if (data) {
+      if (data.isReportUnlocked) {
+        setReportSubmitted(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('srsma_report_unlocked', 'true');
+          localStorage.setItem(`srsma_report_${attemptId}`, 'true');
+          window.dispatchEvent(new Event('srsma_report_unlocked'));
+        }
+      } else {
+        setReportSubmitted(false);
       }
     }
-  }, [data?.isReportUnlocked, attemptId]);
+  }, [data?.isReportUnlocked, attemptId, data]);
 
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -491,11 +486,12 @@ export function ResultReviewClient({
           </div>
         </div>
 
-        {/* Questions List */}
         <div className="space-y-4">
-          {filteredQuestions.map((q) => {
+          {filteredQuestions.map((q, idx) => {
             const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
             const expectedSec = q.expectedTimeS ?? 120;
+            const isEveryThird =
+              (idx + 1) % 3 === 0 || (filteredQuestions.length < 3 && idx === filteredQuestions.length - 1);
 
             let cardBorder = '';
             if (q.isAttempted) {
@@ -504,244 +500,285 @@ export function ResultReviewClient({
             }
 
             return (
-              <Card key={q.id} className={`${cardBorder} transition-shadow hover:shadow-sm`}>
-                <CardBody className="space-y-4 p-5">
-                  {/* Question Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="tnum rounded bg-slate-900 px-2 py-0.5 text-xs font-bold text-white dark:bg-slate-700">
-                        Q{q.position}
-                      </span>
-                      <Badge
-                        tone={
-                          q.subject === 'physics'
-                            ? 'brand'
-                            : q.subject === 'chemistry'
-                            ? 'green'
-                            : q.subject === 'maths'
-                            ? 'amber'
-                            : 'purple'
-                        }
-                      >
-                        {q.subject.toUpperCase()}
-                      </Badge>
-                      <Badge tone="slate">{q.type.toUpperCase()}</Badge>
-                      {q.chapter && <span className="text-xs text-slate-500 dark:text-slate-400">• {q.chapter}</span>}
-                    </div>
-
-                    {/* Score & Time Badges */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Marks Badge */}
-                      {q.isAttempted ? (
-                        q.isCorrect ? (
-                          <Badge tone="green">+{q.marksAwarded} Marks (Correct)</Badge>
-                        ) : (
-                          <Badge tone="red">{q.marksAwarded} Marks (Wrong)</Badge>
-                        )
-                      ) : (
-                        <Badge tone="slate">0 Marks (Unattempted)</Badge>
-                      )}
-
-                      {/* Time taken */}
-                      <span className="tnum flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                        <Clock className="size-3.5" />
-                        {timeTakenSec}s (Exp: {expectedSec}s)
-                      </span>
-
-                      {/* Overtime warning flag */}
-                      {q.isOvertime && (
-                        <Badge tone="amber" className="text-xs">
-                          Overtime ({timeTakenSec}s &gt; {Math.round(expectedSec * 1.5)}s)
+              <div key={q.id} className="space-y-4">
+                <Card className={`${cardBorder} transition-shadow hover:shadow-sm`}>
+                  <CardBody className="space-y-4 p-5">
+                    {/* Question Header */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="tnum rounded bg-slate-900 px-2 py-0.5 text-xs font-bold text-white dark:bg-slate-700">
+                          Q{q.position}
+                        </span>
+                        <Badge
+                          tone={
+                            q.subject === 'physics'
+                              ? 'brand'
+                              : q.subject === 'chemistry'
+                              ? 'green'
+                              : q.subject === 'maths'
+                              ? 'amber'
+                              : 'purple'
+                          }
+                        >
+                          {q.subject.toUpperCase()}
                         </Badge>
+                        <Badge tone="slate">{q.type.toUpperCase()}</Badge>
+                        {q.chapter && <span className="text-xs text-slate-500 dark:text-slate-400">• {q.chapter}</span>}
+                      </div>
+
+                      {/* Score & Time Badges */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Marks Badge */}
+                        {q.isAttempted ? (
+                          q.isCorrect ? (
+                            <Badge tone="green">+{q.marksAwarded} Marks (Correct)</Badge>
+                          ) : (
+                            <Badge tone="red">{q.marksAwarded} Marks (Wrong)</Badge>
+                          )
+                        ) : (
+                          <Badge tone="slate">0 Marks (Unattempted)</Badge>
+                        )}
+
+                        {/* Time taken */}
+                        <span className="tnum flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                          <Clock className="size-3.5" />
+                          {timeTakenSec}s (Exp: {expectedSec}s)
+                        </span>
+
+                        {/* Overtime warning flag */}
+                        {q.isOvertime && (
+                          <Badge tone="amber" className="text-xs">
+                            Overtime ({timeTakenSec}s &gt; {Math.round(expectedSec * 1.5)}s)
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Question Body */}
+                    <div className="text-sm leading-relaxed text-slate-900 dark:text-slate-100">
+                      <QuestionBody
+                        body={q.body}
+                        renderImage={(placeholderId) => (
+                          <div className="my-2 overflow-hidden rounded border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-950">
+                            <img
+                              src={`/api/files/images/${q.id}/${placeholderId}`}
+                              alt="Figure"
+                              className="max-h-60 object-contain"
+                            />
+                          </div>
+                        )}
+                      />
+                    </div>
+
+                    {/* Option / Answer Review */}
+                    <div className="space-y-3 pt-3">
+                      {q.type === 'mcq' ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {q.options.map((opt) => {
+                            const isStudentPick = q.response?.key === opt.key;
+                            const isCorrectKey =
+                              q.answer && 'key' in q.answer && q.answer.key === opt.key;
+
+                            const isBoth = isStudentPick && isCorrectKey;
+                            const isWrongPick = isStudentPick && !isCorrectKey;
+
+                            let cardClass =
+                              'border border-slate-700/80 bg-slate-50/50 text-slate-800 dark:border-slate-800 dark:bg-[#0c1220] dark:text-slate-200';
+                            let circleClass =
+                              'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
+
+                            if (isBoth || isCorrectKey) {
+                              cardClass =
+                                'border-2 border-emerald-500 bg-emerald-50/70 text-slate-900 ring-1 ring-emerald-500/50 dark:border-emerald-500 dark:bg-emerald-950/30 dark:text-slate-100';
+                              circleClass = 'bg-[#00c950] text-white font-bold shadow-xs';
+                            } else if (isWrongPick) {
+                              cardClass =
+                                'border-2 border-red-500 bg-red-50/70 text-slate-900 ring-1 ring-red-500/50 dark:border-red-500 dark:bg-red-950/30 dark:text-slate-100';
+                              circleClass = 'bg-[#ff334b] text-white font-bold shadow-xs';
+                            }
+
+                            return (
+                              <div
+                                key={opt.key}
+                                className={`relative flex min-h-[58px] items-center justify-between rounded-xl p-4 transition-all ${cardClass}`}
+                              >
+                                {/* Top-Right Badge matching user mockups */}
+                                {isBoth ? (
+                                  <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#00c950] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                    YOUR ANSWER | CORRECT ANSWER
+                                  </span>
+                                ) : isWrongPick ? (
+                                  <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#ff334b] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                    YOUR ANSWER
+                                  </span>
+                                ) : isCorrectKey ? (
+                                  <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#00c950] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                    CORRECT ANSWER
+                                  </span>
+                                ) : null}
+
+                                {/* Left & Middle: Letter Circle + Content */}
+                                <div className="flex flex-1 items-center gap-3 pr-2">
+                                  <span
+                                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleClass}`}
+                                  >
+                                    {opt.key}
+                                  </span>
+                                  <div className="flex-1 text-sm font-medium leading-relaxed">
+                                    <QuestionBody
+                                      body={opt.body}
+                                      renderImage={(imgId) => (
+                                        <img
+                                          src={`/api/files/images/${q.id}/${imgId}`}
+                                          alt="Option figure"
+                                          className="my-1 max-h-24 object-contain"
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Right End: Check or X Icon */}
+                                {isBoth || isCorrectKey ? (
+                                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#00c950] text-white shadow-xs">
+                                    <Check className="size-4 stroke-[3]" />
+                                  </div>
+                                ) : isWrongPick ? (
+                                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#ff334b] text-white shadow-xs">
+                                    <X className="size-4 stroke-[3]" />
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        /* Integer / Numerical Review */
+                        <div className="flex flex-wrap items-center gap-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-[#0d1424]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-500 dark:text-slate-400">Your Response:</span>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-sm font-bold ${
+                                !q.isAttempted
+                                  ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                  : q.isCorrect
+                                  ? 'border border-emerald-500 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                                  : 'border border-red-500 bg-red-500/20 text-red-700 dark:text-red-400'
+                              }`}
+                            >
+                              {q.isAttempted && q.response?.value !== undefined ? String(q.response.value) : 'None (Unattempted)'}
+                              {q.isAttempted && (q.isCorrect ? <Check className="size-3.5" /> : <X className="size-3.5" />)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-500 dark:text-slate-400">Correct Answer:</span>
+                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500 bg-emerald-500/20 px-2.5 py-1 font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                              {q.answer && 'value' in q.answer
+                                ? q.answer.value
+                                : q.answer && 'min' in q.answer
+                                ? `${q.answer.min} to ${q.answer.max}`
+                                : '-'}
+                              <Check className="size-3.5" />
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Question Body */}
-                  <div className="text-sm leading-relaxed text-slate-900 dark:text-slate-100">
-                    <QuestionBody
-                      body={q.body}
-                      renderImage={(placeholderId) => (
-                        <div className="my-2 overflow-hidden rounded border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-950">
-                          <img
-                            src={`/api/files/images/${q.id}/${placeholderId}`}
-                            alt="Figure"
-                            className="max-h-60 object-contain"
+                    {/* Worked Solution (Visible once unlocked) */}
+                    {reportSubmitted && (
+                      q.solution ? (
+                        <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-xs text-slate-800 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-slate-200">
+                          <div className="mb-2 flex items-center gap-1.5 font-bold text-brand-900 dark:text-brand-300">
+                            <Sparkles className="size-4 text-accent-500" />
+                            Step-by-Step Solution:
+                          </div>
+                          <QuestionBody
+                            body={q.solution}
+                            renderImage={(imgId) => (
+                              <img
+                                src={`/api/files/images/${q.id}/${imgId}`}
+                                alt="Solution figure"
+                                className="my-2 max-h-48 object-contain"
+                              />
+                            )}
                           />
                         </div>
-                      )}
-                    />
-                  </div>
-
-                  {/* Option / Answer Review */}
-                  <div className="space-y-3 pt-3">
-                    {q.type === 'mcq' ? (
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {q.options.map((opt) => {
-                          const isStudentPick = q.response?.key === opt.key;
-                          const isCorrectKey =
-                            q.answer && 'key' in q.answer && q.answer.key === opt.key;
-
-                          const isBoth = isStudentPick && isCorrectKey;
-                          const isWrongPick = isStudentPick && !isCorrectKey;
-
-                          let cardClass =
-                            'border border-slate-700/80 bg-slate-50/50 text-slate-800 dark:border-slate-800 dark:bg-[#0c1220] dark:text-slate-200';
-                          let circleClass =
-                            'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
-
-                          if (isBoth || isCorrectKey) {
-                            cardClass =
-                              'border-2 border-emerald-500 bg-emerald-50/70 text-slate-900 ring-1 ring-emerald-500/50 dark:border-emerald-500 dark:bg-emerald-950/30 dark:text-slate-100';
-                            circleClass = 'bg-[#00c950] text-white font-bold shadow-xs';
-                          } else if (isWrongPick) {
-                            cardClass =
-                              'border-2 border-red-500 bg-red-50/70 text-slate-900 ring-1 ring-red-500/50 dark:border-red-500 dark:bg-red-950/30 dark:text-slate-100';
-                            circleClass = 'bg-[#ff334b] text-white font-bold shadow-xs';
-                          }
-
-                          return (
-                            <div
-                              key={opt.key}
-                              className={`relative flex min-h-[58px] items-center justify-between rounded-xl p-4 transition-all ${cardClass}`}
-                            >
-                              {/* Top-Right Badge matching user mockups */}
-                              {isBoth ? (
-                                <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#00c950] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-                                  YOUR ANSWER | CORRECT ANSWER
-                                </span>
-                              ) : isWrongPick ? (
-                                <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#ff334b] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-                                  YOUR ANSWER
-                                </span>
-                              ) : isCorrectKey ? (
-                                <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#00c950] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-                                  CORRECT ANSWER
-                                </span>
-                              ) : null}
-
-                              {/* Left & Middle: Letter Circle + Content */}
-                              <div className="flex flex-1 items-center gap-3 pr-2">
-                                <span
-                                  className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleClass}`}
-                                >
-                                  {opt.key}
-                                </span>
-                                <div className="flex-1 text-sm font-medium leading-relaxed">
-                                  <QuestionBody
-                                    body={opt.body}
-                                    renderImage={(imgId) => (
-                                      <img
-                                        src={`/api/files/images/${q.id}/${imgId}`}
-                                        alt="Option figure"
-                                        className="my-1 max-h-24 object-contain"
-                                      />
-                                    )}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Right End: Check or X Icon */}
-                              {isBoth || isCorrectKey ? (
-                                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#00c950] text-white shadow-xs">
-                                  <Check className="size-4 stroke-[3]" />
-                                </div>
-                              ) : isWrongPick ? (
-                                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#ff334b] text-white shadow-xs">
-                                  <X className="size-4 stroke-[3]" />
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      /* Integer / Numerical Review */
-                      <div className="flex flex-wrap items-center gap-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-[#0d1424]">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-500 dark:text-slate-400">Your Response:</span>
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-sm font-bold ${
-                              !q.isAttempted
-                                ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                : q.isCorrect
-                                ? 'border border-emerald-500 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                                : 'border border-red-500 bg-red-500/20 text-red-700 dark:text-red-400'
-                            }`}
-                          >
-                            {q.isAttempted && q.response?.value !== undefined ? String(q.response.value) : 'None (Unattempted)'}
-                            {q.isAttempted && (q.isCorrect ? <Check className="size-3.5" /> : <X className="size-3.5" />)}
-                          </span>
+                      ) : (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50">
+                          No step-by-step solution provided for this question.
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-500 dark:text-slate-400">Correct Answer:</span>
-                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500 bg-emerald-500/20 px-2.5 py-1 font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                            {q.answer && 'value' in q.answer
-                              ? q.answer.value
-                              : q.answer && 'min' in q.answer
-                              ? `${q.answer.min} to ${q.answer.max}`
-                              : '-'}
-                            <Check className="size-3.5" />
-                          </span>
-                        </div>
-                      </div>
+                      )
                     )}
-                  </div>
+                  </CardBody>
+                </Card>
 
-                  {/* Worked Solution / Inline Lock Teaser */}
-                  {reportSubmitted ? (
-                    q.solution ? (
-                      <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-xs text-slate-800 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-slate-200">
-                        <div className="mb-2 flex items-center gap-1.5 font-bold text-brand-900 dark:text-brand-300">
-                          <Sparkles className="size-4 text-accent-500" />
-                          Step-by-Step Solution:
-                        </div>
-                        <QuestionBody
-                          body={q.solution}
-                          renderImage={(imgId) => (
-                            <img
-                              src={`/api/files/images/${q.id}/${imgId}`}
-                              alt="Solution figure"
-                              className="my-2 max-h-48 object-contain"
-                            />
-                          )}
-                        />
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50">
-                        No step-by-step solution provided for this question.
-                      </div>
-                    )
-                  ) : (
-                    /* Locked Solution Prompt in question card */
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-3.5 dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-brand-950/30 dark:to-orange-950/20">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                          <Lock className="size-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                            Step-by-Step Solution Locked
-                          </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Unlock complete worked derivations &amp; chapter diagnostics instantly.
+                {/* Interstitial banner after every 3 questions */}
+                {isEveryThird && (
+                  !reportSubmitted ? (
+                    <div className="relative overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-orange-500/15 p-5 sm:p-6 shadow-md dark:border-amber-500/40 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-brand-950/40 dark:to-orange-950/30">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-400/20 dark:text-amber-300">
+                              <Lock className="size-3" />
+                              Solutions &amp; Reports Locked
+                            </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                            Unlock Complete Step-by-Step Solutions &amp; Detailed Diagnostic Report
+                          </h3>
+                          <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-300">
+                            Want to see verified faculty derivations for each question and get your chapter-wise diagnostic report on WhatsApp?
                           </p>
                         </div>
+
+                        <Button
+                          type="button"
+                          onClick={() => setShowReportModal(true)}
+                          className="shrink-0 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 px-5 py-2.5 font-bold text-slate-950 shadow-md transition hover:bg-amber-400 hover:to-amber-300 hover:shadow-amber-500/20 text-xs sm:text-sm"
+                        >
+                          <FileText className="mr-1.5 size-4" />
+                          Reveal Solutions &amp; Report
+                          <ArrowRight className="ml-1.5 size-4" />
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setShowReportModal(true)}
-                        className="shrink-0 rounded-lg bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300"
-                      >
-                        <FileText className="mr-1.5 size-3.5" />
-                        Access Solutions &amp; Report
-                      </Button>
                     </div>
-                  )}
-                </CardBody>
-              </Card>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-5 sm:p-6 shadow-md dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
+                      <div className="flex items-center gap-3.5">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
+                          <CheckCircle2 className="size-6" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
+                              <Sparkles className="size-3" />
+                              Diagnostic Report Unlocked
+                            </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                            Personalized Diagnostic Report Ready
+                          </h3>
+                          <p className="text-xs text-slate-600 dark:text-slate-300">
+                            Deep dive into your chapter-wise mastery, time distribution, and accuracy trends.
+                          </p>
+                        </div>
+                      </div>
+
+                      <Link
+                        href="/student/analytics"
+                        className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:from-emerald-500 hover:to-teal-500 transition"
+                      >
+                        <FileText className="size-4" />
+                        View Diagnostic Report
+                        <ArrowRight className="size-4" />
+                      </Link>
+                    </div>
+                  )
+                )}
+              </div>
             );
           })}
 

@@ -33,7 +33,7 @@ export async function StudentChrome({
       .where(eq(profiles.id, session.userId));
 
     isReportUnlocked = Boolean(
-      profile && (!profile.isProvisional || (profile.whatsappConsent && profile.city)),
+      session.role === 'teacher' || (profile && profile.whatsappConsent && profile.city),
     );
   } catch {
     // If db fails, default to locked

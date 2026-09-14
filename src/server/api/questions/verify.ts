@@ -60,10 +60,9 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     }
   }
 
-  // Scans the question body AND every option's body — an image placeholder
-  // living only inside an option (a match-the-column diagram, say) must block
-  // verify exactly like one in the body would.
-  const tokens = extractAllImageTokens(question.body, question.options.map((o) => o.body));
+  // Scans the question body, every option's body, and the worked solution — an image placeholder
+  // living anywhere in the question must block verify if unresolved.
+  const tokens = extractAllImageTokens(question.body, question.options.map((o) => o.body), question.solution);
   if (tokens.length > 0) {
     const images = await db.select().from(questionImages).where(eq(questionImages.questionId, id));
     const resolved = new Set(images.map((i) => i.placeholderId));

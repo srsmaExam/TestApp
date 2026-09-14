@@ -32,6 +32,8 @@ describe('toStudentQuestion security & leak prevention', () => {
     lastEditedBy: 'teacher-uuid',
     verifiedAt: new Date(),
     verifiedBy: 'teacher-uuid',
+    solutionVerifiedAt: new Date(),
+    solutionVerifiedBy: 'teacher-uuid',
   };
 
   function findForbiddenKeys(obj: unknown, forbidden = ['answer', 'solution', 'difficulty', 'extraction_notes', 'extractionNotes']): string[] {

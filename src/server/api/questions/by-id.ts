@@ -38,20 +38,29 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
   const db = await getDb();
   const { updatedAt, ...patch } = body;
 
+  const [current] = await db.select().from(questions).where(eq(questions.id, id));
+  if (!current) throw new HttpError(404, 'not_found', 'Question not found.');
+
+  // If the solution text was modified, reset solution verification
+  const solutionReset =
+    patch.solution !== undefined && patch.solution !== current.solution
+      ? { solutionVerifiedAt: null, solutionVerifiedBy: null }
+      : {};
+
   const [updated] = await db
     .update(questions)
-    .set({ ...patch, lastEditedBy: session.userId })
+    .set({ ...patch, ...solutionReset, lastEditedBy: session.userId })
     .where(and(eq(questions.id, id), eq(questions.updatedAt, new Date(updatedAt))))
     .returning();
 
   if (!updated) {
-    const [current] = await db.select().from(questions).where(eq(questions.id, id));
-    if (!current) throw new HttpError(404, 'not_found', 'Question not found.');
+    const [latestRow] = await db.select().from(questions).where(eq(questions.id, id));
+    if (!latestRow) throw new HttpError(404, 'not_found', 'Question not found.');
     throw new HttpError(
       409,
       'stale_write',
       'This question was edited by someone else since you loaded it. Refresh and reapply your changes.',
-      { current },
+      { current: latestRow },
     );
   }
 

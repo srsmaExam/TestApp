@@ -32,12 +32,14 @@ import {
 } from '@/components/ui';
 import { QuestionBody } from '@/components/Katex';
 import { PdfCropViewer } from '@/components/pdf/PdfCropViewer';
-import { extractAllImageTokens } from '@/lib/question-render';
+import { extractAllImageTokens, extractImageTokens } from '@/lib/question-render';
 import { cn } from '@/lib/cn';
 import type { CropRect, Paper, Question, QuestionAnswer, QuestionImage, QuestionOption } from '@/db/schema';
 
 type QuestionWithImages = Question & {
   imageTokens: string[];
+  questionImageTokens: string[];
+  solutionImageTokens: string[];
   resolvedImageMap: Map<string, QuestionImage>;
   unresolvedTokens: string[];
 };
@@ -70,6 +72,7 @@ export function PaperVerifyStudio({
   const [filterNeedsImage, setFilterNeedsImage] = useState(false);
   const [filterSubject, setFilterSubject] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterSolutionStatus, setFilterSolutionStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Expanded inline editors map: questionId -> boolean
@@ -81,7 +84,9 @@ export function PaperVerifyStudio({
   // Compute enriched question metadata
   const enrichedQuestions: QuestionWithImages[] = useMemo(() => {
     return questions.map((q) => {
-      const imageTokens = extractAllImageTokens(q.body, (q.options ?? []).map((o) => o.body));
+      const questionImageTokens = extractAllImageTokens(q.body, (q.options ?? []).map((o) => o.body));
+      const solutionImageTokens = extractImageTokens(q.solution ?? '');
+      const imageTokens = [...new Set([...questionImageTokens, ...solutionImageTokens])];
 
       const qImages = images.filter((img) => img.questionId === q.id);
       const resolvedImageMap = new Map<string, QuestionImage>();
@@ -94,6 +99,8 @@ export function PaperVerifyStudio({
       return {
         ...q,
         imageTokens,
+        questionImageTokens,
+        solutionImageTokens,
         resolvedImageMap,
         unresolvedTokens,
       };
@@ -107,6 +114,7 @@ export function PaperVerifyStudio({
 
   const totalCount = enrichedQuestions.length;
   const verifiedCount = enrichedQuestions.filter((q) => q.status === 'verified').length;
+  const solutionVerifiedCount = enrichedQuestions.filter((q) => Boolean(q.solutionVerifiedAt)).length;
   const draftCount = enrichedQuestions.filter((q) => q.status === 'draft').length;
   const needsImageCount = needsImageQuestions.length;
 
@@ -116,6 +124,11 @@ export function PaperVerifyStudio({
       if (filterNeedsImage && q.unresolvedTokens.length === 0) return false;
       if (filterSubject !== 'all' && q.subject !== filterSubject) return false;
       if (filterStatus !== 'all' && q.status !== filterStatus) return false;
+      if (filterSolutionStatus !== 'all') {
+        if (filterSolutionStatus === 'verified' && !q.solutionVerifiedAt) return false;
+        if (filterSolutionStatus === 'draft' && (q.solutionVerifiedAt || !q.solution?.trim())) return false;
+        if (filterSolutionStatus === 'missing' && q.solution?.trim()) return false;
+      }
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesBody = q.body.toLowerCase().includes(query);
@@ -126,12 +139,12 @@ export function PaperVerifyStudio({
       }
       return true;
     });
-  }, [enrichedQuestions, filterNeedsImage, filterSubject, filterStatus, searchQuery]);
+  }, [enrichedQuestions, filterNeedsImage, filterSubject, filterStatus, filterSolutionStatus, searchQuery]);
 
   // Jump to next question needing image
   function jumpToNextMissingImage() {
     if (needsImageQuestions.length === 0) {
-      toast.info('All questions have their images resolved!');
+      toast.info('All questions have their images resolved!', { duration: 2000 });
       return;
     }
 
@@ -186,7 +199,7 @@ export function PaperVerifyStudio({
           ...prev.filter((i) => !(i.questionId === armed.questionId && i.placeholderId === armed.placeholderId)),
           newImg,
         ]);
-        toast.success(`Saved image [[IMG:${armed.placeholderId}]]`);
+        toast.success(`Saved image [[IMG:${armed.placeholderId}]]`, { duration: 2000 });
 
         // If this question has more unresolved images, arm the next one, otherwise clear
         const currentQ = enrichedQuestions.find((q) => q.id === armed.questionId);
@@ -224,7 +237,7 @@ export function PaperVerifyStudio({
           ...prev.filter((i) => !(i.questionId === questionId && i.placeholderId === placeholderId)),
           newImg,
         ]);
-        toast.success(`Uploaded image [[IMG:${placeholderId}]]`);
+        toast.success(`Uploaded image [[IMG:${placeholderId}]]`, { duration: 2000 });
         if (armed?.questionId === questionId && armed?.placeholderId === placeholderId) {
           setArmed(null);
         }
@@ -246,7 +259,7 @@ export function PaperVerifyStudio({
         if (armed?.questionId === questionId && armed?.placeholderId === placeholderId) {
           setArmed(null);
         }
-        toast.success(`Removed image [[IMG:${placeholderId}]]`);
+        toast.success(`Removed image [[IMG:${placeholderId}]]`, { duration: 2000 });
       } else {
         const body = await res.json().catch(() => ({}));
         toast.error(body.message ?? 'Could not delete image.');
@@ -268,9 +281,91 @@ export function PaperVerifyStudio({
       }
       // Update question state
       setQuestions((prev) => prev.map((q) => (q.id === questionId ? body : q)));
-      toast.success(`Question ${body.humanCode ?? body.id} verified!`);
+      toast.success(`Question ${body.humanCode ?? body.id} verified!`, { duration: 2000 });
     } catch {
       toast.error('Could not connect to server.');
+    }
+  }
+
+  const [verifyingSolutionId, setVerifyingSolutionId] = useState<string | null>(null);
+
+  // Handle verify / unverify solution
+  async function handleVerifySolution(questionId: string, action?: 'unverify') {
+    setVerifyingSolutionId(questionId);
+    try {
+      const res = await fetch(`/api/questions/${questionId}/verify-solution`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        const reasons = body.reasons?.join('\n• ') ?? body.message ?? 'Could not verify solution.';
+        toast.warning(`Cannot verify solution yet:\n• ${reasons}`);
+        return;
+      }
+      setQuestions((prev) => prev.map((q) => (q.id === questionId ? body : q)));
+      if (action === 'unverify') {
+        toast.info(`Solution for Question ${body.humanCode ?? body.id} unverified.`, { duration: 2000 });
+      } else {
+        toast.success(`Solution for Question ${body.humanCode ?? body.id} verified!`, { duration: 2000 });
+      }
+    } catch {
+      toast.error('Could not connect to server.');
+    } finally {
+      setVerifyingSolutionId(null);
+    }
+  }
+
+  // Handle adding image placeholder to solution & arming for crop or file upload
+  async function handleAddSolutionImage(q: QuestionWithImages, file?: File) {
+    const existingTokens = new Set(q.imageTokens);
+    let idx = 1;
+    const rawPrefix = `sol_${q.sourceQno ?? q.humanCode?.replace(/[^a-zA-Z0-9]/g, '') ?? '1'}`;
+    let candidate = rawPrefix;
+    while (existingTokens.has(candidate)) {
+      idx++;
+      candidate = `${rawPrefix}_${idx}`;
+    }
+
+    const tokenPlaceholder = candidate;
+    const newSolution = (q.solution ? q.solution.trim() + '\n\n' : '') + `[[IMG:${tokenPlaceholder}]]`;
+
+    try {
+      const res = await fetch(`/api/questions/${q.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updatedAt: new Date(q.updatedAt).toISOString(),
+          solution: newSolution,
+        }),
+      });
+      const updated = await res.json();
+      if (!res.ok) {
+        toast.error(updated.message ?? 'Failed to add solution image placeholder.');
+        return;
+      }
+      setQuestions((prev) => prev.map((item) => (item.id === q.id ? updated : item)));
+
+      if (file) {
+        await handleDirectFileUpload(q.id, tokenPlaceholder, file);
+      } else {
+        setArmed({
+          questionId: q.id,
+          placeholderId: tokenPlaceholder,
+          sourceQno: q.sourceQno,
+        });
+        setSelectedQuestionId(q.id);
+        if (q.sourcePage) {
+          setTargetPdfPage(q.sourcePage);
+        }
+        toast.info(
+          `Armed [[IMG:${tokenPlaceholder}]] for Solution. Drag on the PDF to crop, or upload a file.`,
+          { duration: 2000 },
+        );
+      }
+    } catch {
+      toast.error('Network error adding solution image placeholder.');
     }
   }
 
@@ -283,7 +378,7 @@ export function PaperVerifyStudio({
         setQuestions((prev) => prev.filter((item) => item.id !== q.id));
         setImages((prev) => prev.filter((img) => img.questionId !== q.id));
         if (armed?.questionId === q.id) setArmed(null);
-        toast.success(`Deleted question ${q.humanCode ?? q.id}`);
+        toast.success(`Deleted question ${q.humanCode ?? q.id}`, { duration: 2000 });
         setDeleteTarget(null);
       } else {
         const body = await res.json().catch(() => ({}));
@@ -299,7 +394,7 @@ export function PaperVerifyStudio({
   // Handle inline update
   function handleQuestionUpdated(updatedQ: Question) {
     setQuestions((prev) => prev.map((q) => (q.id === updatedQ.id ? updatedQ : q)));
-    toast.success('Question updated.');
+    toast.success('Question updated.', { duration: 2000 });
   }
 
   return (
@@ -343,7 +438,10 @@ export function PaperVerifyStudio({
             Total: {totalCount}
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-            <CheckCircle2 className="size-3" /> {verifiedCount} Verified
+            <CheckCircle2 className="size-3" /> {verifiedCount} Qs Verified
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 dark:bg-teal-950/60 dark:text-teal-300">
+            <Sparkles className="size-3" /> {solutionVerifiedCount} Sols Verified
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
             {draftCount} Drafts
@@ -482,6 +580,18 @@ export function PaperVerifyStudio({
                   <option value="verified">Verified</option>
                 </Select>
 
+                <Select
+                  value={filterSolutionStatus}
+                  onChange={(e) => setFilterSolutionStatus(e.target.value)}
+                  className="h-8 text-xs py-0 w-32"
+                  aria-label="Filter Solution Status"
+                >
+                  <option value="all">All Solutions</option>
+                  <option value="verified">Sol. Verified</option>
+                  <option value="draft">Sol. Draft</option>
+                  <option value="missing">No Solution</option>
+                </Select>
+
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-2.5 top-2 size-3.5 text-slate-400" />
                   <Input
@@ -506,6 +616,7 @@ export function PaperVerifyStudio({
                     setFilterNeedsImage(false);
                     setFilterSubject('all');
                     setFilterStatus('all');
+                    setFilterSolutionStatus('all');
                     setSearchQuery('');
                   }}
                   className="mt-2 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
@@ -577,6 +688,11 @@ export function PaperVerifyStudio({
                         </Badge>
                         <Badge>{q.type.toUpperCase()}</Badge>
                         <Badge tone={q.status === 'verified' ? 'green' : 'amber'}>{q.status}</Badge>
+                        {q.solutionVerifiedAt && (
+                          <Badge tone="green" title="Worked solution is verified">
+                            <Sparkles className="size-2.5 mr-0.5 inline text-emerald-600 dark:text-emerald-300" /> Sol. Verified
+                          </Badge>
+                        )}
                         {q.difficulty && <Badge>D{q.difficulty}</Badge>}
                       </div>
 
@@ -905,10 +1021,200 @@ export function PaperVerifyStudio({
                       )}
                     </div>
 
+                    {/* Worked Solution Section */}
+                    <div className="mt-3.5 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                            <Sparkles className="size-3.5 text-brand-600 dark:text-brand-400" />
+                            <span>Worked Solution</span>
+                          </span>
+                          {q.solution?.trim() ? (
+                            q.solutionVerifiedAt ? (
+                              <Badge tone="green">
+                                <CheckCircle2 className="size-3 mr-1 inline" /> Solution Verified
+                              </Badge>
+                            ) : (
+                              <Badge tone="amber">Solution Draft</Badge>
+                            )
+                          ) : (
+                            <Badge tone="slate">No Solution</Badge>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {/* Verify Solution Button */}
+                          {q.solution?.trim() ? (
+                            <Button
+                              size="sm"
+                              variant={q.solutionVerifiedAt ? 'secondary' : 'accent'}
+                              onClick={() => handleVerifySolution(q.id, q.solutionVerifiedAt ? 'unverify' : undefined)}
+                              disabled={verifyingSolutionId === q.id}
+                              title={q.solutionVerifiedAt ? 'Click to unverify solution' : 'Verify solution'}
+                            >
+                              <CheckCircle2 className="size-3.5" />
+                              <span>{q.solutionVerifiedAt ? 'Solution Verified' : 'Verify Solution'}</span>
+                            </Button>
+                          ) : null}
+
+                          {/* Crop Solution Image from PDF */}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleAddSolutionImage(q)}
+                            title="Add image placeholder to solution & crop from PDF"
+                          >
+                            <Crop className="size-3.5" />
+                            <span>Crop Solution Image</span>
+                          </Button>
+
+                          {/* Direct Upload Image to Solution */}
+                          <label
+                            className="cursor-pointer inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                            title="Upload image file directly into solution"
+                          >
+                            <Upload className="size-3.5" />
+                            <span>Upload Image</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleAddSolutionImage(q, file);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+
+                          {!isExpanded && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setExpandedEditors((prev) => ({ ...prev, [q.id]: true }))}
+                            >
+                              {q.solution?.trim() ? 'Edit' : '+ Add Solution'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Solution Content Preview */}
+                      <div className="mt-2.5 text-xs text-slate-800 dark:text-slate-200">
+                        {q.solution?.trim() ? (
+                          <QuestionBody
+                            body={q.solution}
+                            renderImage={(placeholderId) => {
+                              const isResolved = q.resolvedImageMap.has(placeholderId);
+                              const thisArmed = armed?.questionId === q.id && armed?.placeholderId === placeholderId;
+                              const img = q.resolvedImageMap.get(placeholderId);
+                              const version = img?.createdAt ? new Date(img.createdAt).getTime() : Date.now();
+
+                              if (isResolved) {
+                                return (
+                                  <div className="my-2 inline-block rounded-md border border-slate-200 bg-white p-1.5 shadow-2xs dark:border-slate-700 dark:bg-slate-800">
+                                    <div className="flex items-center justify-between gap-2 px-1 pb-1 text-[11px] font-mono text-slate-500">
+                                      <span>[[IMG:{placeholderId}]]</span>
+                                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setArmed(
+                                              thisArmed
+                                                ? null
+                                                : { questionId: q.id, placeholderId, sourceQno: q.sourceQno },
+                                            );
+                                            setSelectedQuestionId(q.id);
+                                            if (q.sourcePage) setTargetPdfPage(q.sourcePage);
+                                          }}
+                                          className="text-brand-600 hover:underline dark:text-brand-400"
+                                        >
+                                          {thisArmed ? 'Cropping…' : 'Re-crop'}
+                                        </button>
+                                        <span>·</span>
+                                        <label className="cursor-pointer text-brand-600 hover:underline dark:text-brand-400">
+                                          Upload
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) handleDirectFileUpload(q.id, placeholderId, file);
+                                            }}
+                                          />
+                                        </label>
+                                        <span>·</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteImage(q.id, img!.id, placeholderId)}
+                                          className="text-red-500 hover:underline"
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <Image
+                                      src={`/api/files/images/${q.id}/${placeholderId}?v=${version}`}
+                                      alt={placeholderId}
+                                      width={260}
+                                      height={150}
+                                      unoptimized
+                                      className="max-h-52 w-auto rounded border border-slate-100 object-contain dark:border-slate-800"
+                                    />
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="my-2 inline-flex items-center gap-2 rounded-lg border border-dashed border-amber-400 bg-amber-50/80 p-2 text-xs dark:border-amber-700 dark:bg-amber-950/40">
+                                  <span className="font-mono font-semibold text-amber-900 dark:text-amber-200">
+                                    [[IMG:{placeholderId}]] (missing)
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setArmed(
+                                        thisArmed
+                                          ? null
+                                          : { questionId: q.id, placeholderId, sourceQno: q.sourceQno },
+                                      );
+                                      setSelectedQuestionId(q.id);
+                                      if (q.sourcePage) setTargetPdfPage(q.sourcePage);
+                                    }}
+                                    className="rounded bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-slate-950 hover:bg-amber-400"
+                                  >
+                                    {thisArmed ? 'Cropping…' : 'Crop from PDF'}
+                                  </button>
+                                  <label className="cursor-pointer rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-800 shadow-2xs hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200">
+                                    Upload
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleDirectFileUpload(q.id, placeholderId, file);
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              );
+                            }}
+                          />
+                        ) : (
+                          <p className="italic text-slate-400 dark:text-slate-500">
+                            No solution provided for this question. Click &quot;+ Add Solution&quot; or &quot;Crop Solution Image&quot; to add one.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Inline Expandable Question Editor */}
                     {isExpanded && (
                       <InlineQuestionEditor
                         question={q}
+                        resolvedImageMap={q.resolvedImageMap}
                         onSaved={(updated) => {
                           handleQuestionUpdated(updated);
                           setExpandedEditors((prev) => ({ ...prev, [q.id]: false }));
@@ -930,11 +1236,13 @@ export function PaperVerifyStudio({
 
 function InlineQuestionEditor({
   question,
+  resolvedImageMap,
   onSaved,
   onCancel,
   onJumpToPage,
 }: {
   question: Question;
+  resolvedImageMap?: Map<string, QuestionImage>;
   onSaved: (q: Question) => void;
   onCancel: () => void;
   onJumpToPage?: (page: number) => void;
@@ -1117,13 +1425,87 @@ function InlineQuestionEditor({
           />
         </div>
         <div>
-          <Label>Worked Solution</Label>
+          <Label>Expected Time (s)</Label>
           <Input
-            value={solution}
-            onChange={(e) => setSolution(e.target.value)}
-            placeholder="Solution notes"
+            type="number"
+            min={10}
+            value={expectedTimeS ?? ''}
+            onChange={(e) => setExpectedTimeS(e.target.value ? Number(e.target.value) : null)}
+            placeholder="e.g. 120"
           />
         </div>
+      </div>
+
+      {/* Worked Solution Section with LaTeX & Image Placeholder helper */}
+      <div className="space-y-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label className="mb-0">Worked Solution (LaTeX & [[IMG:...]] enabled)</Label>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                const prefix = `sol_${question.sourceQno ?? '1'}`;
+                setSolution((prev) => (prev ? prev.trim() + '\n\n' : '') + `[[IMG:${prefix}]]`);
+              }}
+              className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Insert image placeholder tag"
+            >
+              <ImagePlus className="size-3 text-brand-600 dark:text-brand-400" />
+              <span>+ Insert [[IMG:sol_{question.sourceQno ?? '1'}]]</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSolution((prev) => (prev ? prev + ' ' : '') + '$$ \\text{formula} $$');
+              }}
+              className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Insert display math snippet"
+            >
+              <span>+ Math $$</span>
+            </button>
+          </div>
+        </div>
+        <Textarea
+          value={solution}
+          onChange={(e) => setSolution(e.target.value)}
+          rows={5}
+          className="font-mono text-xs"
+          placeholder="Step 1: Write detailed solution with LaTeX math and image tags like [[IMG:sol_1]]"
+        />
+
+        {solution.trim() ? (
+          <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Solution KaTeX & Image Live Preview:
+            </p>
+            <div className="text-xs text-slate-800 dark:text-slate-200">
+              <QuestionBody
+                body={solution}
+                renderImage={(placeholderId) => {
+                  const img = resolvedImageMap?.get(placeholderId);
+                  if (img) {
+                    return (
+                      <Image
+                        src={`/api/files/images/${question.id}/${placeholderId}`}
+                        alt={placeholderId}
+                        width={180}
+                        height={100}
+                        unoptimized
+                        className="my-1 inline-block max-h-36 w-auto rounded border object-contain"
+                      />
+                    );
+                  }
+                  return (
+                    <span className="mx-1 inline-flex items-center gap-1 rounded border border-dashed border-amber-400 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-200">
+                      <ImagePlus className="size-2.5" />
+                      <span>[[IMG:{placeholderId}]]</span>
+                    </span>
+                  );
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

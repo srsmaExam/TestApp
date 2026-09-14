@@ -136,12 +136,15 @@ export const questions = pgTable(
     lastEditedBy: uuid('last_edited_by').references(() => profiles.id),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     verifiedBy: uuid('verified_by').references(() => profiles.id),
+    solutionVerifiedAt: timestamp('solution_verified_at', { withTimezone: true }),
+    solutionVerifiedBy: uuid('solution_verified_by').references(() => profiles.id),
   },
   (t) => [
     index('questions_subject_status_idx').on(t.subject, t.status),
     index('questions_chapter_topic_idx').on(t.chapter, t.topic),
     index('questions_difficulty_idx').on(t.difficulty),
     index('questions_paper_idx').on(t.paperId, t.sourceQno),
+    index('questions_paper_sol_verif_idx').on(t.paperId, t.solutionVerifiedAt),
   ],
 );
 

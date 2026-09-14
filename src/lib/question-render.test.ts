@@ -23,6 +23,16 @@ describe('extractAllImageTokens', () => {
   it('returns an empty array when neither body nor options reference an image', () => {
     expect(extractAllImageTokens('plain body', ['plain option'])).toEqual([]);
   });
+
+  it('finds a token that lives inside the solution', () => {
+    expect(extractAllImageTokens('plain body', ['plain option'], 'see step 2 in [[IMG:sol_fig1]]')).toEqual(['sol_fig1']);
+  });
+
+  it('merges body, option, and solution tokens without duplicates', () => {
+    expect(
+      extractAllImageTokens('[[IMG:fig1]]', ['[[IMG:fig2]]'], '[[IMG:fig1]] and [[IMG:fig3]]'),
+    ).toEqual(['fig1', 'fig2', 'fig3']);
+  });
 });
 
 describe('parseBody', () => {

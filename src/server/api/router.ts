@@ -57,6 +57,7 @@ import * as questionsIngest from './questions/ingest';
 import * as questionsTaxonomy from './questions/taxonomy';
 import * as questionsById from './questions/by-id';
 import * as questionsVerify from './questions/verify';
+import * as questionsVerifySolution from './questions/verify-solution';
 import * as questionsImages from './questions/images';
 import * as questionsImageById from './questions/image-by-id';
 
@@ -177,6 +178,7 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     // /api/questions/[id]/*
     if (s0 === 'questions') {
       if (s2 === 'verify') return { handler: questionsVerify, params: { id: s1 }, pattern: '/api/questions/[id]/verify' };
+      if (s2 === 'verify-solution') return { handler: questionsVerifySolution, params: { id: s1 }, pattern: '/api/questions/[id]/verify-solution' };
       if (s2 === 'images') return { handler: questionsImages, params: { id: s1 }, pattern: '/api/questions/[id]/images' };
     }
     // /api/papers/[id]/*
@@ -279,6 +281,7 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/questions/ingest', verbs: ['POST'] },
   { pattern: '/api/questions/taxonomy', verbs: ['GET'] },
   { pattern: '/api/questions/[id]/verify', verbs: ['POST'] },
+  { pattern: '/api/questions/[id]/verify-solution', verbs: ['POST'] },
   { pattern: '/api/questions/[id]/images', verbs: ['GET', 'POST'] },
   { pattern: '/api/questions/[id]/images/[imageId]', verbs: ['DELETE'] },
   { pattern: '/api/papers', verbs: ['GET', 'POST'] },

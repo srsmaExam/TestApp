@@ -17,8 +17,14 @@ export function extractImageTokens(body: string): string[] {
  * the editor's unresolved-image count) must scan both, or an image placeholder
  * living only inside an option silently bypasses whichever check forgot it.
  */
-export function extractAllImageTokens(body: string, optionBodies: string[]): string[] {
-  return [...new Set([...extractImageTokens(body), ...optionBodies.flatMap(extractImageTokens)])];
+export function extractAllImageTokens(
+  body: string,
+  optionBodies: string[],
+  solutionBody?: string | null,
+): string[] {
+  const allTexts = [body, ...optionBodies];
+  if (solutionBody) allTexts.push(solutionBody);
+  return [...new Set(allTexts.flatMap(extractImageTokens))];
 }
 
 export type TableAlignment = 'left' | 'center' | 'right';

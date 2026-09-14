@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight, Check, X, Lock } from 'lucide-react';
 import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Label } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
 import { QuestionBody } from '@/components/Katex';
@@ -49,6 +49,7 @@ type ResultData = {
   rank: number;
   percentile: number;
   totalParticipants: number;
+  isReportUnlocked?: boolean;
   summary: {
     totalQuestions: number;
     correctCount: number;
@@ -92,10 +93,23 @@ export function ResultReviewClient({
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`srsma_report_${attemptId}`);
+      const saved =
+        localStorage.getItem(`srsma_report_${attemptId}`) ||
+        localStorage.getItem('srsma_report_unlocked');
       if (saved) setReportSubmitted(true);
     }
   }, [attemptId]);
+
+  useEffect(() => {
+    if (data?.isReportUnlocked) {
+      setReportSubmitted(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('srsma_report_unlocked', 'true');
+        localStorage.setItem(`srsma_report_${attemptId}`, 'true');
+        window.dispatchEvent(new Event('srsma_report_unlocked'));
+      }
+    }
+  }, [data?.isReportUnlocked, attemptId]);
 
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +119,12 @@ export function ResultReviewClient({
     }
     if (board === 'Other' && !otherBoard.trim()) {
       setReportError('Please enter your board name.');
+      return;
+    }
+    if (!whatsappConsent) {
+      setReportError(
+        'I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report is required.',
+      );
       return;
     }
     setSubmittingReport(true);
@@ -118,7 +138,8 @@ export function ResultReviewClient({
           city: city.trim(),
           board,
           otherBoard: board === 'Other' ? otherBoard.trim() : undefined,
-          whatsappConsent,
+          whatsappConsent: true,
+          attemptId,
         }),
       });
 
@@ -130,10 +151,34 @@ export function ResultReviewClient({
       setReportSubmitted(true);
       setSubmittedSuccess(true);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('srsma_report_unlocked', 'true');
         localStorage.setItem(`srsma_report_${attemptId}`, 'true');
+        window.dispatchEvent(new Event('srsma_report_unlocked'));
+      }
+
+      // If response includes solutions, update questions in state instantaneously
+      if (json.solutions) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            isReportUnlocked: true,
+            questions: prev.questions.map((q) => ({
+              ...q,
+              solution: json.solutions[q.id] !== undefined ? json.solutions[q.id] : q.solution,
+            })),
+          };
+        });
+      } else {
+        // Fallback: re-fetch result to ensure solutions are populated
+        const refreshRes = await fetch(`/api/attempts/${attemptId}/result`);
+        if (refreshRes.ok) {
+          const freshData = await refreshRes.json();
+          setData(freshData);
+        }
       }
     } catch (err: any) {
-      setReportError(err.message || 'Could not submit report request.');
+      setReportError(err.message || 'Could not unlock solutions and report.');
     } finally {
       setSubmittingReport(false);
     }
@@ -338,45 +383,68 @@ export function ResultReviewClient({
           })}
       </div>
 
-      {/* Detailed Report Prompt Card */}
-      <div className="relative overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-6 shadow-sm dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-brand-950/40 dark:to-orange-950/30">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-400/20 dark:text-amber-300">
-                <Sparkles className="size-3" />
-                Personalized Diagnostic Analysis
-              </span>
-              {reportSubmitted && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  <CheckCircle2 className="size-3" />
-                  Report Requested
+      {/* Multiple Prompts - Hero Prompt Banner / Celebration Banner */}
+      {!reportSubmitted ? (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-orange-500/15 p-6 shadow-sm dark:border-amber-500/40 dark:bg-gradient-to-r dark:from-amber-950/50 dark:via-brand-950/50 dark:to-orange-950/40">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-400/20 dark:text-amber-300">
+                  <Lock className="size-3" />
+                  Solutions &amp; Reports Locked
                 </span>
-              )}
+              </div>
+              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                Unlock Complete Step-by-Step Solutions &amp; Detailed Diagnostic Report
+              </h2>
+              <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-300">
+                Get instantaneous access to step-by-step faculty solutions for every question and receive your comprehensive performance diagnostics sent to your WhatsApp.
+              </p>
             </div>
-            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-              {reportSubmitted
-                ? 'Your Detailed Report is Being Prepared!'
-                : 'Unlock Your Detailed Performance & Improvement Report'}
-            </h2>
-            <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-300">
-              {reportSubmitted
-                ? 'Our mentors are compiling your weak-area breakdown and recommendations to send to your WhatsApp number.'
-                : 'Discover your subject-wise gaps, time-management efficiency, and tailored preparation roadmap sent to your WhatsApp.'}
-            </p>
+
+            <Button
+              type="button"
+              onClick={() => setShowReportModal(true)}
+              className="shrink-0 rounded-xl bg-amber-500 px-5 py-3 font-bold text-slate-950 shadow-md transition hover:bg-amber-400 hover:shadow-amber-500/20 dark:bg-amber-400 dark:hover:bg-amber-300"
+            >
+              <FileText className="mr-2 size-4" />
+              Access Solutions &amp; Report
+              <ArrowRight className="ml-1.5 size-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-6 shadow-sm dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
+          <div className="flex items-center gap-3.5">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
+              <CheckCircle2 className="size-7" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
+                  <Sparkles className="size-3" />
+                  Solutions &amp; Report Unlocked
+                </span>
+              </div>
+              <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                Detailed Report Unlocked &amp; Solutions Available!
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Review step-by-step solutions below. Your complete personalized diagnostic report is ready to view and has also been sent to your WhatsApp.
+              </p>
+            </div>
           </div>
 
-          <Button
-            type="button"
-            onClick={() => setShowReportModal(true)}
-            className="shrink-0 rounded-xl bg-amber-500 px-5 py-2.5 font-bold text-slate-950 shadow-md transition hover:bg-amber-400 hover:shadow-amber-500/20 dark:bg-amber-400 dark:hover:bg-amber-300"
+          <Link
+            href="/student/analytics"
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white shadow-md hover:bg-emerald-500 transition"
           >
-            <FileText className="mr-2 size-4" />
-            {reportSubmitted ? 'Update Details' : 'View Detailed Report'}
-            <ArrowRight className="ml-1.5 size-4" />
-          </Button>
+            <FileText className="size-4" />
+            Report Unlocked, View Now
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
-      </div>
+      )}
 
       {/* 3. Detailed Question Solutions Section */}
       <div className="space-y-4">
@@ -506,106 +574,170 @@ export function ResultReviewClient({
                   </div>
 
                   {/* Option / Answer Review */}
-                  <div className="space-y-2 pt-2">
+                  <div className="space-y-3 pt-3">
                     {q.type === 'mcq' ? (
-                      <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-2">
                         {q.options.map((opt) => {
                           const isStudentPick = q.response?.key === opt.key;
                           const isCorrectKey =
                             q.answer && 'key' in q.answer && q.answer.key === opt.key;
 
-                          let optionClass =
-                            'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-                          if (isCorrectKey) {
-                            optionClass =
-                              'border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold ring-1 ring-emerald-500 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-700';
-                          } else if (isStudentPick && !q.isCorrect) {
-                            optionClass =
-                              'border-red-500 bg-red-50 text-red-900 font-semibold ring-1 ring-red-500 dark:border-red-600 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-700';
+                          const isBoth = isStudentPick && isCorrectKey;
+                          const isWrongPick = isStudentPick && !isCorrectKey;
+
+                          let cardClass =
+                            'border border-slate-700/80 bg-slate-50/50 text-slate-800 dark:border-slate-800 dark:bg-[#0c1220] dark:text-slate-200';
+                          let circleClass =
+                            'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
+
+                          if (isBoth || isCorrectKey) {
+                            cardClass =
+                              'border-2 border-emerald-500 bg-emerald-50/70 text-slate-900 ring-1 ring-emerald-500/50 dark:border-emerald-500 dark:bg-emerald-950/30 dark:text-slate-100';
+                            circleClass = 'bg-[#00c950] text-white font-bold shadow-xs';
+                          } else if (isWrongPick) {
+                            cardClass =
+                              'border-2 border-red-500 bg-red-50/70 text-slate-900 ring-1 ring-red-500/50 dark:border-red-500 dark:bg-red-950/30 dark:text-slate-100';
+                            circleClass = 'bg-[#ff334b] text-white font-bold shadow-xs';
                           }
 
                           return (
                             <div
                               key={opt.key}
-                              className={`flex items-start gap-2.5 rounded-lg border p-3 text-xs ${optionClass}`}
+                              className={`relative flex min-h-[58px] items-center justify-between rounded-xl p-4 transition-all ${cardClass}`}
                             >
-                              <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-current font-bold">
-                                {opt.key}
-                              </span>
-                              <div className="flex-1">
-                                <QuestionBody
-                                  body={opt.body}
-                                  renderImage={(imgId) => (
-                                    <img
-                                      src={`/api/files/images/${q.id}/${imgId}`}
-                                      alt="Option figure"
-                                      className="my-1 max-h-24 object-contain"
-                                    />
-                                  )}
-                                />
+                              {/* Top-Right Badge matching user mockups */}
+                              {isBoth ? (
+                                <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#00c950] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                  YOUR ANSWER | CORRECT ANSWER
+                                </span>
+                              ) : isWrongPick ? (
+                                <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#ff334b] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                  YOUR ANSWER
+                                </span>
+                              ) : isCorrectKey ? (
+                                <span className="absolute -top-2.5 right-3 inline-flex items-center rounded-full bg-[#00c950] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                  CORRECT ANSWER
+                                </span>
+                              ) : null}
+
+                              {/* Left & Middle: Letter Circle + Content */}
+                              <div className="flex flex-1 items-center gap-3 pr-2">
+                                <span
+                                  className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleClass}`}
+                                >
+                                  {opt.key}
+                                </span>
+                                <div className="flex-1 text-sm font-medium leading-relaxed">
+                                  <QuestionBody
+                                    body={opt.body}
+                                    renderImage={(imgId) => (
+                                      <img
+                                        src={`/api/files/images/${q.id}/${imgId}`}
+                                        alt="Option figure"
+                                        className="my-1 max-h-24 object-contain"
+                                      />
+                                    )}
+                                  />
+                                </div>
                               </div>
-                              {isCorrectKey && (
-                                <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                                  Correct Key
-                                </span>
-                              )}
-                              {isStudentPick && !isCorrectKey && (
-                                <span className="rounded bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                                  Your Choice
-                                </span>
-                              )}
+
+                              {/* Right End: Check or X Icon */}
+                              {isBoth || isCorrectKey ? (
+                                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#00c950] text-white shadow-xs">
+                                  <Check className="size-4 stroke-[3]" />
+                                </div>
+                              ) : isWrongPick ? (
+                                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#ff334b] text-white shadow-xs">
+                                  <X className="size-4 stroke-[3]" />
+                                </div>
+                              ) : null}
                             </div>
                           );
                         })}
                       </div>
                     ) : (
                       /* Integer / Numerical Review */
-                      <div className="flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-950">
-                        <div>
-                          <span className="text-slate-500 dark:text-slate-400">Your Response: </span>
-                          <strong
-                            className={`tnum ${
+                      <div className="flex flex-wrap items-center gap-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs dark:border-slate-800 dark:bg-[#0d1424]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-500 dark:text-slate-400">Your Response:</span>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-sm font-bold ${
                               !q.isAttempted
-                                ? 'text-slate-500 dark:text-slate-400'
+                                ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                 : q.isCorrect
-                                ? 'text-emerald-700 dark:text-emerald-400'
-                                : 'text-red-600 dark:text-red-400'
+                                ? 'border border-emerald-500 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                                : 'border border-red-500 bg-red-500/20 text-red-700 dark:text-red-400'
                             }`}
                           >
-                            {q.isAttempted && q.response?.value !== undefined ? String(q.response.value) : 'None'}
-                          </strong>
+                            {q.isAttempted && q.response?.value !== undefined ? String(q.response.value) : 'None (Unattempted)'}
+                            {q.isAttempted && (q.isCorrect ? <Check className="size-3.5" /> : <X className="size-3.5" />)}
+                          </span>
                         </div>
-                        <div>
-                          <span className="text-slate-500 dark:text-slate-400">Correct Answer: </span>
-                          <strong className="tnum text-emerald-700 dark:text-emerald-400">
+
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-500 dark:text-slate-400">Correct Answer:</span>
+                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500 bg-emerald-500/20 px-2.5 py-1 font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">
                             {q.answer && 'value' in q.answer
                               ? q.answer.value
                               : q.answer && 'min' in q.answer
                               ? `${q.answer.min} to ${q.answer.max}`
                               : '-'}
-                          </strong>
+                            <Check className="size-3.5" />
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Worked Solution */}
-                  {q.solution && (
-                    <div className="rounded-lg border border-brand-100 bg-brand-50/50 p-4 text-xs text-slate-800 dark:border-brand-900 dark:bg-brand-950/40 dark:text-slate-200">
-                      <div className="mb-1 flex items-center gap-1.5 font-bold text-brand-900 dark:text-brand-300">
-                        <Sparkles className="size-3.5 text-accent-500" />
-                        Step-by-Step Solution:
+                  {/* Worked Solution / Inline Lock Teaser */}
+                  {reportSubmitted ? (
+                    q.solution ? (
+                      <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-xs text-slate-800 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-slate-200">
+                        <div className="mb-2 flex items-center gap-1.5 font-bold text-brand-900 dark:text-brand-300">
+                          <Sparkles className="size-4 text-accent-500" />
+                          Step-by-Step Solution:
+                        </div>
+                        <QuestionBody
+                          body={q.solution}
+                          renderImage={(imgId) => (
+                            <img
+                              src={`/api/files/images/${q.id}/${imgId}`}
+                              alt="Solution figure"
+                              className="my-2 max-h-48 object-contain"
+                            />
+                          )}
+                        />
                       </div>
-                      <QuestionBody
-                        body={q.solution}
-                        renderImage={(imgId) => (
-                          <img
-                            src={`/api/files/images/${q.id}/${imgId}`}
-                            alt="Solution figure"
-                            className="my-2 max-h-48 object-contain"
-                          />
-                        )}
-                      />
+                    ) : (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50">
+                        No step-by-step solution provided for this question.
+                      </div>
+                    )
+                  ) : (
+                    /* Locked Solution Prompt in question card */
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-3.5 dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-brand-950/30 dark:to-orange-950/20">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                          <Lock className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            Step-by-Step Solution Locked
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Unlock complete worked derivations &amp; chapter diagnostics instantly.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setShowReportModal(true)}
+                        className="shrink-0 rounded-lg bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300"
+                      >
+                        <FileText className="mr-1.5 size-3.5" />
+                        Access Solutions &amp; Report
+                      </Button>
                     </div>
                   )}
                 </CardBody>
@@ -619,19 +751,44 @@ export function ResultReviewClient({
             </div>
           )}
         </div>
+
+        {/* Sticky bottom quick-unlock bar when scrolling */}
+        {!reportSubmitted && (
+          <div className="sticky bottom-4 z-20 mx-auto max-w-2xl rounded-2xl border border-amber-400/80 bg-slate-950/95 p-4 text-white shadow-2xl backdrop-blur-md dark:border-amber-500/50">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 text-center sm:text-left">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/20 text-amber-400">
+                  <Lock className="size-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Full Solutions &amp; Detailed Report Locked</p>
+                  <p className="text-[11px] text-slate-400">Enter your details to reveal all question solutions and unlock report.</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowReportModal(true)}
+                className="shrink-0 rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950 hover:bg-amber-300"
+              >
+                <FileText className="mr-1.5 size-4" />
+                Unlock Solutions Now
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Detailed Report Request Modal */}
-      {/* Detailed Report Request Modal */}
+      {/* Detailed Report Request & Solution Unlock Modal */}
       <Dialog
         isOpen={showReportModal}
         onClose={() => !submittingReport && setShowReportModal(false)}
         size="md"
-        title={submittedSuccess ? undefined : 'Get Your Detailed Diagnostic Report'}
+        title={submittedSuccess ? undefined : 'Unlock Solutions & Detailed Diagnostic Report'}
         description={
           submittedSuccess
             ? undefined
-            : 'Fill in your city and curriculum board so we can customize your performance analysis.'
+            : 'Enter your city and board to instantly reveal all step-by-step solutions and unlock your detailed report.'
         }
         footer={
           submittedSuccess ? null : (
@@ -650,9 +807,9 @@ export function ResultReviewClient({
                 form="report-details-form"
                 size="sm"
                 disabled={submittingReport}
-                className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600"
+                className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600 font-bold"
               >
-                {submittingReport ? 'Sending…' : 'Send My Detailed Report'}
+                {submittingReport ? 'Unlocking…' : 'Unlock Solutions & Report'}
               </Button>
             </div>
           )
@@ -664,19 +821,28 @@ export function ResultReviewClient({
               <CheckCircle2 className="size-8" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              Detailed Report Requested!
+              Detailed Report &amp; Solutions Unlocked!
             </h3>
             <p className="mx-auto max-w-sm text-xs text-slate-600 dark:text-slate-300">
-              Thank you! Your personalized diagnostic report is being compiled by Shri Ram Smart Minds Academy faculty and will be sent to your WhatsApp number.
+              Your detailed report has been sent to your WhatsApp number. All step-by-step solutions and the Report tab are now fully unlocked!
             </p>
-            <div className="pt-2">
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <Link
+                href="/student/analytics"
+                className="inline-flex items-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 shadow-md transition"
+              >
+                <FileText className="mr-1.5 size-4" />
+                Report Unlocked, View Now
+                <ArrowRight className="ml-1.5 size-4" />
+              </Link>
               <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setShowReportModal(false);
                   setSubmittedSuccess(false);
                 }}
-                className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600"
               >
                 Review Solutions Below
               </Button>
@@ -738,15 +904,17 @@ export function ResultReviewClient({
               </div>
             )}
 
-            <div className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-300/60 bg-amber-50/50 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/20">
               <input
                 id="report-whatsapp-consent"
                 type="checkbox"
+                required
                 checked={whatsappConsent}
                 onChange={(e) => setWhatsappConsent(e.target.checked)}
                 className="mt-0.5 size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900"
               />
-              <Label htmlFor="report-whatsapp-consent" className="cursor-pointer text-xs leading-snug text-slate-600 dark:text-slate-300">
+              <Label htmlFor="report-whatsapp-consent" className="cursor-pointer text-xs font-medium leading-snug text-slate-700 dark:text-slate-200">
+                <strong className="text-red-500 mr-0.5">*</strong>
                 I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report.
               </Label>
             </div>

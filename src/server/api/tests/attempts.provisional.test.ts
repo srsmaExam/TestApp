@@ -210,7 +210,7 @@ describe('FBR-03 exploit path: provisional account entitlement', () => {
     expect(serialized).not.toContain('ANOTHER_SECRET_SOLUTION');
 
     for (const q of resultBody.questions) {
-      expect(q).not.toHaveProperty('answer');
+      expect(q).toHaveProperty('answer');
       expect(q).not.toHaveProperty('solution');
     }
   });

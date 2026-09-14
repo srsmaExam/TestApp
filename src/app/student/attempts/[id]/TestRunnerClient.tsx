@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { get, set } from 'idb-keyval';
 import {
@@ -758,9 +759,16 @@ export function TestRunnerClient({
       {/* 1. CBT Header Bar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3">
-          <span className="flex size-8 items-center justify-center rounded-md bg-brand-700 text-xs font-bold text-white" title="Board Readiness Challenge">
-            BRC
-          </span>
+          <div className="flex shrink-0 items-center">
+            <Image
+              src="/brand/SRSMALogo.jpeg"
+              alt="SRSMA Logo"
+              width={38}
+              height={38}
+              priority
+              className="h-9 w-auto rounded object-contain shadow-xs ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+          </div>
           <div>
             <h1 className="line-clamp-1 text-sm font-bold text-slate-900 dark:text-slate-100">{testTitle}</h1>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">

@@ -7,6 +7,9 @@ import {
   RotateCw,
   Target,
   TrendingUp,
+  Lock,
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -39,9 +42,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Input,
+  Label,
 } from '@/components/ui';
+import { Dialog } from '@/components/Dialog';
 
 interface StudentAnalyticsData {
+  isReportUnlocked?: boolean;
   totalAttempts: number;
   avgScore: number;
   avgPercentile: number | null;
@@ -74,6 +81,15 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Unlock Modal State
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [city, setCity] = useState('');
+  const [board, setBoard] = useState('CBSE Board');
+  const [otherBoard, setOtherBoard] = useState('');
+  const [whatsappConsent, setWhatsappConsent] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+
   async function loadData() {
     try {
       setLoading(true);
@@ -96,6 +112,57 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
     loadData();
   }, []);
 
+  async function handleUnlockSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!city.trim()) {
+      setUnlockError('Please enter your city.');
+      return;
+    }
+    if (board === 'Other' && !otherBoard.trim()) {
+      setUnlockError('Please enter your board name.');
+      return;
+    }
+    if (!whatsappConsent) {
+      setUnlockError(
+        'I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report is required.',
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    setUnlockError(null);
+
+    try {
+      const res = await fetch('/api/student/report-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: city.trim(),
+          board,
+          otherBoard: board === 'Other' ? otherBoard.trim() : undefined,
+          whatsappConsent: true,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || 'Failed to unlock detailed report.');
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('srsma_report_unlocked', 'true');
+        window.dispatchEvent(new Event('srsma_report_unlocked'));
+      }
+
+      setShowUnlockModal(false);
+      loadData();
+    } catch (err: any) {
+      setUnlockError(err.message || 'Could not unlock report.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
@@ -115,6 +182,149 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
           <RotateCw className="mr-1.5 size-3.5" />
           Retry
         </Button>
+      </div>
+    );
+  }
+
+  const isLocalUnlocked =
+    typeof window !== 'undefined' && localStorage.getItem('srsma_report_unlocked') === 'true';
+  const isLocked = data.isReportUnlocked === false && !isLocalUnlocked;
+
+  if (isLocked) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 py-8">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            Performance &amp; Diagnostic Report
+          </h1>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Personalized insights, percentile trends, and curriculum gap analysis.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-br from-amber-500/15 via-brand-950/40 to-slate-900 p-8 text-center shadow-lg dark:border-amber-500/40">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500 shadow-inner">
+            <Lock className="size-8" />
+          </div>
+          <h2 className="mt-4 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            Your Detailed Diagnostic Report is Locked
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-xs text-slate-600 sm:text-sm dark:text-slate-300">
+            Unlock your personalized percentile trends, subject accuracy radars, and chapter-by-chapter mastery breakdown.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              onClick={() => setShowUnlockModal(true)}
+              className="rounded-xl bg-amber-500 px-6 py-3 font-bold text-slate-950 shadow-md hover:bg-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300"
+            >
+              <FileText className="mr-2 size-4" />
+              Unlock Detailed Report
+            </Button>
+          </div>
+        </div>
+
+        {/* Modal */}
+        <Dialog
+          isOpen={showUnlockModal}
+          onClose={() => !submitting && setShowUnlockModal(false)}
+          size="md"
+          title="Unlock Your Detailed Diagnostic Report"
+          description="Enter your city and curriculum board so we can tailor your diagnostic report and send it to your WhatsApp."
+          footer={
+            <div className="flex w-full justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setShowUnlockModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="unlock-report-form"
+                size="sm"
+                disabled={submitting}
+                className="bg-brand-700 hover:bg-brand-800 dark:bg-brand-600 font-bold"
+              >
+                {submitting ? 'Unlocking…' : 'Unlock Detailed Report'}
+              </Button>
+            </div>
+          }
+        >
+          <form id="unlock-report-form" onSubmit={handleUnlockSubmit} className="space-y-4 py-2">
+            {unlockError && (
+              <Alert tone="red" className="text-xs">
+                {unlockError}
+              </Alert>
+            )}
+
+            <div>
+              <Label htmlFor="unlock-city" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                City <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="unlock-city"
+                required
+                autoFocus
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Hyderabad"
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="unlock-board" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Your Board <span className="text-red-500">*</span>
+              </Label>
+              <select
+                id="unlock-board"
+                value={board}
+                onChange={(e) => setBoard(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="State Board">State Board</option>
+                <option value="CBSE Board">CBSE Board</option>
+                <option value="ICSE Board">ICSE Board</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {board === 'Other' && (
+              <div>
+                <Label htmlFor="unlock-other-board" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Specify Your Board <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="unlock-other-board"
+                  required
+                  value={otherBoard}
+                  onChange={(e) => setOtherBoard(e.target.value)}
+                  placeholder="e.g. Cambridge, IB, etc."
+                  className="text-sm"
+                />
+              </div>
+            )}
+
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-300/60 bg-amber-50/50 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/20">
+              <input
+                id="unlock-whatsapp-consent"
+                type="checkbox"
+                required
+                checked={whatsappConsent}
+                onChange={(e) => setWhatsappConsent(e.target.checked)}
+                className="mt-0.5 size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900"
+              />
+              <Label htmlFor="unlock-whatsapp-consent" className="cursor-pointer text-xs font-medium leading-snug text-slate-700 dark:text-slate-200">
+                <strong className="text-red-500 mr-0.5">*</strong>
+                I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report.
+              </Label>
+            </div>
+          </form>
+        </Dialog>
       </div>
     );
   }

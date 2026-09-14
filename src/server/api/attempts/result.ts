@@ -2,7 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { apiSession } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
-import { attemptAnswers, attempts, questions, testQuestions, tests, type QuestionOption } from '@/db/schema';
+import { attemptAnswers, attempts, profiles, questions, testQuestions, tests, type QuestionOption } from '@/db/schema';
 import { isGradeableResponse } from '@/lib/grading';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -53,7 +53,19 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .from(attempts)
     .where(and(eq(attempts.testId, attempt.testId), sql`status <> 'in_progress'`));
 
-  const isProvisionalViewer = session.role === 'student' && session.isProvisional === true;
+  const [studentProfile] = await db
+    .select({
+      isProvisional: profiles.isProvisional,
+      whatsappConsent: profiles.whatsappConsent,
+      city: profiles.city,
+    })
+    .from(profiles)
+    .where(eq(profiles.id, attempt.studentId));
+
+  const hasUnlockedSolutions =
+    session.role === 'teacher' ||
+    !studentProfile?.isProvisional ||
+    Boolean(studentProfile?.whatsappConsent && studentProfile?.city);
 
   const qIds = attempt.questionOrder;
   const optionOrders = (attempt.optionOrders as Record<string, string[]>) ?? {};
@@ -145,11 +157,12 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       if (isCorrect) subjectScores[q.subject].correct += 1;
     }
 
-    // FBR-03: a provisional (self-service phone-login) account must never
-    // receive the answer key or worked solution — that is the entire question
-    // bank's confidentiality, one attempt at a time. Omit the keys entirely
-    // rather than sending `null`, which would still confirm the field exists.
-    const disclosure = isProvisionalViewer ? {} : { answer: q.answer, solution: q.solution };
+    // The correct option key is disclosed so candidates can see green correct answers on the scorecard.
+    // Worked step-by-step solutions are disclosed once the student unlocks their report via WhatsApp consent.
+    const disclosure = {
+      answer: q.answer,
+      ...(hasUnlockedSolutions ? { solution: q.solution } : {}),
+    };
 
     return {
       id: q.id,
@@ -204,6 +217,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       accuracy,
       subjectScores,
     },
+    isReportUnlocked: hasUnlockedSolutions,
     questions: reviewItems,
   });
 });

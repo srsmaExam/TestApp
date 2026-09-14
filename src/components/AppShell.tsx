@@ -6,7 +6,13 @@ import { LogoutButton } from './LogoutButton';
 import { NavLink } from './NavLink';
 import { ThemeToggle } from './ThemeToggle';
 
-export type NavItem = { href: string; label: string; exact?: boolean };
+export type NavItem = {
+  href: string;
+  label: string;
+  exact?: boolean;
+  isLocked?: boolean;
+  lockKey?: string;
+};
 
 export function AppShell({
   session,
@@ -37,7 +43,13 @@ export function AppShell({
 
           <nav className="hidden items-center gap-1 md:flex">
             {nav.map((item) => (
-              <NavLink key={item.href} href={item.href} exact={item.exact}>
+              <NavLink
+                key={item.href}
+                href={item.href}
+                exact={item.exact}
+                isLocked={item.isLocked}
+                lockKey={item.lockKey}
+              >
                 {item.label}
               </NavLink>
             ))}
@@ -56,7 +68,13 @@ export function AppShell({
         {/* Nav collapses to a scrollable strip rather than a hamburger */}
         <nav className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-4 pb-1.5 pt-1 md:hidden dark:border-slate-800">
           {nav.map((item) => (
-            <NavLink key={item.href} href={item.href} exact={item.exact}>
+            <NavLink
+              key={item.href}
+              href={item.href}
+              exact={item.exact}
+              isLocked={item.isLocked}
+              lockKey={item.lockKey}
+            >
               {item.label}
             </NavLink>
           ))}

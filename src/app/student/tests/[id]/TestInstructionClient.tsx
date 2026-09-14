@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Clock, HelpCircle, Play } from 'lucide-react';
@@ -94,13 +95,25 @@ export function TestInstructionClient({
       </div>
 
       {/* Header Info */}
-      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-400">
-            Board Readiness Challenge CBT Format
-          </span>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{test.title}</h1>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Candidate: <strong className="text-slate-800 dark:text-slate-200">{studentName}</strong></p>
+      <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center gap-3.5">
+          <div className="flex shrink-0 items-center">
+            <Image
+              src="/brand/SRSMALogo.jpeg"
+              alt="SRSMA Logo"
+              width={48}
+              height={48}
+              priority
+              className="h-12 w-auto rounded-lg object-contain shadow-xs ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+          </div>
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-400">
+              Shri Ram Smart Minds Academy — CBT Exam Format
+            </span>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{test.title}</h1>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Candidate: <strong className="text-slate-800 dark:text-slate-200">{studentName}</strong></p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-700 dark:text-slate-300">

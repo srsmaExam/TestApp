@@ -2,11 +2,24 @@ import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { apiStudent } from '@/lib/auth';
 import { json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
-import { attemptAnswers, attempts, questions, tests } from '@/db/schema';
+import { attemptAnswers, attempts, profiles, questions, tests } from '@/db/schema';
 
 export const GET = withApi(async () => {
   const session = await apiStudent();
   const db = await getDb();
+
+  const [profile] = await db
+    .select({
+      whatsappConsent: profiles.whatsappConsent,
+      city: profiles.city,
+      isProvisional: profiles.isProvisional,
+    })
+    .from(profiles)
+    .where(eq(profiles.id, session.userId));
+
+  const isReportUnlocked = Boolean(
+    profile && (!profile.isProvisional || (profile.whatsappConsent && profile.city)),
+  );
 
   // Completed attempts by this student whose results are available.
   // Gated on results_policy: attempts for 'on_release' tests with released_at IS NULL
@@ -36,6 +49,7 @@ export const GET = withApi(async () => {
 
   if (studentAttempts.length === 0) {
     return json({
+      isReportUnlocked,
       totalAttempts: 0,
       avgScore: 0,
       avgPercentile: 0,
@@ -149,6 +163,7 @@ export const GET = withApi(async () => {
   });
 
   return json({
+    isReportUnlocked,
     totalAttempts: studentAttempts.length,
     avgScore: Math.round((totalScore / studentAttempts.length) * 10) / 10,
     avgPercentile:

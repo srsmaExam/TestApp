@@ -25,6 +25,7 @@ describe('toStudentQuestion security & leak prevention', () => {
     expectedTimeS: 120,
     topic: 'Optics',
     chapter: 'Ray Optics',
+    metadata: null,
     extractionNotes: { uncertain: ['UNCERTAIN_SECRET_NOTE'] },
     createdAt: new Date(),
     updatedAt: new Date(),

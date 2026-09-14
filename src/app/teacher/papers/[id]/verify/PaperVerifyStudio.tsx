@@ -693,7 +693,22 @@ export function PaperVerifyStudio({
                             <Sparkles className="size-2.5 mr-0.5 inline text-emerald-600 dark:text-emerald-300" /> Sol. Verified
                           </Badge>
                         )}
-                        {q.difficulty && <Badge>D{q.difficulty}</Badge>}
+                        {q.difficulty && <Badge>{q.metadata?.difficultyLabel ?? `D${q.difficulty}`}</Badge>}
+                        {q.metadata?.diagnosticWeight != null && (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" title="Diagnostic Weight">
+                            Weight {q.metadata.diagnosticWeight}
+                          </span>
+                        )}
+                        {q.metadata?.primarySkill && (
+                          <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300" title={`Primary Skill: ${q.metadata.primarySkill}`}>
+                            🎯 {q.metadata.primarySkill}
+                          </span>
+                        )}
+                        {q.metadata?.cognitiveLevel && (
+                          <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-300" title={`Cognitive Level: ${q.metadata.cognitiveLevel}`}>
+                            🧠 {q.metadata.cognitiveLevel}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -727,6 +742,27 @@ export function PaperVerifyStudio({
                         </button>
                       </div>
                     </div>
+
+                    {/* Profiling and Concept Info */}
+                    {(q.chapter || q.topic || q.metadata?.conceptTested) && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                        {q.chapter && (
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {q.chapter}{q.topic ? ` › ${q.topic}` : ''}
+                          </span>
+                        )}
+                        {q.metadata?.conceptTested && (
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Concept: <strong className="text-slate-700 dark:text-slate-200">{q.metadata.conceptTested}</strong>
+                          </span>
+                        )}
+                        {q.metadata?.expectedTime && (
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Time: {q.metadata.expectedTime}s
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Question Images & Diagrams Panel */}
                     {q.imageTokens.length > 0 && (
@@ -1258,6 +1294,13 @@ function InlineQuestionEditor({
   const [expectedTimeS, setExpectedTimeS] = useState<number | null>(question.expectedTimeS);
   const [chapter, setChapter] = useState(question.chapter ?? '');
   const [topic, setTopic] = useState(question.topic ?? '');
+  const [primarySkill, setPrimarySkill] = useState(question.metadata?.primarySkill ?? '');
+  const [secondarySkill, setSecondarySkill] = useState(question.metadata?.secondarySkill ?? '');
+  const [cognitiveLevel, setCognitiveLevel] = useState(question.metadata?.cognitiveLevel ?? '');
+  const [conceptTested, setConceptTested] = useState(question.metadata?.conceptTested ?? '');
+  const [prerequisiteConcept, setPrerequisiteConcept] = useState(question.metadata?.prerequisiteConcept ?? '');
+  const [expectedTime, setExpectedTime] = useState(question.metadata?.expectedTime ?? '');
+  const [diagnosticWeight, setDiagnosticWeight] = useState<number | ''>(question.metadata?.diagnosticWeight ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1265,6 +1308,17 @@ function InlineQuestionEditor({
     setSaving(true);
     setError(null);
     try {
+      const newMetadata = {
+        ...(question.metadata ?? {}),
+        primarySkill: primarySkill.trim() || null,
+        secondarySkill: secondarySkill.trim() || null,
+        cognitiveLevel: cognitiveLevel.trim() || null,
+        conceptTested: conceptTested.trim() || null,
+        prerequisiteConcept: prerequisiteConcept.trim() || null,
+        expectedTime: expectedTime.trim() || null,
+        diagnosticWeight: diagnosticWeight !== '' ? Number(diagnosticWeight) : null,
+      };
+
       const res = await fetch(`/api/questions/${question.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1281,6 +1335,7 @@ function InlineQuestionEditor({
           expectedTimeS,
           topic: topic || null,
           chapter: chapter || null,
+          metadata: newMetadata,
         }),
       });
       const data = await res.json();
@@ -1433,6 +1488,108 @@ function InlineQuestionEditor({
             onChange={(e) => setExpectedTimeS(e.target.value ? Number(e.target.value) : null)}
             placeholder="e.g. 120"
           />
+        </div>
+      </div>
+
+      {/* Profiling & Metadata Section */}
+      <div className="space-y-3 rounded-md border border-slate-200/80 bg-white/60 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+        <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          Question Profiling & Metadata
+        </h5>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Chapter</Label>
+            <Input
+              value={chapter}
+              onChange={(e) => setChapter(e.target.value)}
+              placeholder="e.g. Real Numbers"
+              className="text-xs"
+            />
+          </div>
+          <div>
+            <Label>Topic</Label>
+            <Input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. HCF & LCM"
+              className="text-xs"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <Label>Primary Skill</Label>
+            <Input
+              value={primarySkill}
+              onChange={(e) => setPrimarySkill(e.target.value)}
+              placeholder="e.g. Concept Application"
+              className="text-xs"
+            />
+          </div>
+          <div>
+            <Label>Cognitive Level</Label>
+            <Input
+              value={cognitiveLevel}
+              onChange={(e) => setCognitiveLevel(e.target.value)}
+              placeholder="e.g. Apply, Analyse"
+              className="text-xs"
+            />
+          </div>
+          <div>
+            <Label>Diagnostic Weight</Label>
+            <Input
+              type="number"
+              min={1}
+              max={5}
+              value={diagnosticWeight}
+              onChange={(e) => setDiagnosticWeight(e.target.value ? Number(e.target.value) : '')}
+              placeholder="e.g. 1, 2, 3"
+              className="text-xs"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Concept Tested</Label>
+            <Input
+              value={conceptTested}
+              onChange={(e) => setConceptTested(e.target.value)}
+              placeholder="e.g. Relationship between HCF and LCM"
+              className="text-xs"
+            />
+          </div>
+          <div>
+            <Label>Prerequisite Concept</Label>
+            <Input
+              value={prerequisiteConcept}
+              onChange={(e) => setPrerequisiteConcept(e.target.value)}
+              placeholder="e.g. HCF/LCM concept"
+              className="text-xs"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Secondary Skill</Label>
+            <Input
+              value={secondarySkill}
+              onChange={(e) => setSecondarySkill(e.target.value)}
+              placeholder="e.g. Calculation"
+              className="text-xs"
+            />
+          </div>
+          <div>
+            <Label>Expected Time Range (s, comma-separated)</Label>
+            <Input
+              value={expectedTime}
+              onChange={(e) => setExpectedTime(e.target.value)}
+              placeholder="e.g. 45,60"
+              className="text-xs"
+            />
+          </div>
         </div>
       </div>
 

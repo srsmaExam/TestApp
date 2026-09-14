@@ -2,7 +2,13 @@ import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { apiStudent } from '@/lib/auth';
 import { json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
-import { attemptAnswers, attempts, profiles, questions, tests } from '@/db/schema';
+import { attemptAnswers, attempts, profiles, questions, testQuestions, tests } from '@/db/schema';
+import {
+  evaluateDiagnosticReport,
+  getSampleDiagnosticReport,
+  type QuestionMetadataItem,
+  type StudentQuestionResponse,
+} from '@/lib/diagnostic-evaluator';
 
 export const GET = withApi(async () => {
   const session = await apiStudent();
@@ -48,6 +54,7 @@ export const GET = withApi(async () => {
     .orderBy(desc(attempts.submittedAt));
 
   if (studentAttempts.length === 0) {
+    const sampleDiagnosticReport = getSampleDiagnosticReport(session.fullName || 'Student');
     return json({
       isReportUnlocked,
       totalAttempts: 0,
@@ -61,6 +68,8 @@ export const GET = withApi(async () => {
         biology: { correct: 0, attempted: 0, total: 0, accuracy: 0 },
       },
       chapterBreakdown: [],
+      diagnosticReport: null,
+      sampleDiagnosticReport,
     });
   }
 
@@ -162,6 +171,91 @@ export const GET = withApi(async () => {
     };
   });
 
+  // Dynamically compute diagnostic evaluation for the latest attempt
+  let diagnosticReport = null;
+  if (studentAttempts.length > 0) {
+    const latestAttempt = studentAttempts[0];
+    const latestQuestions = await db
+      .select({
+        id: questions.id,
+        position: testQuestions.position,
+        subject: questions.subject,
+        chapter: questions.chapter,
+        topic: questions.topic,
+        difficulty: questions.difficulty,
+        expectedTimeS: questions.expectedTimeS,
+        answer: questions.answer,
+        metadata: questions.metadata,
+        isCorrect: attemptAnswers.isCorrect,
+        response: attemptAnswers.response,
+        timeSpentMs: attemptAnswers.timeSpentMs,
+      })
+      .from(testQuestions)
+      .innerJoin(questions, eq(questions.id, testQuestions.questionId))
+      .leftJoin(
+        attemptAnswers,
+        and(
+          eq(attemptAnswers.attemptId, latestAttempt.attemptId),
+          eq(attemptAnswers.questionId, questions.id),
+        ),
+      )
+      .where(eq(testQuestions.testId, latestAttempt.testId))
+      .orderBy(testQuestions.position);
+
+    if (latestQuestions.length > 0) {
+      const metadataList: QuestionMetadataItem[] = latestQuestions.map((q, idx) => {
+        const m = (q.metadata as any) || {};
+        return {
+          qno: q.position ?? idx + 1,
+          subject:
+            q.subject === 'maths'
+              ? 'Maths'
+              : q.subject.charAt(0).toUpperCase() + q.subject.slice(1),
+          chapter: q.chapter || 'General',
+          topic: q.topic || 'General',
+          conceptTested: m.conceptTested || null,
+          prerequisiteConcept: m.prerequisiteConcept || null,
+          difficulty:
+            m.difficultyLabel ||
+            (q.difficulty === 1 ? 'Easy' : q.difficulty === 3 ? 'Difficult' : 'Medium'),
+          primarySkill: m.primarySkill || 'Concept Application',
+          secondarySkill: m.secondarySkill || null,
+          questionStructure: m.questionStructure || 'Direct',
+          visualDependency: m.visualDependency || 'None',
+          expectedTime: m.expectedTime || `${q.expectedTimeS || 60}`,
+          answer:
+            typeof q.answer === 'object' && (q.answer as any)?.key
+              ? (q.answer as any).key
+              : typeof q.answer === 'object' && (q.answer as any)?.value !== undefined
+              ? String((q.answer as any).value)
+              : String(q.answer || 'A'),
+          diagnosticWeight: Number(m.diagnosticWeight || 1),
+        };
+      });
+
+      const responses: StudentQuestionResponse[] = latestQuestions.map((q, idx) => {
+        const isAtt = q.response !== null && q.response !== undefined;
+        const sel =
+          typeof q.response === 'object' && (q.response as any)?.key
+            ? (q.response as any).key
+            : (q.response as any)?.value !== undefined
+            ? String((q.response as any).value)
+            : null;
+        return {
+          qno: q.position ?? idx + 1,
+          attempted: isAtt,
+          selectedOption: sel,
+          timeTakenSeconds: Math.round((q.timeSpentMs ?? 0) / 1000),
+        };
+      });
+
+      diagnosticReport = evaluateDiagnosticReport(metadataList, {
+        studentName: session.fullName || 'Student',
+        responses,
+      });
+    }
+  }
+
   return json({
     isReportUnlocked,
     totalAttempts: studentAttempts.length,
@@ -171,5 +265,7 @@ export const GET = withApi(async () => {
     recentTests,
     subjectBreakdown: subjects,
     chapterBreakdown,
+    diagnosticReport,
+    sampleDiagnosticReport: null,
   });
 });

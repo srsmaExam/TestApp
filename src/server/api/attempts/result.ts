@@ -83,6 +83,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       subject: questions.subject,
       chapter: questions.chapter,
       topic: questions.topic,
+      metadata: questions.metadata,
       marksCorrect: testQuestions.marksCorrect,
       marksWrong: testQuestions.marksWrong,
       marksUnattempted: testQuestions.marksUnattempted,
@@ -176,6 +177,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       subject: q.subject,
       chapter: q.chapter,
       topic: q.topic,
+      metadata: q.metadata,
       marks: {
         correct: Number(q.marksCorrect ?? 4),
         wrong: Number(q.marksWrong ?? -1),

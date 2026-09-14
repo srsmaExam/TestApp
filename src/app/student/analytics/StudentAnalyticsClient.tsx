@@ -46,12 +46,16 @@ import {
   Label,
 } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
+import { BoardReadinessReport } from '@/components/report/BoardReadinessReport';
+import type { DiagnosticEvaluationResult } from '@/lib/diagnostic-evaluator';
 
 interface StudentAnalyticsData {
   isReportUnlocked?: boolean;
   totalAttempts: number;
   avgScore: number;
   avgPercentile: number | null;
+  diagnosticReport?: DiagnosticEvaluationResult | null;
+  sampleDiagnosticReport?: DiagnosticEvaluationResult | null;
   recentTests: Array<{
     attemptId: string;
     testTitle: string;
@@ -80,6 +84,8 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
   const [data, setData] = useState<StudentAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<'report' | 'charts'>('report');
+  const [showSamplePreview, setShowSamplePreview] = useState(false);
 
   // Unlock Modal State
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -348,26 +354,45 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
     );
   }
 
-  if (data.totalAttempts === 0) {
+  if (data.totalAttempts === 0 && !showSamplePreview) {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Report</h1>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Track your progress and subject mastery across Board Readiness Challenge mock tests.</p>
+          <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            SRSMA Board Readiness Challenge Report
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Personalized diagnostic evaluation, cognitive skills profile, and actionable Class X Board recommendations.
+          </p>
         </div>
 
         <EmptyState
           title="No completed tests yet"
-          hint="Take and submit your first Board Readiness Challenge test to unlock your percentile trend, subject accuracy radar, and chapter breakdown."
+          hint="Take and submit your first Board Readiness Challenge test to unlock your personalized 3-page diagnostic report with Board Readiness Index (BRI), cognitive skills breakdown, and priority gaps."
           action={
-            <Link href="/student" className={buttonClass('primary', 'md')}>
-              Browse Available Tests
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link href="/student" className={buttonClass('primary', 'md')}>
+                Browse Available Tests
+              </Link>
+              {data.sampleDiagnosticReport && (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setShowSamplePreview(true)}
+                  className="border-amber-400/60 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 dark:text-amber-300"
+                >
+                  <FileText className="mr-2 size-4 text-amber-600 dark:text-amber-400" />
+                  Preview Sample 3-Page Report
+                </Button>
+              )}
+            </div>
           }
         />
       </div>
     );
   }
+
+  const activeReport = showSamplePreview ? data.sampleDiagnosticReport : data.diagnosticReport;
 
   // Chart Data: Score progression
   const trendChartData = [...data.recentTests]
@@ -389,14 +414,80 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
 
   return (
     <div className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Performance Report</h1>
-        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-          Personalized performance curves and chapter mastery for <strong>{studentName}</strong>.
-        </p>
-      </div>
+      {/* Sample Preview Banner */}
+      {showSamplePreview && (
+        <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs shadow-sm dark:border-amber-800/80 dark:bg-amber-950/40">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold">
+              ★
+            </div>
+            <div>
+              <p className="font-bold text-amber-950 dark:text-amber-200">
+                Demonstration Preview Mode
+              </p>
+              <p className="text-amber-800 dark:text-amber-300/80 text-[11px]">
+                Viewing the 3-page Board Readiness Challenge Report with sample Class X student attempt responses.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowSamplePreview(false)}
+            className="shrink-0 font-bold"
+          >
+            Exit Sample Preview
+          </Button>
+        </div>
+      )}
 
-      {/* KPI Cards */}
+      {/* Main View Switcher (Only shown if student has actual attempts & reports) */}
+      {data.totalAttempts > 0 && data.diagnosticReport && (
+        <div className="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+              SRSMA Diagnostic &amp; Performance Report
+            </h1>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Personalized Board readiness evaluation for <strong>{studentName}</strong>
+            </p>
+          </div>
+
+          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/80">
+            <button
+              type="button"
+              onClick={() => setViewTab('report')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
+                viewTab === 'report'
+                  ? 'bg-white text-brand-700 shadow-xs dark:bg-slate-900 dark:text-brand-400'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              📄 3-Page Board Readiness Report
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewTab('charts')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
+                viewTab === 'charts'
+                  ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              📈 Historical Curves &amp; Radar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 1. Primary View: 3-Page SRSMA Board Readiness Challenge Report */}
+      {viewTab === 'report' && activeReport && (
+        <BoardReadinessReport report={activeReport} />
+      )}
+
+      {/* 2. Secondary View: Historical Charts & Analytics */}
+      {(viewTab === 'charts' || (!activeReport && data.totalAttempts > 0)) && (
+        <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="Average Percentile"
@@ -560,6 +651,8 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
           </Table>
         </Card>
       </div>
+        </div>
+      )}
     </div>
   );
 }

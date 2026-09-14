@@ -164,4 +164,26 @@ html.dark .q-render :is(th) {
   .no-print {
     display: none !important;
   }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  .report-page-container {
+    page-break-after: always !important;
+    break-after: page !important;
+    min-height: 96vh;
+    padding: 10mm !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+  }
+  .report-page-container:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
 }

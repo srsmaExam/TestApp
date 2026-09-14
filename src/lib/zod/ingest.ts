@@ -28,6 +28,11 @@ export const IngestQuestion = z
     solution: z.string().nullable().optional(),
     imagePlaceholders: z.array(ImagePlaceholder).default([]),
     uncertain: z.array(z.string()).default([]),
+    chapter: z.string().nullable().optional(),
+    topic: z.string().nullable().optional(),
+    difficulty: z.number().int().nullable().optional(),
+    expectedTimeS: z.number().int().positive().nullable().optional(),
+    metadata: z.record(z.unknown()).nullable().optional(),
   })
   .superRefine((q, ctx) => {
     if (q.type === 'mcq' && q.options.length < 2) {

@@ -32,6 +32,7 @@ export const QuestionUpdateSchema = z
     expectedTimeS: z.number().int().positive().nullable().optional(),
     topic: z.string().nullable().optional(),
     chapter: z.string().nullable().optional(),
+    metadata: z.record(z.unknown()).nullable().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.type === 'mcq' && v.options !== undefined && v.options.length > 0 && v.options.length < 2) {

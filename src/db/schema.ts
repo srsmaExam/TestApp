@@ -106,6 +106,21 @@ export type QuestionAnswer =
   | { value: number }
   | { min: number; max: number };
 
+export type QuestionMetadata = {
+  primarySkill?: string | null;
+  secondarySkill?: string | null;
+  cognitiveLevel?: string | null;
+  conceptTested?: string | null;
+  prerequisiteConcept?: string | null;
+  questionStructure?: string | null;
+  visualDependency?: string | null;
+  calculationIntensity?: string | null;
+  expectedTime?: string | null; // e.g. "45,60" for 45-60 seconds
+  diagnosticWeight?: number | null;
+  difficultyLabel?: string | null; // e.g. "Easy", "Medium", "Difficult"
+  [key: string]: unknown;
+};
+
 export const questions = pgTable(
   'questions',
   {
@@ -129,6 +144,7 @@ export const questions = pgTable(
     topic: text('topic'),
     chapter: text('chapter'),
 
+    metadata: jsonb('metadata').$type<QuestionMetadata | null>(),
     extractionNotes: jsonb('extraction_notes').$type<{ uncertain?: string[] } | null>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

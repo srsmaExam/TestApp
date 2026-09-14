@@ -2,10 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight, Check, X, Lock } from 'lucide-react';
+import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight, Check, X, Lock, Award } from 'lucide-react';
 import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Label } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
 import { QuestionBody } from '@/components/Katex';
+import { BoardReadinessReport } from '@/components/report/BoardReadinessReport';
+import {
+  evaluateDiagnosticReport,
+  type QuestionMetadataItem,
+  type StudentQuestionResponse,
+} from '@/lib/diagnostic-evaluator';
 
 type ReviewQuestion = {
   id: string;
@@ -21,6 +27,7 @@ type ReviewQuestion = {
   subject: 'physics' | 'chemistry' | 'maths' | 'biology';
   chapter: string | null;
   topic: string | null;
+  metadata?: any;
   marks: {
     correct: number;
     wrong: number;
@@ -90,6 +97,57 @@ export function ResultReviewClient({
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+
+  const attemptDiagnosticReport = useMemo(() => {
+    if (!data?.questions || data.questions.length === 0) return null;
+    const metadataList: QuestionMetadataItem[] = data.questions.map((q, idx) => {
+      const m = q.metadata || {};
+      return {
+        qno: q.position || idx + 1,
+        subject:
+          q.subject === 'maths'
+            ? 'Maths'
+            : q.subject.charAt(0).toUpperCase() + q.subject.slice(1),
+        chapter: q.chapter || 'General',
+        topic: q.topic || 'General',
+        conceptTested: m.conceptTested || null,
+        prerequisiteConcept: m.prerequisiteConcept || null,
+        difficulty:
+          m.difficultyLabel ||
+          (q.difficulty === 1 ? 'Easy' : q.difficulty === 3 ? 'Difficult' : 'Medium'),
+        primarySkill: m.primarySkill || 'Concept Application',
+        secondarySkill: m.secondarySkill || null,
+        questionStructure: m.questionStructure || 'Direct',
+        visualDependency: m.visualDependency || 'None',
+        expectedTime: m.expectedTime || `${q.expectedTimeS || 60}`,
+        answer:
+          typeof q.answer === 'object' && (q.answer as any)?.key
+            ? (q.answer as any).key
+            : typeof q.answer === 'object' && (q.answer as any)?.value !== undefined
+            ? String((q.answer as any).value)
+            : String(q.answer || 'A'),
+        diagnosticWeight: Number(m.diagnosticWeight || 1),
+      };
+    });
+
+    const responses: StudentQuestionResponse[] = data.questions.map((q, idx) => ({
+      qno: q.position || idx + 1,
+      attempted: Boolean(q.isAttempted),
+      selectedOption:
+        q.response && typeof q.response === 'object' && (q.response as any)?.key
+          ? (q.response as any).key
+          : (q.response as any)?.value !== undefined
+          ? String((q.response as any).value)
+          : null,
+      timeTakenSeconds: Math.round((q.timeSpentMs || 0) / 1000),
+    }));
+
+    return evaluateDiagnosticReport(metadataList, {
+      studentName: 'Student',
+      responses,
+    });
+  }, [data]);
 
   useEffect(() => {
     if (data) {
@@ -441,14 +499,25 @@ export function ResultReviewClient({
             </div>
           </div>
 
-          <Link
-            href="/student/analytics"
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white shadow-md hover:bg-emerald-500 transition"
-          >
-            <FileText className="size-4" />
-            Report Unlocked, View Now
-            <ArrowRight className="size-4" />
-          </Link>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowDiagnosticModal(true)}
+              className="shrink-0 rounded-xl border-emerald-500/40 bg-white px-4 py-2.5 font-bold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+            >
+              <Award className="mr-1.5 size-4 text-emerald-600 dark:text-emerald-400" />
+              View 3-Page Board Report
+            </Button>
+            <Link
+              href="/student/analytics"
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition"
+            >
+              <FileText className="size-4" />
+              Detailed Analytics &amp; History
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </div>
       )}
 
@@ -534,7 +603,17 @@ export function ResultReviewClient({
                           {q.subject.toUpperCase()}
                         </Badge>
                         <Badge tone="slate">{q.type.toUpperCase()}</Badge>
-                        {q.chapter && <span className="text-xs text-slate-500 dark:text-slate-400">• {q.chapter}</span>}
+                        {q.chapter && <span className="text-xs text-slate-500 dark:text-slate-400">• {q.chapter}{q.topic ? ` › ${q.topic}` : ''}</span>}
+                        {q.metadata?.primarySkill && (
+                          <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300" title={`Primary Skill: ${q.metadata.primarySkill}`}>
+                            🎯 {q.metadata.primarySkill}
+                          </span>
+                        )}
+                        {q.metadata?.cognitiveLevel && (
+                          <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-300" title={`Cognitive Level: ${q.metadata.cognitiveLevel}`}>
+                            🧠 {q.metadata.cognitiveLevel}
+                          </span>
+                        )}
                       </div>
 
                       {/* Score & Time Badges */}
@@ -564,6 +643,19 @@ export function ResultReviewClient({
                         )}
                       </div>
                     </div>
+
+                    {/* Diagnostic Concept Info */}
+                    {q.metadata?.conceptTested && (
+                      <div className="rounded-md bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">Concept Tested:</span>{' '}
+                        {q.metadata.conceptTested}
+                        {q.metadata.prerequisiteConcept && (
+                          <span className="ml-2 text-slate-500 dark:text-slate-400">
+                            (Prerequisite: {q.metadata.prerequisiteConcept})
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Question Body */}
                     <div className="text-sm leading-relaxed text-slate-900 dark:text-slate-100">
@@ -969,6 +1061,20 @@ export function ResultReviewClient({
           </form>
         )}
       </Dialog>
+
+      {/* 3-Page Diagnostic Report Modal */}
+      {attemptDiagnosticReport && (
+        <Dialog
+          isOpen={showDiagnosticModal}
+          onClose={() => setShowDiagnosticModal(false)}
+          size="2xl"
+          title="Class X SRSMA Board Readiness Challenge Report"
+        >
+          <div className="max-h-[85vh] overflow-y-auto p-2 sm:p-6">
+            <BoardReadinessReport report={attemptDiagnosticReport} />
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }

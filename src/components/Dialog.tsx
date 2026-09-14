@@ -12,7 +12,7 @@ export type DialogProps = {
   description?: React.ReactNode;
   children?: React.ReactNode;
   footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 };
 
 const dialogSizes = {
@@ -20,6 +20,7 @@ const dialogSizes = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-2xl',
+  '2xl': 'max-w-5xl',
 };
 
 export function Dialog({

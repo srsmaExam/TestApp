@@ -24,7 +24,7 @@ import { QuestionBody } from '@/components/Katex';
 import { PdfCropViewer } from '@/components/pdf/PdfCropViewer';
 import { extractAllImageTokens } from '@/lib/question-render';
 import { cn } from '@/lib/cn';
-import type { CropRect, Paper, Question, QuestionAnswer, QuestionImage, QuestionOption } from '@/db/schema';
+import type { CropRect, Paper, Question, QuestionAnswer, QuestionImage, QuestionMetadata, QuestionOption } from '@/db/schema';
 
 type EditableFields = {
   body: string;
@@ -38,6 +38,7 @@ type EditableFields = {
   subject: Question['subject'];
   type: Question['type'];
   sourcePage: number | null;
+  metadata?: QuestionMetadata | null;
 };
 
 function toEditable(q: Question): EditableFields {
@@ -53,6 +54,7 @@ function toEditable(q: Question): EditableFields {
     subject: q.subject,
     type: q.type,
     sourcePage: q.sourcePage ?? null,
+    metadata: q.metadata ?? null,
   };
 }
 
@@ -119,6 +121,7 @@ export function QuestionEditor({
           expectedTimeS: fields.expectedTimeS,
           topic: fields.topic || null,
           chapter: fields.chapter || null,
+          metadata: fields.metadata ?? null,
         }),
       });
       const body = await res.json();
@@ -552,6 +555,111 @@ export function QuestionEditor({
                 <div className="col-span-2">
                   <Label>Topic</Label>
                   <Input value={fields.topic} onChange={(e) => patchFields({ topic: e.target.value })} />
+                </div>
+              </div>
+
+              {/* Profiling & Metadata Section */}
+              <div className="mt-4 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Question Profiling & Metadata
+                </h4>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <Label>Primary Skill</Label>
+                    <Input
+                      value={fields.metadata?.primarySkill ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: { ...(fields.metadata ?? {}), primarySkill: e.target.value || null },
+                        })
+                      }
+                      placeholder="e.g. Concept Application"
+                    />
+                  </div>
+                  <div>
+                    <Label>Cognitive Level</Label>
+                    <Input
+                      value={fields.metadata?.cognitiveLevel ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: { ...(fields.metadata ?? {}), cognitiveLevel: e.target.value || null },
+                        })
+                      }
+                      placeholder="e.g. Apply, Analyse"
+                    />
+                  </div>
+                  <div>
+                    <Label>Diagnostic Weight</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={fields.metadata?.diagnosticWeight ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: {
+                            ...(fields.metadata ?? {}),
+                            diagnosticWeight: e.target.value ? Number(e.target.value) : null,
+                          },
+                        })
+                      }
+                      placeholder="e.g. 1, 2, 3"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label>Concept Tested</Label>
+                    <Input
+                      value={fields.metadata?.conceptTested ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: { ...(fields.metadata ?? {}), conceptTested: e.target.value || null },
+                        })
+                      }
+                      placeholder="e.g. Relationship between HCF and LCM"
+                    />
+                  </div>
+                  <div>
+                    <Label>Prerequisite Concept</Label>
+                    <Input
+                      value={fields.metadata?.prerequisiteConcept ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: { ...(fields.metadata ?? {}), prerequisiteConcept: e.target.value || null },
+                        })
+                      }
+                      placeholder="e.g. HCF/LCM concept"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label>Secondary Skill</Label>
+                    <Input
+                      value={fields.metadata?.secondarySkill ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: { ...(fields.metadata ?? {}), secondarySkill: e.target.value || null },
+                        })
+                      }
+                      placeholder="e.g. Calculation"
+                    />
+                  </div>
+                  <div>
+                    <Label>Expected Time Range (comma-separated, s)</Label>
+                    <Input
+                      value={fields.metadata?.expectedTime ?? ''}
+                      onChange={(e) =>
+                        patchFields({
+                          metadata: { ...(fields.metadata ?? {}), expectedTime: e.target.value || null },
+                        })
+                      }
+                      placeholder="e.g. 45,60"
+                    />
+                  </div>
                 </div>
               </div>
             </CardBody>

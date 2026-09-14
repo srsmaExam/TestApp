@@ -106,6 +106,17 @@ export function ResultReviewClient({
     }
   }, [data?.isReportUnlocked, attemptId, data]);
 
+  useEffect(() => {
+    const handleOpenModal = (e: Event) => {
+      e.preventDefault();
+      setShowReportModal(true);
+    };
+    window.addEventListener('srsma_open_report_modal', handleOpenModal);
+    return () => {
+      window.removeEventListener('srsma_open_report_modal', handleOpenModal);
+    };
+  }, []);
+
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!city.trim()) {

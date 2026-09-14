@@ -112,6 +112,25 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
     loadData();
   }, []);
 
+  useEffect(() => {
+    const isLocalUnlocked =
+      typeof window !== 'undefined' && localStorage.getItem('srsma_report_unlocked') === 'true';
+    if (data && data.isReportUnlocked === false && !isLocalUnlocked) {
+      setShowUnlockModal(true);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    const handleOpenModal = (e: Event) => {
+      e.preventDefault();
+      setShowUnlockModal(true);
+    };
+    window.addEventListener('srsma_open_report_modal', handleOpenModal);
+    return () => {
+      window.removeEventListener('srsma_open_report_modal', handleOpenModal);
+    };
+  }, []);
+
   async function handleUnlockSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!city.trim()) {

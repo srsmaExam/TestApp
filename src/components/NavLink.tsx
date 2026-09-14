@@ -46,9 +46,21 @@ export function NavLink({
     };
   }, [lockKey]);
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (locked && lockKey === 'report') {
+      const event = new CustomEvent('srsma_open_report_modal', { cancelable: true });
+      const handled = !window.dispatchEvent(event);
+      if (handled) {
+        e.preventDefault();
+        return;
+      }
+    }
+  };
+
   return (
     <Link
       href={href}
+      onClick={handleClick}
       aria-current={active ? 'page' : undefined}
       className={cn(
         'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',

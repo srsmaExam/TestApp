@@ -130,20 +130,20 @@ export async function gradeAndCloseAttempt(
               ${sql.join(
                 gradeResult.items.map((it) =>
                   it.isCorrect === null
-                    ? sql`WHEN ${it.questionId} THEN NULL`
+                    ? sql`WHEN ${it.questionId} THEN NULL::boolean`
                     : it.isCorrect
                       ? sql`WHEN ${it.questionId} THEN TRUE`
                       : sql`WHEN ${it.questionId} THEN FALSE`,
                 ),
                 sql` `,
               )}
-            END`,
+            END::boolean`,
             marksAwarded: sql`CASE ${attemptAnswers.questionId}
               ${sql.join(
                 gradeResult.items.map((it) => sql`WHEN ${it.questionId} THEN ${String(it.marksAwarded)}::numeric`),
                 sql` `,
               )}
-            END`,
+            END::numeric`,
             updatedAt: now,
           })
           .where(and(eq(attemptAnswers.attemptId, attemptId), inArray(attemptAnswers.questionId, qIds)));
@@ -376,20 +376,20 @@ export async function regradeTestAttempts(db: Db, testId: string): Promise<numbe
                 ${sql.join(
                   gradeResult.items.map((it) =>
                     it.isCorrect === null
-                      ? sql`WHEN ${it.questionId} THEN NULL`
+                      ? sql`WHEN ${it.questionId} THEN NULL::boolean`
                       : it.isCorrect
                         ? sql`WHEN ${it.questionId} THEN TRUE`
                         : sql`WHEN ${it.questionId} THEN FALSE`,
                   ),
                   sql` `,
                 )}
-              END`,
+              END::boolean`,
               marksAwarded: sql`CASE ${attemptAnswers.questionId}
                 ${sql.join(
                   gradeResult.items.map((it) => sql`WHEN ${it.questionId} THEN ${String(it.marksAwarded)}::numeric`),
                   sql` `,
                 )}
-              END`,
+              END::numeric`,
               updatedAt: now,
             })
             .where(and(eq(attemptAnswers.attemptId, att.id), inArray(attemptAnswers.questionId, qIds)));

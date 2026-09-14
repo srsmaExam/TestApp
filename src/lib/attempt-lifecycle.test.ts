@@ -508,6 +508,45 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     expect(row.response).toBeNull();
     expect(row.state).toBe('seen_unanswered');
   });
+
+  it('handles submitting an attempt where all questions are unattempted (all isCorrect === null)', async () => {
+    const unattemptedId = 'ba7c0000-0000-4000-8000-000000000004';
+    await db.insert(schema.attempts).values({
+      id: unattemptedId,
+      testId,
+      studentId,
+      attemptNo: 6,
+      status: 'in_progress',
+      deadlineAt: new Date(Date.now() + 1800 * 1000),
+      questionOrder: [q1Id, q2Id, q3Id],
+    });
+
+    await db.insert(schema.attemptAnswers).values([
+      { attemptId: unattemptedId, questionId: q1Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+      { attemptId: unattemptedId, questionId: q2Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+      { attemptId: unattemptedId, questionId: q3Id, state: 'not_seen', timeSpentMs: 0, visitCount: 0 },
+    ]);
+
+    const result = await gradeAndCloseAttempt(db, unattemptedId, 'submitted');
+    expect(result.graded).toBe(true);
+    expect(result.status).toBe('submitted');
+    expect(result.totalMarks).toBe(0);
+
+    const answers = await db
+      .select()
+      .from(schema.attemptAnswers)
+      .where(eq(schema.attemptAnswers.attemptId, unattemptedId));
+
+    expect(answers.length).toBe(3);
+    for (const ans of answers) {
+      expect(ans.isCorrect).toBeNull();
+      expect(Number(ans.marksAwarded)).toBe(0);
+    }
+
+    // Also test that regrading this test with unattempted attempt works cleanly
+    const regraded = await regradeTestAttempts(db, testId);
+    expect(regraded).toBeGreaterThanOrEqual(1);
+  });
 });
 
 

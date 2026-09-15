@@ -94,6 +94,94 @@ export interface TopicToRevisitItem {
   attempted: boolean;
 }
 
+export interface QuestionAuditItem {
+  qno: number;
+  subject: string;
+  chapter: string;
+  topic: string;
+  difficulty: string;
+  primarySkill: string;
+  secondarySkill: string | null;
+  questionStructure: string;
+  visualDependency: string;
+  expectedTimeRaw: string;
+  expectedUpperBoundS: number;
+  timeTakenS: number;
+  timeLimitExceeded: boolean;
+  correctAnswer: string;
+  selectedOption: string | null;
+  attempted: boolean;
+  isCorrect: boolean;
+  diagnosticWeight: number;
+  weightedScore: number;
+  revisitIssue: string | null;
+  revisitCategory: RevisitCategory | null;
+}
+
+export interface DiagnosticCalculationSteps {
+  scoring: {
+    totalQuestionsN: number;
+    rawScoreSum: number;
+    diagnosticWeightSum: number;
+    weightedScoreSum: number;
+    briFraction: string;
+    briResult: number;
+    levelRule: string;
+    levelResult: PreparationLevel;
+  };
+  breakdowns: Array<{
+    area: string;
+    filterCondition: string;
+    matchingQuestions: number[];
+    score: number;
+    total: number;
+    formula: string;
+    percentage: number;
+  }>;
+  skills: Array<{
+    skillName: string;
+    filterCondition: string;
+    matchingQuestions: number[];
+    earnedWeights: number;
+    totalWeights: number;
+    formula: string;
+    percentage: number;
+    categoryRule: string;
+    categoryResult: SkillValueCategory;
+  }>;
+  structures: Array<{
+    structureType: string;
+    matchingQuestions: number[];
+    correctCount: number;
+    totalCount: number;
+    formula: string;
+    percentage: number;
+  }>;
+  strengthsRanking: Array<{
+    rank: number;
+    name: string;
+    percentage: number;
+    scoreDetails: string;
+    reason: string;
+  }>;
+  priorityGapsRanking: Array<{
+    rank: number;
+    name: string;
+    scorePercent: number;
+    priority: PriorityLevel;
+    ruleApplied: string;
+  }>;
+  allChapterScores: Array<{
+    chapter: string;
+    subject: string;
+    correct: number;
+    total: number;
+    percentage: number;
+    priority: PriorityLevel;
+  }>;
+  questionAudit: QuestionAuditItem[];
+}
+
 export interface DiagnosticEvaluationResult {
   studentName: string;
   totalQuestions: number;
@@ -140,6 +228,9 @@ export interface DiagnosticEvaluationResult {
 
   // Plain Text formatted report
   plainTextReport: string;
+
+  // Page 4: Calculation Steps & Audit Trail (Development Only)
+  calculationSteps: DiagnosticCalculationSteps;
 }
 
 export function parseExpectedTimeUpperBound(raw: string | null | undefined): number {
@@ -316,16 +407,25 @@ export function evaluateDiagnosticReport(
     };
   }
 
+  const conceptualQs = evaluatedQuestions.filter(
+    (q) => q.meta.primarySkill.trim().toLowerCase() === 'conceptual foundation',
+  );
   const conceptualFoundation = computeWeightedSkill(
     (q) => q.meta.primarySkill.trim().toLowerCase() === 'conceptual foundation',
     'Conceptual Foundation',
   );
 
+  const applicationQs = evaluatedQuestions.filter(
+    (q) => q.meta.primarySkill.trim().toLowerCase() === 'concept application',
+  );
   const conceptApplication = computeWeightedSkill(
     (q) => q.meta.primarySkill.trim().toLowerCase() === 'concept application',
     'Concept Application Skill',
   );
 
+  const problemSolvingQs = evaluatedQuestions.filter(
+    (q) => q.meta.primarySkill.trim().toLowerCase() === 'problem solving',
+  );
   const problemSolving = computeWeightedSkill(
     (q) => q.meta.primarySkill.trim().toLowerCase() === 'problem solving',
     'Problem Solving Skill',
@@ -341,7 +441,7 @@ export function evaluateDiagnosticReport(
   // - Secondary Skill contains "Interpretation" or "Visual Interpretation" (case-insensitive)
   // - Question Structure contains "Data-based" or "Diagram-based" (case-insensitive)
   // - Visual Dependency == "High" (case-insensitive)
-  const questionInterpretation = computeWeightedSkill((q) => {
+  const isInterpMatch = (q: EvaluatedQ) => {
     const sec = (q.meta.secondarySkill ?? '').toLowerCase();
     const struc = (q.meta.questionStructure ?? '').toLowerCase();
     const vis = (q.meta.visualDependency ?? '').toLowerCase();
@@ -351,7 +451,10 @@ export function evaluateDiagnosticReport(
     const matchesVis = vis === 'high';
 
     return matchesSec || matchesStruc || matchesVis;
-  }, 'Question Interpretation Skill');
+  };
+
+  const interpQs = evaluatedQuestions.filter(isInterpMatch);
+  const questionInterpretation = computeWeightedSkill(isInterpMatch, 'Question Interpretation Skill');
 
   // Question Structure Performance (7 Structural Types)
   const STRUCTURAL_TYPES = [
@@ -577,7 +680,220 @@ export function evaluateDiagnosticReport(
     performancePatternInsight = `The performance distribution indicates that question structure substantially impacts ${studentFirstName}'s response consistency. Direct prompts are approached with fair confidence, but accuracy declines when questions incorporate compound conditions or data extraction. Strengthening procedural routines for multi-step and diagram-driven questions will prevent hesitation and unlock higher consistency across all syllabus units.`;
   }
 
-  // Generate Exact Plain Text Report Layout per Section 3
+  // Page 4: Detailed Diagnostic Calculation Steps & Audit Trail (Dev/Audit Mode)
+  const calculationSteps: DiagnosticCalculationSteps = {
+    scoring: {
+      totalQuestionsN: N,
+      rawScoreSum: totalRawScore,
+      diagnosticWeightSum: totalDiagnosticWeight,
+      weightedScoreSum: totalWeightedScore,
+      briFraction: `${totalWeightedScore} / ${totalDiagnosticWeight}`,
+      briResult: briScore,
+      levelRule:
+        briScore >= 80
+          ? 'BRI >= 80% -> ADVANCED'
+          : briScore >= 60
+          ? '60% <= BRI < 80% -> PROFICIENT'
+          : briScore >= 40
+          ? '40% <= BRI < 60% -> BASIC'
+          : 'BRI < 40% -> NEEDS IMMEDIATE INTERVENTION',
+      levelResult: levelOfPreparation,
+    },
+    breakdowns: [
+      {
+        area: 'Mathematics',
+        filterCondition: "Subject == 'Maths'",
+        matchingQuestions: mathsQs.map((q) => q.meta.qno),
+        score: mathsPerf.score,
+        total: mathsPerf.totalQuestions,
+        formula: `(${mathsPerf.score} / ${mathsPerf.totalQuestions}) * 100%`,
+        percentage: mathsPerf.percentage,
+      },
+      {
+        area: 'Science',
+        filterCondition: "Subject in ['Physics', 'Chemistry', 'Biology']",
+        matchingQuestions: scienceQs.map((q) => q.meta.qno),
+        score: sciencePerf.score,
+        total: sciencePerf.totalQuestions,
+        formula: `(${sciencePerf.score} / ${sciencePerf.totalQuestions}) * 100%`,
+        percentage: sciencePerf.percentage,
+      },
+      {
+        area: 'Easy Questions',
+        filterCondition: "Difficulty == 'Easy'",
+        matchingQuestions: easyQs.map((q) => q.meta.qno),
+        score: easyPerf.score,
+        total: easyPerf.totalQuestions,
+        formula: `(${easyPerf.score} / ${easyPerf.totalQuestions}) * 100%`,
+        percentage: easyPerf.percentage,
+      },
+      {
+        area: 'Medium Questions',
+        filterCondition: "Difficulty == 'Medium'",
+        matchingQuestions: medQs.map((q) => q.meta.qno),
+        score: medPerf.score,
+        total: medPerf.totalQuestions,
+        formula: `(${medPerf.score} / ${medPerf.totalQuestions}) * 100%`,
+        percentage: medPerf.percentage,
+      },
+      {
+        area: 'Difficult Questions',
+        filterCondition: "Difficulty == 'Difficult'",
+        matchingQuestions: diffQs.map((q) => q.meta.qno),
+        score: diffPerf.score,
+        total: diffPerf.totalQuestions,
+        formula: `(${diffPerf.score} / ${diffPerf.totalQuestions}) * 100%`,
+        percentage: diffPerf.percentage,
+      },
+    ],
+    skills: [
+      {
+        skillName: 'Conceptual Foundation',
+        filterCondition: "Primary Skill == 'Conceptual Foundation'",
+        matchingQuestions: conceptualQs.map((q) => q.meta.qno),
+        earnedWeights: conceptualFoundation.earnedWeight,
+        totalWeights: conceptualFoundation.totalWeight,
+        formula: `(${conceptualFoundation.earnedWeight} / ${conceptualFoundation.totalWeight}) * 100%`,
+        percentage: conceptualFoundation.scorePercent,
+        categoryRule: `Score > 66.67% ? Good : Score > 33.33% ? Average : Needs Strengthening`,
+        categoryResult: conceptualFoundation.category,
+      },
+      {
+        skillName: 'Concept Application Skill',
+        filterCondition: "Primary Skill == 'Concept Application'",
+        matchingQuestions: applicationQs.map((q) => q.meta.qno),
+        earnedWeights: conceptApplication.earnedWeight,
+        totalWeights: conceptApplication.totalWeight,
+        formula: `(${conceptApplication.earnedWeight} / ${conceptApplication.totalWeight}) * 100%`,
+        percentage: conceptApplication.scorePercent,
+        categoryRule: `Score > 66.67% ? Good : Score > 33.33% ? Average : Needs Strengthening`,
+        categoryResult: conceptApplication.category,
+      },
+      {
+        skillName: 'Problem Solving Skill',
+        filterCondition: "Primary Skill == 'Problem Solving'",
+        matchingQuestions: problemSolvingQs.map((q) => q.meta.qno),
+        earnedWeights: problemSolving.earnedWeight,
+        totalWeights: problemSolving.totalWeight,
+        formula: `(${problemSolving.earnedWeight} / ${problemSolving.totalWeight}) * 100%`,
+        percentage: problemSolving.scorePercent,
+        categoryRule: `Score > 66.67% ? Good : Score > 33.33% ? Average : Needs Strengthening`,
+        categoryResult: problemSolving.category,
+      },
+      {
+        skillName: 'Accuracy',
+        filterCondition: 'Attempted == True',
+        matchingQuestions: evaluatedQuestions.filter((q) => q.attempted).map((q) => q.meta.qno),
+        earnedWeights: totalCorrect,
+        totalWeights: totalAttempted,
+        formula: `(${totalCorrect} / ${totalAttempted}) * 100%`,
+        percentage: rawAccuracyPercent,
+        categoryRule: `Accuracy > 66.67% ? Good : Accuracy > 33.33% ? Average : Needs Strengthening`,
+        categoryResult: accuracyCategory,
+      },
+      {
+        skillName: 'Question Interpretation Skill',
+        filterCondition:
+          'Secondary Skill contains "Interpretation" OR Structure contains "Data-based" / "Diagram-based" OR Visual Dependency == "High"',
+        matchingQuestions: interpQs.map((q) => q.meta.qno),
+        earnedWeights: questionInterpretation.earnedWeight,
+        totalWeights: questionInterpretation.totalWeight,
+        formula: `(${questionInterpretation.earnedWeight} / ${questionInterpretation.totalWeight}) * 100%`,
+        percentage: questionInterpretation.scorePercent,
+        categoryRule: `Score > 66.67% ? Good : Score > 33.33% ? Average : Needs Strengthening`,
+        categoryResult: questionInterpretation.category,
+      },
+    ],
+    structures: structures.map((st) => {
+      const matchQs = evaluatedQuestions
+        .filter((eq) => eq.meta.questionStructure.toLowerCase().includes(st.type.toLowerCase()))
+        .map((eq) => eq.meta.qno);
+      return {
+        structureType: st.type,
+        matchingQuestions: matchQs,
+        correctCount: st.correct,
+        totalCount: st.total,
+        formula: `(${st.correct} / ${st.total}) * 100%`,
+        percentage: st.percentage,
+      };
+    }),
+    strengthsRanking: top3Strengths.map((s) => ({
+      rank: s.rank,
+      name: s.name,
+      percentage: s.percentage,
+      scoreDetails: s.scoreDetails,
+      reason: s.reason,
+    })),
+    priorityGapsRanking: priorityGaps.map((g) => ({
+      rank: g.rank,
+      name: g.name,
+      scorePercent: g.scorePercent,
+      priority: g.priority,
+      ruleApplied:
+        g.scorePercent < 40
+          ? 'Score < 40% -> High Priority'
+          : g.scorePercent <= 55
+          ? '40% <= Score <= 55% -> Medium Priority'
+          : '55% < Score <= 74% -> Low Priority',
+    })),
+    allChapterScores: chapterList.map((c) => ({
+      chapter: c.name,
+      subject: c.subject,
+      correct: c.correct,
+      total: c.total,
+      percentage: c.percentage,
+      priority: classifyPriority(c.percentage),
+    })),
+    questionAudit: evaluatedQuestions.map((eq) => {
+      const isOvertime = eq.timeTakenSeconds > eq.upperLimit;
+      const isIncorrect = !eq.isCorrect;
+      let revisitCategory: RevisitCategory | null = null;
+      let revisitIssue: string | null = null;
+
+      if (isOvertime || isIncorrect) {
+        if (eq.isCorrect && isOvertime) {
+          revisitCategory = 'Pacing / Time Management';
+          revisitIssue = `Spent ${eq.timeTakenSeconds}s vs ${eq.upperLimit}s limit (Pacing exceeded)`;
+        } else if (isIncorrect && isOvertime) {
+          revisitCategory = 'High Friction Gap';
+          revisitIssue = eq.attempted
+            ? `Spent ${eq.timeTakenSeconds}s vs ${eq.upperLimit}s limit (Incorrect)`
+            : `Spent ${eq.timeTakenSeconds}s vs ${eq.upperLimit}s limit (Unattempted)`;
+        } else {
+          revisitCategory = 'Conceptual / Calculation Gap';
+          revisitIssue = eq.attempted
+            ? `Incorrect answer within ${eq.timeTakenSeconds}s (limit ${eq.upperLimit}s)`
+            : `Question skipped / unattempted (${eq.timeTakenSeconds}s)`;
+        }
+      }
+
+      return {
+        qno: eq.meta.qno,
+        subject: eq.meta.subject,
+        chapter: eq.meta.chapter,
+        topic: eq.meta.topic,
+        difficulty: eq.meta.difficulty,
+        primarySkill: eq.meta.primarySkill,
+        secondarySkill: eq.meta.secondarySkill ?? null,
+        questionStructure: eq.meta.questionStructure,
+        visualDependency: eq.meta.visualDependency,
+        expectedTimeRaw: eq.meta.expectedTime,
+        expectedUpperBoundS: eq.upperLimit,
+        timeTakenS: eq.timeTakenSeconds,
+        timeLimitExceeded: isOvertime,
+        correctAnswer: eq.meta.answer,
+        selectedOption: eq.selectedOption,
+        attempted: eq.attempted,
+        isCorrect: eq.isCorrect,
+        diagnosticWeight: eq.weight,
+        weightedScore: eq.isCorrect ? eq.weight : 0,
+        revisitIssue,
+        revisitCategory,
+      };
+    }),
+  };
+
+  // Generate Exact Plain Text Report Layout per Section 3 & Section 4 (Audit)
   const plainTextReport = generateReportPlainTextFormat({
     studentName: student.studentName,
     totalRawScore,
@@ -607,6 +923,7 @@ export function evaluateDiagnosticReport(
     performancePatternInsight,
     priorityGaps,
     topicsToRevisit,
+    calculationSteps,
   });
 
   return {
@@ -643,6 +960,7 @@ export function evaluateDiagnosticReport(
     keyInsight,
     performancePatternInsight,
     plainTextReport,
+    calculationSteps,
   };
 }
 
@@ -675,6 +993,7 @@ function generateReportPlainTextFormat(data: {
   performancePatternInsight: string;
   priorityGaps: PriorityGapItem[];
   topicsToRevisit: TopicToRevisitItem[];
+  calculationSteps: DiagnosticCalculationSteps;
 }): string {
   const lines: string[] = [];
 
@@ -772,6 +1091,84 @@ function generateReportPlainTextFormat(data: {
   });
   lines.push('');
   lines.push('*Topic observations are based only on the questions tested.*');
+  lines.push('');
+
+  // PAGE 4 (DEVELOPMENT ONLY: DETAILED CALCULATION STEPS & AUDIT)
+  const cs = data.calculationSteps;
+  lines.push('================================================================================');
+  lines.push('PAGE 4: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
+  lines.push('================================================================================');
+  lines.push('');
+  lines.push('PAGE 4 — DIAGNOSTIC AUDIT & CALCULATION STEPS');
+  lines.push('DEVELOPMENT & AUDIT MODE: VERIFICATION TRACE FOR EVALUATION LOGIC');
+  lines.push('');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('1. SCORING & BOARD READINESS INDEX (BRI) CALCULATION STEPS');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push(`• Total Questions Evaluated (N): ${cs.scoring.totalQuestionsN}`);
+  lines.push(`• Scoring Condition: Si = 1 if Attempted == true and SelectedOption == Answer; else 0`);
+  lines.push(`• Total Raw Score: sum(Si) = ${cs.scoring.rawScoreSum} / ${cs.scoring.totalQuestionsN}`);
+  lines.push(`• Total Diagnostic Weight (W_total): sum(Wi) = ${cs.scoring.diagnosticWeightSum} points`);
+  lines.push(`• Total Weighted Score: sum(Si * Wi) = ${cs.scoring.weightedScoreSum} points`);
+  lines.push(`• Board Readiness Index Formula:`);
+  lines.push(`  BRI = (Total Weighted Score / Total Diagnostic Weight) * 100%`);
+  lines.push(`  BRI = (${cs.scoring.weightedScoreSum} / ${cs.scoring.diagnosticWeightSum}) * 100% = ${cs.scoring.briResult}%`);
+  lines.push(`• Level of Preparation Threshold Rules:`);
+  lines.push(`  - BRI >= 80%                     -> ADVANCED`);
+  lines.push(`  - 60% <= BRI < 80%               -> PROFICIENT`);
+  lines.push(`  - 40% <= BRI < 60%               -> BASIC`);
+  lines.push(`  - BRI < 40%                      -> NEEDS IMMEDIATE INTERVENTION`);
+  lines.push(`• Applied Rule: ${cs.scoring.levelRule} -> Level: ${cs.scoring.levelResult}`);
+  lines.push('');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('2. SUBJECT & DIFFICULTY BREAKDOWNS (CALCULATION STEPS)');
+  lines.push('--------------------------------------------------------------------------------');
+  cs.breakdowns.forEach((b) => {
+    lines.push(`• ${b.area}:`);
+    lines.push(`  - Filter Rule: ${b.filterCondition}`);
+    lines.push(`  - Matching Questions: [${b.matchingQuestions.join(', ')}] (Total: ${b.total})`);
+    lines.push(`  - Score: ${b.score} / ${b.total} -> Formula: ${b.formula} = ${b.percentage}%`);
+  });
+  lines.push('');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('3. PRIMARY SKILLS & ACCURACY WEIGHTED DERIVATION STEPS');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('• Classification Thresholds:');
+  lines.push('  - Good: Score > 66.67%');
+  lines.push('  - Average: 33.33% < Score <= 66.67%');
+  lines.push('  - Needs Strengthening: Score <= 33.33%');
+  lines.push('');
+  cs.skills.forEach((s) => {
+    lines.push(`• ${s.skillName}:`);
+    lines.push(`  - Filter: ${s.filterCondition}`);
+    lines.push(`  - Questions: [${s.matchingQuestions.join(', ')}]`);
+    lines.push(`  - Weighted Sum: Earned ${s.earnedWeights} / Total ${s.totalWeights} points`);
+    lines.push(`  - Calculation: ${s.formula} = ${s.percentage}% -> Category: ${s.categoryResult}`);
+  });
+  lines.push('');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('4. 7 QUESTION STRUCTURE PERFORMANCE BREAKDOWN');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('| Question Type     | Matching Questions        | Correct / Total | Performance (%) |');
+  lines.push('|-------------------|---------------------------|-----------------|-----------------|');
+  cs.structures.forEach((st) => {
+    lines.push(
+      `| ${st.structureType.padEnd(17)} | ${('Q' + st.matchingQuestions.join(', Q')).padEnd(25)} | ${(st.correctCount + ' / ' + st.totalCount).padEnd(15)} | ${String(st.percentage + '%').padEnd(15)} |`,
+    );
+  });
+  lines.push('');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('5. COMPLETE QUESTION-BY-QUESTION EVALUATION AUDIT');
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('| Q# | Subject | Chapter | Weight | Ans | Att? | Sel | Corr? | Spent | Limit | Overtime? | Category / Issue |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
+  cs.questionAudit.forEach((a) => {
+    lines.push(
+      `| ${a.qno} | ${a.subject} | ${a.chapter} | ${a.diagnosticWeight} | ${a.correctAnswer} | ${a.attempted ? 'Yes' : 'No'} | ${a.selectedOption ?? '—'} | ${a.isCorrect ? 'Yes' : 'No'} | ${a.timeTakenS}s | ${a.expectedUpperBoundS}s | ${a.timeLimitExceeded ? 'YES' : 'No'} | ${a.revisitCategory ?? 'None (Mastered)'} |`,
+    );
+  });
+  lines.push('');
+  lines.push('*End of Diagnostic Audit Report (Page 4)*');
 
   return lines.join('\n');
 }

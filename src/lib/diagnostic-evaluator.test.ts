@@ -201,6 +201,17 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.plainTextReport).toContain('PAGE 1: SRSMA BOARD READINESS CHALLENGE REPORT');
     expect(result.plainTextReport).toContain('PAGE 2: PERFORMANCE ANALYSIS & PATTERNS');
     expect(result.plainTextReport).toContain('PAGE 3: WHERE SHOULD YOU IMPROVE?');
+    expect(result.plainTextReport).toContain('PAGE 4: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
     expect(result.plainTextReport).toContain('Dear Aarav Sharma,');
+
+    // Page 4: Calculation steps audit verification
+    expect(result.calculationSteps).toBeDefined();
+    expect(result.calculationSteps.scoring.rawScoreSum).toBe(3);
+    expect(result.calculationSteps.scoring.diagnosticWeightSum).toBe(9);
+    expect(result.calculationSteps.scoring.weightedScoreSum).toBe(5);
+    expect(result.calculationSteps.scoring.briResult).toBeCloseTo(55.6, 1);
+    expect(result.calculationSteps.breakdowns.length).toBe(5);
+    expect(result.calculationSteps.skills.length).toBe(5);
+    expect(result.calculationSteps.questionAudit.length).toBe(5);
   });
 });

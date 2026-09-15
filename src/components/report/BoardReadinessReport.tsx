@@ -20,6 +20,8 @@ import {
   Sparkles,
   Info,
   Compass,
+  Calculator,
+  Wrench,
 } from 'lucide-react';
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import type {
@@ -36,10 +38,11 @@ interface BoardReadinessReportProps {
 }
 
 export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadinessReportProps) {
-  const [activeTab, setActiveTab] = useState<'all' | 'page1' | 'page2' | 'page3'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'page1' | 'page2' | 'page3' | 'page4'>('all');
   const [copied, setCopied] = useState(false);
   const [showRawTextModal, setShowRawTextModal] = useState(false);
   const [revisitFilter, setRevisitFilter] = useState<'all' | RevisitCategory>('all');
+  const [auditFilter, setAuditFilter] = useState<'all' | 'incorrect' | 'overtime' | 'revisit'>('all');
 
   const handleCopyText = async () => {
     try {
@@ -208,7 +211,7 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              All 3 Pages
+              All Pages (1–4)
             </button>
             <button
               type="button"
@@ -242,6 +245,21 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
               }`}
             >
               Page 3
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('page4')}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold transition ${
+                activeTab === 'page4'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
+                  : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
+              }`}
+            >
+              <Calculator className="size-3" />
+              Page 4 (Dev Calc Steps)
+              <span className="rounded bg-amber-200 px-1 text-[9px] font-black text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
+                DEV
+              </span>
             </button>
           </div>
 
@@ -883,6 +901,500 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
             </div>
             <div>
               Shri Ram Smart Minds Academy • Academic Evaluation Office
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* =========================================================================
+          PAGE 4: DIAGNOSTIC AUDIT & STEP-BY-STEP CALCULATIONS (DEVELOPMENT ONLY)
+          ========================================================================= */}
+      {(activeTab === 'all' || activeTab === 'page4') && report.calculationSteps && (
+        <section className="report-page-container relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900">
+          {/* Header watermark & Brand bar */}
+          <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-amber-700 dark:text-amber-400">
+                  Diagnostic Audit Engine
+                </span>
+                <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  Development Mode
+                </span>
+              </div>
+              <h2 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl dark:text-white">
+                PAGE 4 — DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
+              </h2>
+            </div>
+            <div className="text-right">
+              <span className="inline-block rounded-full bg-amber-500/15 px-3 py-1 text-xs font-black text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                PAGE 4 (DEV AUDIT)
+              </span>
+              <p className="mt-1 text-[11px] text-slate-400">Internal Verification Artifact</p>
+            </div>
+          </div>
+
+          {/* Dev Mode Explanatory Notice */}
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/80 via-yellow-50/50 to-orange-50/40 p-4 dark:border-amber-900/40 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/20">
+            <div className="flex items-start gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-slate-950 font-bold">
+                <Wrench className="size-4" />
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="font-bold text-amber-900 dark:text-amber-200">
+                  Development Audit Trail &amp; Verification
+                </div>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                  This page documents all raw sums, diagnostic weights ($W_i$), step-by-step percentage formulas, and individual question audit traces. 
+                  Designed to verify computations against specifications; this page can be toggled or removed for final production.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 4.1 Scoring & BRI Derivation */}
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-brand-600 text-white text-xs font-black">
+                <Calculator className="size-4" />
+              </div>
+              <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                1. Scoring &amp; Board Readiness Index (BRI) Derivation
+              </h3>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Questions (N)</span>
+                <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white tnum">
+                  {report.calculationSteps.scoring.totalQuestionsN}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Total items evaluated</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Raw Score Sum (Σ S_i)</span>
+                <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white tnum">
+                  {report.calculationSteps.scoring.rawScoreSum} / {report.calculationSteps.scoring.totalQuestionsN}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">1 mark per correct answer</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Diagnostic Weight (Σ W_i)</span>
+                <div className="mt-2 text-2xl font-black text-indigo-600 dark:text-indigo-400 tnum">
+                  {report.calculationSteps.scoring.diagnosticWeightSum}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Sum of all question weights</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Earned Weighted Score</span>
+                <div className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400 tnum">
+                  {report.calculationSteps.scoring.weightedScoreSum}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Σ (S_i × W_i)</p>
+              </div>
+            </div>
+
+            {/* BRI Calculation Box */}
+            <div className="rounded-2xl border border-brand-200 bg-brand-50/40 p-5 dark:border-brand-900/40 dark:bg-brand-950/20">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-brand-900 dark:text-brand-300">
+                    BRI Formula &amp; Step-by-Step Fraction:
+                  </div>
+                  <div className="font-mono text-xs bg-white/80 p-3 rounded-lg border border-brand-200/60 dark:bg-slate-900/80 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                    BRI = ( Σ(S_i × W_i) / Σ(W_i) ) × 100%
+                    <br />
+                    BRI = {report.calculationSteps.scoring.briFraction}
+                    <br />
+                    <strong className="text-brand-700 dark:text-brand-400">
+                      BRI = {report.calculationSteps.scoring.briResult}%
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-brand-900 dark:text-brand-300">
+                    Preparation Level Classification Rule:
+                  </div>
+                  <div className="font-mono text-xs bg-white/80 p-3 rounded-lg border border-brand-200/60 dark:bg-slate-900/80 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                    {report.calculationSteps.scoring.levelRule}
+                    <div className="mt-2 flex items-center gap-2 font-sans font-bold">
+                      <span>Evaluated Result:</span>
+                      {getPrepLevelBadge(report.calculationSteps.scoring.levelResult).label}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4.2 Area Breakdowns Calculation Steps */}
+          <div className="mt-8 space-y-3">
+            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              2. Area &amp; Difficulty Breakdown Derivations
+            </h3>
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Dimension</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Filter Condition</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Matching Qs</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score / Total</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Formula &amp; Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.breakdowns.map((b) => (
+                    <TableRow key={b.area}>
+                      <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                        {b.area}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                        {b.filterCondition}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {b.matchingQuestions.map((q) => (
+                            <span key={q} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Q{q}
+                            </span>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-bold tnum text-xs text-slate-800 dark:text-slate-200">
+                        {b.score} / {b.total}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                        {b.formula}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 4.3 Cognitive Skills & Accuracy Derivations */}
+          <div className="mt-8 space-y-3">
+            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              3. Primary Cognitive Skills &amp; Accuracy Derivations
+            </h3>
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Skill Dimension</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Filter Logic</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Matching Qs</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Earned W / Total W</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Formula &amp; %</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Category Assigned</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.skills.map((s) => (
+                    <TableRow key={s.skillName}>
+                      <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                        {s.skillName}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                        {s.filterCondition}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {s.matchingQuestions.map((q) => (
+                            <span key={q} className="rounded bg-slate-100 px-1 py-0.2 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Q{q}
+                            </span>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-bold tnum text-xs text-slate-800 dark:text-slate-200">
+                        {s.earnedWeights} / {s.totalWeights}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                        {s.formula}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getSkillCategoryBadge(s.categoryResult)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 4.4 Question Structure Derivations */}
+          <div className="mt-8 space-y-3">
+            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              4. Question Structure Performance Derivations
+            </h3>
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Structure Type</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Matching Qs</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Correct / Total</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Formula &amp; %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.structures.map((st) => (
+                    <TableRow key={st.structureType}>
+                      <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                        {st.structureType}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {st.matchingQuestions.length > 0 ? (
+                            st.matchingQuestions.map((q) => (
+                              <span key={q} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                Q{q}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">None tested</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-bold tnum text-xs text-slate-800 dark:text-slate-200">
+                        {st.correctCount} / {st.totalCount}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                        {st.formula}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 4.5 Full Question-by-Question Diagnostic Audit */}
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                  5. Full Question-by-Question Audit Table ({report.calculationSteps.questionAudit.length} Questions)
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Itemized record of responses, time taken, time limits, weights, and revisit classifications:
+                </p>
+              </div>
+
+              {/* Filter controls */}
+              <div className="no-print flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAuditFilter('all')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                    auditFilter === 'all'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  All ({report.calculationSteps.questionAudit.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditFilter('incorrect')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                    auditFilter === 'incorrect'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  Incorrect ({report.calculationSteps.questionAudit.filter((q) => !q.isCorrect).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditFilter('overtime')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                    auditFilter === 'overtime'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  Overtime ({report.calculationSteps.questionAudit.filter((q) => q.timeLimitExceeded).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditFilter('revisit')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                    auditFilter === 'revisit'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  Revisit Flags ({report.calculationSteps.questionAudit.filter((q) => Boolean(q.revisitCategory)).length})
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="w-10 text-center text-xs font-bold uppercase tracking-wider">Q#</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Subject &amp; Chapter</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Diff &amp; Skill</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Weight (W_i)</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Time (Actual vs Exp)</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Answer / Key</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Weighted Score</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Revisit Trigger</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.questionAudit
+                    .filter((item) => {
+                      if (auditFilter === 'incorrect') return !item.isCorrect;
+                      if (auditFilter === 'overtime') return item.timeLimitExceeded;
+                      if (auditFilter === 'revisit') return Boolean(item.revisitCategory);
+                      return true;
+                    })
+                    .map((item) => (
+                      <TableRow key={item.qno} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <TableCell className="text-center font-bold text-slate-900 dark:text-white text-xs">
+                          {item.qno}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-bold text-slate-900 text-xs dark:text-slate-100">
+                            {item.subject}: {item.chapter}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {item.topic}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {item.difficulty}
+                          </span>
+                          <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
+                            {item.primarySkill}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-mono font-bold text-xs text-indigo-700 dark:text-indigo-400">
+                          {item.diagnosticWeight}x
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            {item.timeTakenS}s / {item.expectedTimeRaw}
+                          </div>
+                          {item.timeLimitExceeded ? (
+                            <span className="inline-block rounded bg-amber-100 px-1.5 py-0.2 text-[9px] font-black text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              OVERTIME (+{item.timeTakenS - item.expectedUpperBoundS}s)
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                              On Time
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1.5 font-mono text-xs font-bold">
+                            <span className="text-slate-700 dark:text-slate-300">
+                              {item.selectedOption ?? '—'}
+                            </span>
+                            <span className="text-slate-400">/</span>
+                            <span className="text-emerald-700 dark:text-emerald-400">
+                              {item.correctAnswer}
+                            </span>
+                          </div>
+                          <div className="mt-0.5">
+                            {!item.attempted ? (
+                              <span className="text-[10px] text-slate-400">Skipped</span>
+                            ) : item.isCorrect ? (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                <Check className="size-3" /> Correct
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                <AlertTriangle className="size-3" /> Incorrect
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-xs">
+                          <span className={item.weightedScore > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>
+                            {item.weightedScore.toFixed(2)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {item.revisitCategory ? (
+                            <div>
+                              {getRevisitBadge(item.revisitCategory)}
+                              {item.revisitIssue && (
+                                <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 max-w-xs">
+                                  {item.revisitIssue}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 4.6 Chapter Accuracy & Priority Ranking */}
+          <div className="mt-8 space-y-3">
+            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              6. Chapter Score &amp; Priority Classification Audit
+            </h3>
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Chapter Name</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Subject</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score / Total</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Accuracy %</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Priority Classification</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.allChapterScores.map((c) => (
+                    <TableRow key={`${c.subject}-${c.chapter}`}>
+                      <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                        {c.chapter}
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                        {c.subject}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
+                        {c.correct} / {c.total}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                        {c.percentage}%
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getPriorityBadge(c.priority)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Footer certification note */}
+          <div className="mt-8 border-t border-amber-200 pt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2 dark:border-amber-900/60">
+            <div>
+              Generated for <strong className="text-slate-700 dark:text-slate-300">{report.studentName}</strong> • Internal Calculation Audit
+            </div>
+            <div>
+              SRSMA Diagnostic Engine v1.0 • Verification &amp; Development Mode
             </div>
           </div>
         </section>

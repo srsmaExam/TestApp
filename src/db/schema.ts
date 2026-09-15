@@ -71,6 +71,8 @@ export const profiles = pgTable('profiles', {
   board: text('board'),
   whatsappConsent: boolean('whatsapp_consent').notNull().default(false),
   classLevel: text('class_level'),
+  gender: text('gender'),
+  school: text('school'),
 });
 
 export const papers = pgTable('papers', {
@@ -262,6 +264,7 @@ export const attempts = pgTable(
     totalMarks: numeric('total_marks', { precision: 7, scale: 2 }),
     maxMarks: numeric('max_marks', { precision: 7, scale: 2 }),
     totalTimeS: integer('total_time_s'),
+    timeExtensionsCount: integer('time_extensions_count').notNull().default(0),
   },
   (t) => [unique('attempts_unique').on(t.testId, t.studentId, t.attemptNo)],
 );

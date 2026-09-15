@@ -9,6 +9,10 @@ const ReportDetailsSchema = z.object({
   city: z.string().trim().min(1, 'City is required'),
   board: z.string().trim().min(1, 'Board is required'),
   otherBoard: z.string().trim().optional(),
+  gender: z.enum(['Male', 'Female'], {
+    errorMap: () => ({ message: 'Please select your gender (Male or Female).' }),
+  }),
+  school: z.string().trim().min(1, 'School name is required'),
   whatsappConsent: z.boolean().refine((val) => val === true, {
     message:
       'I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report is mandatory.',
@@ -29,7 +33,7 @@ export const POST = withApi(async (req) => {
     throw new HttpError(400, 'invalid_request', issue);
   }
 
-  const { city, board, otherBoard, whatsappConsent, attemptId } = parsed.data;
+  const { city, board, otherBoard, gender, school, whatsappConsent, attemptId } = parsed.data;
   const effectiveBoard = board === 'Other' ? (otherBoard?.trim() || 'Other') : board;
 
   const db = await getDb();
@@ -38,6 +42,8 @@ export const POST = withApi(async (req) => {
     .set({
       city,
       board: effectiveBoard,
+      gender,
+      school,
       whatsappConsent,
     })
     .where(eq(profiles.id, session.userId));

@@ -17,6 +17,7 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
       status: attempts.status,
       startedAt: attempts.startedAt,
       deadlineAt: attempts.deadlineAt,
+      timeExtensionsCount: attempts.timeExtensionsCount,
       questionOrder: attempts.questionOrder,
       totalMarks: attempts.totalMarks,
       testTitle: tests.title,
@@ -45,6 +46,7 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
       deadlineAt={attempt.deadlineAt.toISOString()}
       studentName={session.fullName}
       serverTime={new Date().toISOString()}
+      initialExtensionsCount={attempt.timeExtensionsCount ?? 0}
     />
   );
 }

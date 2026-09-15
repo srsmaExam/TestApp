@@ -9,6 +9,9 @@ import { QuestionBody } from '@/components/Katex';
 import { BoardReadinessReport } from '@/components/report/BoardReadinessReport';
 import {
   evaluateDiagnosticReport,
+  getQuestionETS,
+  evaluateQuestionTimeManagement,
+  evaluateTimeManagement,
   type QuestionMetadataItem,
   type StudentQuestionResponse,
 } from '@/lib/diagnostic-evaluator';
@@ -92,6 +95,8 @@ export function ResultReviewClient({
   const [city, setCity] = useState('');
   const [board, setBoard] = useState('CBSE Board');
   const [otherBoard, setOtherBoard] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | ''>('');
+  const [school, setSchool] = useState('');
   const [whatsappConsent, setWhatsappConsent] = useState(true);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -149,6 +154,18 @@ export function ResultReviewClient({
     });
   }, [data]);
 
+  const timeManagementMetrics = useMemo(() => {
+    if (!data?.questions || data.questions.length === 0) return null;
+    return evaluateTimeManagement(
+      data.questions.map((q, idx) => ({
+        qno: q.position || idx + 1,
+        attempted: Boolean(q.isAttempted),
+        timeTakenSeconds: Math.round((q.timeSpentMs ?? 0) / 1000),
+        expectedUpperBoundS: getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS),
+      })),
+    );
+  }, [data]);
+
   useEffect(() => {
     if (data) {
       if (data.isReportUnlocked) {
@@ -177,6 +194,14 @@ export function ResultReviewClient({
 
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!gender) {
+      setReportError('Please select your gender.');
+      return;
+    }
+    if (!school.trim()) {
+      setReportError('Please enter your school name.');
+      return;
+    }
     if (!city.trim()) {
       setReportError('Please enter your city.');
       return;
@@ -202,6 +227,8 @@ export function ResultReviewClient({
           city: city.trim(),
           board,
           otherBoard: board === 'Other' ? otherBoard.trim() : undefined,
+          gender,
+          school: school.trim(),
           whatsappConsent: true,
           attemptId,
         }),
@@ -281,7 +308,17 @@ export function ResultReviewClient({
       if (filterStatus === 'correct' && q.isCorrect !== true) return false;
       if (filterStatus === 'wrong' && (q.isCorrect !== false || !q.isAttempted)) return false;
       if (filterStatus === 'unattempted' && q.isAttempted) return false;
-      if (filterStatus === 'overtime' && !q.isOvertime) return false;
+
+      const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
+      const ets = getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS);
+      const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets);
+
+      if (filterStatus === 'overtime' && timeTakenSec <= 1.5 * ets) return false;
+      if (filterStatus === 'good_time' && (!q.isAttempted || qtm.rating !== 'Good')) return false;
+      if (filterStatus === 'medium_time' && (!q.isAttempted || qtm.rating !== 'Medium')) return false;
+      if (filterStatus === 'poor_time' && (!q.isAttempted || qtm.rating !== 'Poor')) return false;
+      if (filterStatus === 'guesswork' && (!q.isAttempted || timeTakenSec >= 20)) return false;
+
       return true;
     });
   }, [data, filterSubject, filterStatus]);
@@ -359,7 +396,7 @@ export function ResultReviewClient({
         </div>
 
         {/* Hero KPI metrics grid */}
-        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6 sm:grid-cols-5">
+        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6 sm:grid-cols-3 lg:grid-cols-6">
           <div className="rounded-lg bg-white/5 p-3 text-center">
             <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Rank</p>
             <p className="mt-0.5 text-xl font-bold text-white">
@@ -383,7 +420,7 @@ export function ResultReviewClient({
             <p className="mt-0.5 text-xl font-bold text-white">{Math.round(data.totalTimeS / 60)} min</p>
           </div>
 
-          <div className="col-span-2 rounded-lg bg-white/5 p-3 text-center sm:col-span-1">
+          <div className="rounded-lg bg-white/5 p-3 text-center">
             <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Correct / Wrong</p>
             <p className="mt-0.5 text-xl font-bold text-white">
               <span className="text-emerald-400">{data.summary.correctCount}</span>
@@ -391,8 +428,56 @@ export function ResultReviewClient({
               <span className="text-red-400">{data.summary.wrongCount}</span>
             </p>
           </div>
+
+          <div className="rounded-lg bg-white/5 p-3 text-center">
+            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Time Management</p>
+            <p className="mt-0.5 text-xl font-bold">
+              <span
+                className={
+                  timeManagementMetrics?.rating === 'Good'
+                    ? 'text-emerald-400'
+                    : timeManagementMetrics?.rating === 'Medium'
+                    ? 'text-amber-400'
+                    : 'text-rose-400'
+                }
+              >
+                {timeManagementMetrics ? `${timeManagementMetrics.finalScorePercent}%` : '—'}
+              </span>
+            </p>
+            <p className="text-xs font-semibold text-slate-300">
+              {timeManagementMetrics ? `${timeManagementMetrics.rating}` : 'N/A'}
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Front Page Guesswork Alert Banner */}
+      {timeManagementMetrics && timeManagementMetrics.guessworkQuestions.length > 0 && (
+        <div className="rounded-2xl border border-amber-300/90 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-4 sm:p-5 shadow-xs dark:border-amber-600/40 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/40">
+          <div className="flex items-start gap-3.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs mt-0.5">
+              ⚠️
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-400/20 dark:text-amber-200">
+                  Rapid Response Alert
+                </span>
+                <span className="text-xs text-amber-700/80 dark:text-amber-400 font-medium">
+                  Attempt Time &lt; 20s
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-relaxed">
+                There is possibility of guesswork being done in answering{' '}
+                <strong className="text-amber-900 dark:text-amber-200 underline decoration-amber-500 decoration-2 underline-offset-2">
+                  {timeManagementMetrics.guessworkQuestions.map((q) => `Q${q}`).join(', ')}
+                </strong>{' '}
+                (responses submitted in less than 20 seconds).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Subject Breakdown Cards */}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -544,13 +629,16 @@ export function ResultReviewClient({
             </div>
 
             {/* Status Filters */}
-            <div className="flex rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+            <div className="flex flex-wrap rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
               {[
                 { id: 'all', label: 'All' },
                 { id: 'correct', label: 'Correct' },
                 { id: 'wrong', label: 'Wrong' },
                 { id: 'unattempted', label: 'Unattempted' },
-                { id: 'overtime', label: 'Overtime (>1.5x)' },
+                { id: 'good_time', label: 'Good Time' },
+                { id: 'medium_time', label: 'Medium Time' },
+                { id: 'poor_time', label: 'Poor Time (>2x ETS)' },
+                { id: 'guesswork', label: 'Guesswork (<20s)' },
               ].map((st) => (
                 <button
                   key={st.id}
@@ -569,7 +657,9 @@ export function ResultReviewClient({
         <div className="space-y-4">
           {filteredQuestions.map((q, idx) => {
             const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
-            const expectedSec = q.expectedTimeS ?? 120;
+            const ets = getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS);
+            const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets);
+            const isGuesswork = q.isAttempted && timeTakenSec < 20;
             const isEveryThird =
               (idx + 1) % 3 === 0 || (filteredQuestions.length < 3 && idx === filteredQuestions.length - 1);
 
@@ -629,17 +719,36 @@ export function ResultReviewClient({
                           <Badge tone="slate">0 Marks (Unattempted)</Badge>
                         )}
 
-                        {/* Time taken */}
-                        <span className="tnum flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                          <Clock className="size-3.5" />
-                          {timeTakenSec}s (Exp: {expectedSec}s)
+                        {/* ETS & Time taken */}
+                        <span className="tnum flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <Clock className="size-3.5 text-slate-500" />
+                          <span>{timeTakenSec}s</span>
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">
+                            (ETS: {ets}s)
+                          </span>
                         </span>
 
-                        {/* Overtime warning flag */}
-                        {q.isOvertime && (
-                          <Badge tone="amber" className="text-xs">
-                            Overtime ({timeTakenSec}s &gt; {Math.round(expectedSec * 1.5)}s)
+                        {/* Time Management Evaluation Badge */}
+                        {q.isAttempted && (
+                          <Badge
+                            tone={
+                              qtm.score === 3
+                                ? 'green'
+                                : qtm.score === 2
+                                ? 'amber'
+                                : 'red'
+                            }
+                            className="text-xs font-semibold"
+                          >
+                            {qtm.label} ({qtm.score} pt{qtm.score > 1 ? 's' : ''})
                           </Badge>
+                        )}
+
+                        {/* Guesswork flag */}
+                        {isGuesswork && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-100 px-2 py-0.5 text-xs font-extrabold text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/80 dark:text-amber-200">
+                            ⚡ Possible Guesswork (&lt;20s)
+                          </span>
                         )}
                       </div>
                     </div>
@@ -995,6 +1104,50 @@ export function ResultReviewClient({
                 {reportError}
               </Alert>
             )}
+
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Gender <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGender('Male')}
+                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
+                    gender === 'Male'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Male
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('Female')}
+                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
+                    gender === 'Female'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Female
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="report-school-input" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                School <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="report-school-input"
+                required
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                placeholder="e.g. Delhi Public School"
+                className="text-sm"
+              />
+            </div>
 
             <div>
               <Label htmlFor="report-city-input" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">

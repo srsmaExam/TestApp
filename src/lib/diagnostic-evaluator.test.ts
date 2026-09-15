@@ -5,6 +5,10 @@ import {
   classifyPreparationLevel,
   classifyPriority,
   parseExpectedTimeUpperBound,
+  getQuestionETS,
+  evaluateQuestionTimeManagement,
+  classifyTimeManagementRating,
+  evaluateTimeManagement,
   type QuestionMetadataItem,
   type StudentResponsePayload,
 } from './diagnostic-evaluator';
@@ -267,5 +271,127 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(strongResult.keyInsight).toBe(
       'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
     );
+  });
+
+  describe('Time Management & Guesswork Scoring Engine', () => {
+    it('correctly resolves question ETS upper bound', () => {
+      expect(getQuestionETS('45,60', null)).toBe(60);
+      expect(getQuestionETS('30–45 sec', 60)).toBe(45);
+      expect(getQuestionETS(null, 120)).toBe(120);
+      expect(getQuestionETS(undefined, undefined)).toBe(60);
+      expect(getQuestionETS(90, null)).toBe(90);
+    });
+
+    it('correctly scores per-question time management based on ETS multipliers', () => {
+      const ets = 60; // 1.5x = 90s, 2x = 120s
+
+      // < 1.5x ETS -> Good time management (score = 3)
+      expect(evaluateQuestionTimeManagement(30, ets)).toEqual({
+        score: 3,
+        label: 'Good time management',
+        rating: 'Good',
+      });
+      expect(evaluateQuestionTimeManagement(89, ets)).toEqual({
+        score: 3,
+        label: 'Good time management',
+        rating: 'Good',
+      });
+
+      // 1.5x to 2x ETS -> Medium time management (score = 2)
+      expect(evaluateQuestionTimeManagement(90, ets)).toEqual({
+        score: 2,
+        label: 'Medium time management',
+        rating: 'Medium',
+      });
+      expect(evaluateQuestionTimeManagement(120, ets)).toEqual({
+        score: 2,
+        label: 'Medium time management',
+        rating: 'Medium',
+      });
+
+      // > 2x ETS -> Poor time management (score = 1)
+      expect(evaluateQuestionTimeManagement(121, ets)).toEqual({
+        score: 1,
+        label: 'Poor time management',
+        rating: 'Poor',
+      });
+      expect(evaluateQuestionTimeManagement(200, ets)).toEqual({
+        score: 1,
+        label: 'Poor time management',
+        rating: 'Poor',
+      });
+    });
+
+    it('classifies overall time management rating thresholds (<=33% Poor, 33-66% Medium, >=66% Good)', () => {
+      expect(classifyTimeManagementRating(25)).toBe('Poor');
+      expect(classifyTimeManagementRating(33)).toBe('Poor');
+      expect(classifyTimeManagementRating(34)).toBe('Medium');
+      expect(classifyTimeManagementRating(50)).toBe('Medium');
+      expect(classifyTimeManagementRating(65)).toBe('Medium');
+      expect(classifyTimeManagementRating(66)).toBe('Good');
+      expect(classifyTimeManagementRating(100)).toBe('Good');
+    });
+
+    it('calculates final time management score = (score / (3 * attempted)) * 100 and flags guesswork <20s', () => {
+      const testQuestions = [
+        { qno: 1, attempted: true, timeTakenSeconds: 15, expectedUpperBoundS: 60 }, // <20s Guesswork! time < 1.5*ETS -> score 3
+        { qno: 2, attempted: true, timeTakenSeconds: 100, expectedUpperBoundS: 60 }, // 1.5x-2x ETS -> score 2
+        { qno: 3, attempted: true, timeTakenSeconds: 150, expectedUpperBoundS: 60 }, // >2x ETS -> score 1
+        { qno: 4, attempted: false, timeTakenSeconds: 10, expectedUpperBoundS: 60 }, // Unattempted -> excluded from score & attempted count
+      ];
+
+      const tm = evaluateTimeManagement(testQuestions);
+
+      // Attempted count = 3 (Q1, Q2, Q3)
+      expect(tm.attemptedCount).toBe(3);
+      // Total score = 3 (Q1) + 2 (Q2) + 1 (Q3) = 6
+      expect(tm.totalScore).toBe(6);
+      // Max possible score = 3 * 3 = 9
+      expect(tm.maxPossibleScore).toBe(9);
+      // Final percentage = (6 / 9) * 100 = 66.666... rounded to 67%
+      expect(tm.finalScorePercent).toBe(67);
+      expect(tm.rating).toBe('Good');
+
+      // Guesswork detection: only attempted questions with < 20s
+      // Q1 is attempted and 15s (<20s) -> Flagged
+      // Q4 is 10s but NOT attempted -> Not guesswork answering
+      expect(tm.guessworkQuestions).toEqual([1]);
+    });
+
+    it('integrates time management and guesswork seamlessly into evaluateDiagnosticReport', () => {
+      const payload: StudentResponsePayload = {
+        studentName: 'Test Student',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 12 }, // < 20s (guesswork flagged!), ETS 60 -> score 3
+          { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 }, // < 1.5x ETS (45) -> score 3
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 250 }, // > 2x ETS (120 * 2 = 240) -> score 1
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 250 }, // > 2x ETS (120 * 2 = 240) -> score 1
+          { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 5 }, // unattempted
+        ],
+      };
+
+      const report = evaluateDiagnosticReport(sampleMetadata, payload);
+
+      expect(report.timeManagement).toBeDefined();
+      expect(report.timeManagement.attemptedCount).toBe(4);
+      // Scores: Q1 (3) + Q2 (3) + Q3 (1) + Q4 (1) = 8
+      // Max: 4 * 3 = 12
+      // Pct: (8 / 12) * 100 = 67%
+      expect(report.timeManagement.totalScore).toBe(8);
+      expect(report.timeManagement.maxPossibleScore).toBe(12);
+      expect(report.timeManagement.finalScorePercent).toBe(67);
+      expect(report.timeManagement.rating).toBe('Good');
+      expect(report.timeManagement.guessworkQuestions).toEqual([1]);
+
+      // Report plain text should mention time management & guesswork
+      expect(report.plainTextReport).toContain('TIME MANAGEMENT SCORE: 67%');
+      expect(report.plainTextReport).toContain('⚠️ GUESSWORK OBSERVATION');
+      expect(report.plainTextReport).toContain('Q1');
+
+      // Calculation steps audit should contain time management
+      expect(report.calculationSteps.timeManagement).toBeDefined();
+      expect(report.calculationSteps.timeManagement?.finalScorePercent).toBe(67);
+      expect(report.calculationSteps.timeManagement?.ratingResult).toBe('Good');
+    });
   });
 });

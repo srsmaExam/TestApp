@@ -110,12 +110,14 @@ export function TestRunnerClient({
   deadlineAt,
   studentName,
   serverTime,
+  initialExtensionsCount = 0,
 }: {
   attemptId: string;
   testTitle: string;
   deadlineAt: string;
   studentName: string;
   serverTime: string;
+  initialExtensionsCount?: number;
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState<QuestionRuntimeState[]>([]);
@@ -137,6 +139,14 @@ export function TestRunnerClient({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Time Extension Popup States
+  const [currentDeadline, setCurrentDeadline] = useState(deadlineAt);
+  const [extensionCount, setExtensionCount] = useState(initialExtensionsCount);
+  const [timeExtensionModalOpen, setTimeExtensionModalOpen] = useState(false);
+  const [popupTimer, setPopupTimer] = useState(60);
+  const [extendingTime, setExtendingTime] = useState(false);
+  const [extensionError, setExtensionError] = useState<string | null>(null);
 
   // Timer state
   const [remainingSeconds, setRemainingSeconds] = useState(0);
@@ -626,17 +636,23 @@ export function TestRunnerClient({
    * everything since the last successful heartbeat.
    */
   const closeAttempt = useCallback(
-    async (mode: 'auto' | 'manual') => {
+    async (mode: 'auto' | 'manual', options?: { autoSubmitted?: boolean; reason?: string }) => {
       if (submitStartedRef.current) return;
       submitStartedRef.current = true;
       setSubmitting(true);
       flushTimeSpent();
 
       try {
+        const payload: Record<string, unknown> = buildAnswersPayload();
+        if (options?.autoSubmitted || mode === 'auto') {
+          payload.autoSubmitted = true;
+          payload.autoSubmitReason = options?.reason || (mode === 'auto' ? 'deadline_expired' : 'popup_timeout_60s');
+        }
+
         const res = await fetch(`/api/attempts/${attemptId}/submit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buildAnswersPayload()),
+          body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
 
@@ -661,10 +677,9 @@ export function TestRunnerClient({
     [attemptId, buildAnswersPayload, flushTimeSpent, router],
   );
 
-  // 2. Countdown Timer. Depends on closeAttempt (stable), so the interval is
-  // never re-created with a stale copy of it.
+  // 2. Countdown Timer. Depends on closeAttempt (stable) and currentDeadline.
   useEffect(() => {
-    const targetTime = new Date(deadlineAt).getTime();
+    const targetTime = new Date(currentDeadline).getTime();
 
     const updateTimer = () => {
       const adjustedNow = Date.now() - clockOffsetRef.current;
@@ -673,14 +688,75 @@ export function TestRunnerClient({
 
       if (diff <= 0) {
         clearInterval(interval);
-        void closeAttempt('auto');
+        void closeAttempt('auto', { autoSubmitted: true, reason: 'deadline_expired' });
       }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [deadlineAt, closeAttempt]);
+  }, [currentDeadline, closeAttempt]);
+
+  // 3. 60-Second Auto-Submit Timer for the "Need More Time?" Popup
+  useEffect(() => {
+    if (!timeExtensionModalOpen) return;
+
+    const timer = setInterval(() => {
+      setPopupTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setTimeExtensionModalOpen(false);
+          void closeAttempt('auto', { autoSubmitted: true, reason: 'popup_timeout_60s' });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeExtensionModalOpen, closeAttempt]);
+
+  const handleSubmitClick = () => {
+    if (extensionCount < 2) {
+      setPopupTimer(60);
+      setExtensionError(null);
+      setTimeExtensionModalOpen(true);
+    } else {
+      setSubmitModalOpen(true);
+    }
+  };
+
+  const handleRequestMoreTime = async () => {
+    try {
+      setExtendingTime(true);
+      setExtensionError(null);
+      const res = await fetch(`/api/attempts/${attemptId}/extend-time`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to extend test time.');
+      }
+      if (data.deadlineAt) {
+        setCurrentDeadline(data.deadlineAt);
+      }
+      if (typeof data.timeExtensionsCount === 'number') {
+        setExtensionCount(data.timeExtensionsCount);
+      } else {
+        setExtensionCount((prev) => prev + 1);
+      }
+      setTimeExtensionModalOpen(false);
+    } catch (err: any) {
+      setExtensionError(err.message || 'Could not extend test time.');
+    } finally {
+      setExtendingTime(false);
+    }
+  };
+
+  const handlePopupSubmitNow = () => {
+    setTimeExtensionModalOpen(false);
+    void closeAttempt('manual');
+  };
 
   // Summary counts
   const paletteStats = useMemo(() => {
@@ -836,7 +912,7 @@ export function TestRunnerClient({
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setSubmitModalOpen(true)}
+            onClick={handleSubmitClick}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             Submit Test
@@ -1154,7 +1230,91 @@ export function TestRunnerClient({
         </div>
       )}
 
-      {/* 5. Final Submit Confirmation Modal */}
+      {/* 5. Need More Time? Time Extension & Submit Popup */}
+      {timeExtensionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <Card className="w-full max-w-md shadow-2xl border-amber-300/60 dark:border-amber-500/30">
+            <CardBody className="space-y-4 p-6">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                    <Clock className="size-5" />
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                    Do you want more time?
+                  </h2>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 animate-pulse">
+                  <Clock className="size-3.5" />
+                  Auto-submitting in {popupTimer}s
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                <p className="font-semibold">
+                  You can get 10 more minutes to complete or review your answers.
+                </p>
+                <p className="mt-1 text-slate-600 dark:text-slate-400">
+                  Extension {extensionCount + 1} of 2 available. If no option is selected within 60 seconds, your test will auto-submit.
+                </p>
+              </div>
+
+              {/* Quick progress pill stats */}
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/40">
+                  <span className="block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Answered</span>
+                  <span className="text-base font-extrabold text-emerald-800 dark:text-emerald-200">
+                    {paletteStats.answered + paletteStats.answeredMarked}
+                  </span>
+                </div>
+                <div className="rounded-lg bg-red-50 p-2 dark:bg-red-950/40">
+                  <span className="block text-[11px] font-semibold text-red-700 dark:text-red-300">Unanswered</span>
+                  <span className="text-base font-extrabold text-red-800 dark:text-red-200">
+                    {paletteStats.notAnswered + paletteStats.notVisited}
+                  </span>
+                </div>
+                <div className="rounded-lg bg-purple-50 p-2 dark:bg-purple-950/40">
+                  <span className="block text-[11px] font-semibold text-purple-700 dark:text-purple-300">Marked</span>
+                  <span className="text-base font-extrabold text-purple-800 dark:text-purple-200">
+                    {paletteStats.markedForReview + paletteStats.answeredMarked}
+                  </span>
+                </div>
+              </div>
+
+              {extensionError && (
+                <Alert tone="red" className="text-xs">
+                  {extensionError}
+                </Alert>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={handleRequestMoreTime}
+                  disabled={extendingTime || submitting}
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold border-0 shadow-md"
+                >
+                  {extendingTime ? <Spinner className="size-4" /> : 'Yes, Need 10 more mins'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={handlePopupSubmitNow}
+                  disabled={extendingTime || submitting}
+                  className="flex-1 border-slate-300 font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200"
+                >
+                  {submitting ? <Spinner className="size-4" /> : 'Submit Now'}
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* 6. Final Submit Confirmation Modal (Shown once both 10-min extensions are exhausted) */}
       {submitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <Card className="w-full max-w-lg shadow-2xl">
@@ -1167,6 +1327,11 @@ export function TestRunnerClient({
               </div>
 
               <p className="text-xs text-slate-600 dark:text-slate-400">
+                {extensionCount >= 2 && (
+                  <span className="mb-1 block font-semibold text-amber-600 dark:text-amber-400">
+                    You have used all 2 time extensions (10 minutes each).
+                  </span>
+                )}
                 Are you sure you want to submit? Review your attempt summary below before final submission:
               </p>
 

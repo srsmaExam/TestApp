@@ -92,6 +92,8 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
   const [city, setCity] = useState('');
   const [board, setBoard] = useState('CBSE Board');
   const [otherBoard, setOtherBoard] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | ''>('');
+  const [school, setSchool] = useState('');
   const [whatsappConsent, setWhatsappConsent] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [unlockError, setUnlockError] = useState<string | null>(null);
@@ -139,6 +141,14 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
 
   async function handleUnlockSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!gender) {
+      setUnlockError('Please select your gender.');
+      return;
+    }
+    if (!school.trim()) {
+      setUnlockError('Please enter your school name.');
+      return;
+    }
     if (!city.trim()) {
       setUnlockError('Please enter your city.');
       return;
@@ -165,6 +175,8 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
           city: city.trim(),
           board,
           otherBoard: board === 'Other' ? otherBoard.trim() : undefined,
+          gender,
+          school: school.trim(),
           whatsappConsent: true,
         }),
       });
@@ -285,6 +297,50 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
                 {unlockError}
               </Alert>
             )}
+
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Gender <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGender('Male')}
+                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
+                    gender === 'Male'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Male
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('Female')}
+                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
+                    gender === 'Female'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Female
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="unlock-school" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                School <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="unlock-school"
+                required
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                placeholder="e.g. Delhi Public School"
+                className="text-sm"
+              />
+            </div>
 
             <div>
               <Label htmlFor="unlock-city" className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">

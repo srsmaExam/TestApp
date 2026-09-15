@@ -112,6 +112,33 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
     }
   };
 
+  const getTimeManagementBadge = (rating: 'Good' | 'Medium' | 'Poor' | string) => {
+    switch (rating) {
+      case 'Good':
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            Good
+          </span>
+        );
+      case 'Medium':
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+            <span className="size-1.5 rounded-full bg-amber-500" />
+            Medium
+          </span>
+        );
+      case 'Poor':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+            <span className="size-1.5 rounded-full bg-rose-500" />
+            Poor
+          </span>
+        );
+    }
+  };
+
   const getPriorityBadge = (priority: PriorityLevel) => {
     switch (priority) {
       case 'High Priority':
@@ -506,7 +533,7 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
               </span>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Conceptual Foundation</span>
                 <div className="mt-2 flex items-center justify-between">
@@ -556,7 +583,42 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                   </span>
                 </div>
               </div>
+
+              {report.timeManagement && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Time Management</span>
+                  <div className="mt-2 flex items-center justify-between">
+                    {getTimeManagementBadge(report.timeManagement.rating)}
+                    <span className="tnum text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {report.timeManagement.finalScorePercent}%
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Front Page Guesswork Alert */}
+            {report.timeManagement?.guessworkQuestions && report.timeManagement.guessworkQuestions.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-amber-300/90 bg-amber-50/90 p-4 sm:p-5 shadow-xs dark:border-amber-900/60 dark:bg-amber-950/40">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 font-bold text-slate-950 text-sm shadow-xs mt-0.5">
+                    ⚠️
+                  </span>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-amber-950 dark:text-amber-200">
+                      Possibility of Guesswork Detected
+                    </h4>
+                    <p className="text-xs sm:text-sm text-amber-900/90 dark:text-amber-300 leading-relaxed font-medium">
+                      There is possibility of guesswork being done in answering{' '}
+                      <strong className="underline decoration-amber-500 underline-offset-2">
+                        {report.timeManagement.guessworkQuestions.map((q) => `Q${q}`).join(', ')}
+                      </strong>{' '}
+                      (responses were submitted in less than 20 seconds).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Insight Analytical Box */}
@@ -1166,12 +1228,62 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
             </div>
           </div>
 
-          {/* 4.5 Full Question-by-Question Diagnostic Audit */}
+          {/* 4.5 Time Management & Pacing Derivations */}
+          {report.calculationSteps.timeManagement && (
+            <div className="mt-8 space-y-3">
+              <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                5. Time Management &amp; Pacing Derivations
+              </h3>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Scoring Formula</span>
+                    <p className="mt-1 font-mono text-xs font-bold text-slate-900 dark:text-white">
+                      (Total Score / (3 * Attempted)) * 100
+                    </p>
+                    <p className="mt-1 text-xs text-brand-600 dark:text-brand-400 font-bold">
+                      {report.calculationSteps.timeManagement.formula} = {report.calculationSteps.timeManagement.finalScorePercent}%
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Per-Question Multipliers</span>
+                    <ul className="mt-1 space-y-0.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                      <li>• Time &lt; 1.5x ETS: <strong className="text-emerald-600">Good (3 pts)</strong></li>
+                      <li>• 1.5x - 2.0x ETS: <strong className="text-amber-600">Medium (2 pts)</strong></li>
+                      <li>• Time &gt; 2.0x ETS: <strong className="text-rose-600">Poor (1 pt)</strong></li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rating &amp; Flags</span>
+                    <div className="mt-1 flex items-center gap-2">
+                      {getTimeManagementBadge(report.calculationSteps.timeManagement.ratingResult)}
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {report.calculationSteps.timeManagement.finalScorePercent}%
+                      </span>
+                    </div>
+                    {report.calculationSteps.timeManagement.guessworkQuestions.length > 0 ? (
+                      <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
+                        ⚠️ Guesswork: Q{report.calculationSteps.timeManagement.guessworkQuestions.join(', Q')} (&lt;20s)
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        ✓ No guesswork flags (&lt;20s)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4.6 Full Question-by-Question Diagnostic Audit */}
           <div className="mt-8 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-                  5. Full Question-by-Question Audit Table ({report.calculationSteps.questionAudit.length} Questions)
+                  6. Full Question-by-Question Audit Table ({report.calculationSteps.questionAudit.length} Questions)
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Itemized record of responses, time taken, time limits, weights, and revisit classifications:
@@ -1185,7 +1297,7 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                   onClick={() => setAuditFilter('all')}
                   className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                     auditFilter === 'all'
-                      ? 'bg-amber-600 text-white'
+                      ? 'bg-brand-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
@@ -1235,7 +1347,7 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                     <TableHead className="text-xs font-bold uppercase tracking-wider">Subject &amp; Chapter</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider">Diff &amp; Skill</TableHead>
                     <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Weight (W_i)</TableHead>
-                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Time (Actual vs Exp)</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Time (Actual vs ETS)</TableHead>
                     <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Answer / Key</TableHead>
                     <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Weighted Score</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider">Revisit Trigger</TableHead>
@@ -1275,17 +1387,28 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
-                            {item.timeTakenS}s / {item.expectedTimeRaw}
+                            {item.timeTakenS}s / ETS {item.expectedUpperBoundS}s
                           </div>
-                          {item.timeLimitExceeded ? (
-                            <span className="inline-block rounded bg-amber-100 px-1.5 py-0.2 text-[9px] font-black text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                              OVERTIME (+{item.timeTakenS - item.expectedUpperBoundS}s)
-                            </span>
-                          ) : (
-                            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                              On Time
-                            </span>
-                          )}
+                          <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
+                            {item.timeManagementLabel && (
+                              <span
+                                className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                                  item.timeManagementScore === 3
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                    : item.timeManagementScore === 2
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                }`}
+                              >
+                                {item.timeManagementLabel} ({item.timeManagementScore} pts)
+                              </span>
+                            )}
+                            {item.isGuesswork && (
+                              <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[9px] font-black text-amber-950 dark:bg-amber-900/60 dark:text-amber-200">
+                                ⚡ &lt;20s Guesswork
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1.5 font-mono text-xs font-bold">

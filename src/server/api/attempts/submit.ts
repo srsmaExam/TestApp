@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { apiSession } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
-import { attemptAnswers, attempts, tests } from '@/db/schema';
+import { attemptAnswers, attemptEvents, attempts, tests } from '@/db/schema';
 import { gradeAndCloseAttempt } from '@/lib/attempts';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -39,8 +39,8 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     throw new HttpError(422, 'empty_attempt', 'No questions found in this attempt.');
   }
 
-  // A submit landing after the deadline is recorded as an auto-submit — the
-  // student did not close the paper themselves, the clock did.
+  // A submit landing after the deadline or triggered by the 60s popup auto-submit
+  // is recorded as an auto-submit.
   const pastDeadline = Date.now() > new Date(attempt.deadlineAt).getTime();
   const wasAlreadyClosed = attempt.status !== 'in_progress';
 
@@ -54,6 +54,20 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
   }
 
   const finalAnswers = body && Array.isArray(body.answers) ? body.answers : undefined;
+  const isAutoSubmitted = Boolean(body?.autoSubmitted) || pastDeadline;
+
+  if (isAutoSubmitted && !wasAlreadyClosed) {
+    await db
+      .insert(attemptEvents)
+      .values({
+        attemptId,
+        eventType: 'auto_submitted',
+        meta: {
+          reason: body?.autoSubmitReason || (pastDeadline ? 'deadline_expired' : 'popup_timeout_60s'),
+        },
+      })
+      .catch(() => {});
+  }
 
   // gradeAndCloseAttempt is idempotent on total_marks, so a submit racing the
   // background sweep reads back whichever landed first instead of clobbering it
@@ -61,7 +75,11 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
   const result = await gradeAndCloseAttempt(
     db,
     attemptId,
-    wasAlreadyClosed ? (attempt.status as 'submitted' | 'auto_submitted') : pastDeadline ? 'auto_submitted' : 'submitted',
+    wasAlreadyClosed
+      ? (attempt.status as 'submitted' | 'auto_submitted')
+      : isAutoSubmitted
+        ? 'auto_submitted'
+        : 'submitted',
     finalAnswers,
   );
 

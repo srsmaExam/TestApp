@@ -115,6 +115,9 @@ export interface QuestionAuditItem {
   expectedUpperBoundS: number;
   timeTakenS: number;
   timeLimitExceeded: boolean;
+  timeManagementScore?: number;
+  timeManagementLabel?: string;
+  isGuesswork?: boolean;
   correctAnswer: string;
   selectedOption: string | null;
   attempted: boolean;
@@ -123,6 +126,30 @@ export interface QuestionAuditItem {
   weightedScore: number;
   revisitIssue: string | null;
   revisitCategory: RevisitCategory | null;
+}
+
+export type TimeManagementRating = 'Good' | 'Medium' | 'Poor';
+
+export interface QuestionTimeEvaluation {
+  qno: number;
+  timeTakenSeconds: number;
+  ets: number;
+  multiplier: number;
+  score: 1 | 2 | 3;
+  label: 'Good time management' | 'Medium time management' | 'Poor time management';
+  rating: TimeManagementRating;
+  isGuesswork: boolean;
+  attempted: boolean;
+}
+
+export interface TimeManagementSummary {
+  totalScore: number;
+  maxPossibleScore: number;
+  finalScorePercent: number;
+  rating: TimeManagementRating;
+  attemptedCount: number;
+  guessworkQuestions: number[];
+  items: QuestionTimeEvaluation[];
 }
 
 export interface DiagnosticCalculationSteps {
@@ -186,6 +213,16 @@ export interface DiagnosticCalculationSteps {
     percentage: number;
     priority: PriorityLevel;
   }>;
+  timeManagement?: {
+    attemptedCount: number;
+    totalScore: number;
+    maxPossibleScore: number;
+    formula: string;
+    finalScorePercent: number;
+    ratingRule: string;
+    ratingResult: TimeManagementRating;
+    guessworkQuestions: number[];
+  };
   questionAudit: QuestionAuditItem[];
 }
 
@@ -229,6 +266,9 @@ export interface DiagnosticEvaluationResult {
   priorityGaps: PriorityGapItem[];
   topicsToRevisit: TopicToRevisitItem[];
 
+  // Time Management & Pacing
+  timeManagement: TimeManagementSummary;
+
   // Dynamic Narratives
   keyInsight: string;
   performancePatternInsight: string;
@@ -240,8 +280,9 @@ export interface DiagnosticEvaluationResult {
   calculationSteps: DiagnosticCalculationSteps;
 }
 
-export function parseExpectedTimeUpperBound(raw: string | null | undefined): number {
-  if (!raw) return 60;
+export function parseExpectedTimeUpperBound(raw: string | number | null | undefined): number {
+  if (raw === null || raw === undefined) return 60;
+  if (typeof raw === 'number') return raw > 0 ? raw : 60;
   const str = String(raw).trim();
   const rangeMatch = str.match(/(\d+)\s*[–\-—,]\s*(\d+)/);
   if (rangeMatch) {
@@ -252,6 +293,116 @@ export function parseExpectedTimeUpperBound(raw: string | null | undefined): num
     return Number(singleMatch[1]);
   }
   return 60;
+}
+
+export function getQuestionETS(
+  rawExpectedTime?: string | number | null,
+  expectedTimeS?: number | null,
+): number {
+  if (rawExpectedTime !== null && rawExpectedTime !== undefined && rawExpectedTime !== '') {
+    const parsed = parseExpectedTimeUpperBound(rawExpectedTime);
+    if (parsed > 0) return parsed;
+  }
+  if (expectedTimeS && expectedTimeS > 0) {
+    return expectedTimeS;
+  }
+  return 60;
+}
+
+export function evaluateQuestionTimeManagement(
+  timeTakenSeconds: number,
+  ets: number,
+): {
+  score: 1 | 2 | 3;
+  label: 'Good time management' | 'Medium time management' | 'Poor time management';
+  rating: TimeManagementRating;
+} {
+  const safeEts = Math.max(1, ets);
+  if (timeTakenSeconds < 1.5 * safeEts) {
+    return {
+      score: 3,
+      label: 'Good time management',
+      rating: 'Good',
+    };
+  }
+  if (timeTakenSeconds > 2 * safeEts) {
+    return {
+      score: 1,
+      label: 'Poor time management',
+      rating: 'Poor',
+    };
+  }
+  return {
+    score: 2,
+    label: 'Medium time management',
+    rating: 'Medium',
+  };
+}
+
+export function classifyTimeManagementRating(percentage: number): TimeManagementRating {
+  if (percentage <= 33) return 'Poor';
+  if (percentage >= 66) return 'Good';
+  return 'Medium';
+}
+
+export function evaluateTimeManagement(
+  questions: Array<{
+    qno: number;
+    attempted: boolean;
+    timeTakenSeconds: number;
+    expectedUpperBoundS: number;
+  }>,
+): TimeManagementSummary {
+  let totalScore = 0;
+  let attemptedCount = 0;
+  const guessworkQuestions: number[] = [];
+  const items: QuestionTimeEvaluation[] = [];
+
+  for (const q of questions) {
+    const isGuesswork = q.attempted && q.timeTakenSeconds < 20;
+    if (isGuesswork) {
+      guessworkQuestions.push(q.qno);
+    }
+
+    const ets = Math.max(1, q.expectedUpperBoundS);
+    const evalResult = evaluateQuestionTimeManagement(q.timeTakenSeconds, ets);
+    const multiplier = Number((q.timeTakenSeconds / ets).toFixed(2));
+
+    if (q.attempted) {
+      totalScore += evalResult.score;
+      attemptedCount += 1;
+    }
+
+    items.push({
+      qno: q.qno,
+      timeTakenSeconds: q.timeTakenSeconds,
+      ets,
+      multiplier,
+      score: evalResult.score,
+      label: evalResult.label,
+      rating: evalResult.rating,
+      isGuesswork,
+      attempted: q.attempted,
+    });
+  }
+
+  const maxPossibleScore = attemptedCount * 3;
+  const finalScorePercent =
+    maxPossibleScore > 0
+      ? Math.round((totalScore / maxPossibleScore) * 100)
+      : 0;
+
+  const rating = classifyTimeManagementRating(finalScorePercent);
+
+  return {
+    totalScore,
+    maxPossibleScore,
+    finalScorePercent,
+    rating,
+    attemptedCount,
+    guessworkQuestions,
+    items,
+  };
 }
 
 export function classifySkillValue(percentage: number): SkillValueCategory {
@@ -754,6 +905,16 @@ export function evaluateDiagnosticReport(
     performancePatternInsight = `The performance distribution indicates that question structure substantially impacts ${studentFirstName}'s response consistency. Direct prompts are approached with fair confidence, but accuracy declines when questions incorporate compound conditions or data extraction. Strengthening procedural routines for multi-step and diagram-driven questions will prevent hesitation and unlock higher consistency across all syllabus units.`;
   }
 
+  // Time Management & Guesswork Evaluation
+  const timeManagement = evaluateTimeManagement(
+    evaluatedQuestions.map((eq) => ({
+      qno: eq.meta.qno,
+      attempted: eq.attempted,
+      timeTakenSeconds: eq.timeTakenSeconds,
+      expectedUpperBoundS: eq.upperLimit,
+    })),
+  );
+
   // Page 4: Detailed Diagnostic Calculation Steps & Audit Trail (Dev/Audit Mode)
   const calculationSteps: DiagnosticCalculationSteps = {
     scoring: {
@@ -916,9 +1077,20 @@ export function evaluateDiagnosticReport(
       percentage: c.percentage,
       priority: classifyPriority(c.percentage),
     })),
+    timeManagement: {
+      attemptedCount: timeManagement.attemptedCount,
+      totalScore: timeManagement.totalScore,
+      maxPossibleScore: timeManagement.maxPossibleScore,
+      formula: `(${timeManagement.totalScore} / (3 * ${timeManagement.attemptedCount})) * 100%`,
+      finalScorePercent: timeManagement.finalScorePercent,
+      ratingRule: 'Score <= 33% ? Poor : Score >= 66% ? Good : Medium',
+      ratingResult: timeManagement.rating,
+      guessworkQuestions: timeManagement.guessworkQuestions,
+    },
     questionAudit: evaluatedQuestions.map((eq) => {
       const isOvertime = eq.timeTakenSeconds > eq.upperLimit;
       const revisitItem = topicsToRevisit.find((t) => t.qno === eq.meta.qno);
+      const timeItem = timeManagement.items.find((t) => t.qno === eq.meta.qno);
 
       return {
         qno: eq.meta.qno,
@@ -934,6 +1106,9 @@ export function evaluateDiagnosticReport(
         expectedUpperBoundS: eq.upperLimit,
         timeTakenS: eq.timeTakenSeconds,
         timeLimitExceeded: isOvertime,
+        timeManagementScore: timeItem?.score,
+        timeManagementLabel: timeItem?.label,
+        isGuesswork: timeItem?.isGuesswork,
         correctAnswer: eq.meta.answer,
         selectedOption: eq.selectedOption,
         attempted: eq.attempted,
@@ -976,6 +1151,7 @@ export function evaluateDiagnosticReport(
     performancePatternInsight,
     priorityGaps,
     topicsToRevisit,
+    timeManagement,
     calculationSteps,
   });
 
@@ -1010,6 +1186,7 @@ export function evaluateDiagnosticReport(
     strengths: top3Strengths,
     priorityGaps,
     topicsToRevisit,
+    timeManagement,
     keyInsight,
     performancePatternInsight,
     plainTextReport,
@@ -1046,6 +1223,7 @@ function generateReportPlainTextFormat(data: {
   performancePatternInsight: string;
   priorityGaps: PriorityGapItem[];
   topicsToRevisit: TopicToRevisitItem[];
+  timeManagement?: TimeManagementSummary;
   calculationSteps: DiagnosticCalculationSteps;
 }): string {
   const lines: string[] = [];
@@ -1073,6 +1251,11 @@ function generateReportPlainTextFormat(data: {
   );
   lines.push(`BOARD READINESS INDEX: ${data.briScore}%`);
   lines.push(`LEVEL OF PREPARATION: ${data.levelOfPreparation}`);
+  if (data.timeManagement) {
+    lines.push(
+      `TIME MANAGEMENT SCORE: ${data.timeManagement.finalScorePercent}% (${data.timeManagement.rating} — ${data.timeManagement.totalScore}/${data.timeManagement.maxPossibleScore} pts on ${data.timeManagement.attemptedCount} attempted questions)`,
+    );
+  }
   lines.push('');
   lines.push('| Area                 | Performance                                  |');
   lines.push('|----------------------|----------------------------------------------|');
@@ -1088,8 +1271,19 @@ function generateReportPlainTextFormat(data: {
   lines.push(`• Problem Solving Skill       — ${data.problemSolvingCategory}`);
   lines.push(`• Accuracy                    — ${data.accuracyCategory}`);
   lines.push(`• Question Interpretation Skill — ${data.questionInterpretationCategory}`);
+  if (data.timeManagement) {
+    lines.push(`• Time Management             — ${data.timeManagement.rating} (${data.timeManagement.finalScorePercent}%)`);
+  }
   lines.push('');
   lines.push('(Three Levels: Good | Average | Needs Strengthening)');
+
+  if (data.timeManagement && data.timeManagement.guessworkQuestions.length > 0) {
+    lines.push('');
+    lines.push(
+      `⚠️ GUESSWORK OBSERVATION: There is possibility of guesswork being done in answering Q${data.timeManagement.guessworkQuestions.join(', Q')} (response submitted in under 20s).`,
+    );
+  }
+
   lines.push('');
   lines.push('YOUR KEY INSIGHT');
   lines.push(data.keyInsight);
@@ -1198,8 +1392,29 @@ function generateReportPlainTextFormat(data: {
     lines.push(`  - Calculation: ${s.formula} = ${s.percentage}% -> Category: ${s.categoryResult}`);
   });
   lines.push('');
+  if (cs.timeManagement) {
+    lines.push('--------------------------------------------------------------------------------');
+    lines.push('4. TIME MANAGEMENT & PACING CALCULATION STEPS');
+    lines.push('--------------------------------------------------------------------------------');
+    lines.push(`• Total Attempted Questions: ${cs.timeManagement.attemptedCount}`);
+    lines.push(`• Per-Question Rules:`);
+    lines.push(`  - time < 1.5 * ETS       -> Good time management (score = 3)`);
+    lines.push(`  - 1.5 * ETS <= time <= 2 * ETS -> Medium time management (score = 2)`);
+    lines.push(`  - time > 2 * ETS         -> Poor time management (score = 1)`);
+    lines.push(`• Total Time Score: ${cs.timeManagement.totalScore} / ${cs.timeManagement.maxPossibleScore} (Max: 3 * attempted)`);
+    lines.push(`• Time Management Formula: (Score / (3 * Attempted)) * 100%`);
+    lines.push(`  Calculation: ${cs.timeManagement.formula} = ${cs.timeManagement.finalScorePercent}%`);
+    lines.push(`• Rating Thresholds: Score <= 33% (Poor) | 33% - 66% (Medium) | >= 66% (Good)`);
+    lines.push(`• Final Rating: ${cs.timeManagement.ratingResult}`);
+    if (cs.timeManagement.guessworkQuestions.length > 0) {
+      lines.push(`• Guesswork Flag (<20s): [Q${cs.timeManagement.guessworkQuestions.join(', Q')}]`);
+    } else {
+      lines.push(`• Guesswork Flag (<20s): None detected`);
+    }
+    lines.push('');
+  }
   lines.push('--------------------------------------------------------------------------------');
-  lines.push('4. 7 QUESTION STRUCTURE PERFORMANCE BREAKDOWN');
+  lines.push('5. 7 QUESTION STRUCTURE PERFORMANCE BREAKDOWN');
   lines.push('--------------------------------------------------------------------------------');
   lines.push('| Question Type     | Matching Questions        | Correct / Total | Performance (%) |');
   lines.push('|-------------------|---------------------------|-----------------|-----------------|');
@@ -1210,13 +1425,13 @@ function generateReportPlainTextFormat(data: {
   });
   lines.push('');
   lines.push('--------------------------------------------------------------------------------');
-  lines.push('5. COMPLETE QUESTION-BY-QUESTION EVALUATION AUDIT');
+  lines.push('6. COMPLETE QUESTION-BY-QUESTION EVALUATION AUDIT');
   lines.push('--------------------------------------------------------------------------------');
-  lines.push('| Q# | Subject | Chapter | Weight | Ans | Att? | Sel | Corr? | Spent | Limit | Overtime? | Category / Issue |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| Q# | Subject | Chapter | Weight | Ans | Att? | Sel | Corr? | Spent | ETS | Time Label (Score) | Guess? | Issue |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   cs.questionAudit.forEach((a) => {
     lines.push(
-      `| ${a.qno} | ${a.subject} | ${a.chapter} | ${a.diagnosticWeight} | ${a.correctAnswer} | ${a.attempted ? 'Yes' : 'No'} | ${a.selectedOption ?? '—'} | ${a.isCorrect ? 'Yes' : 'No'} | ${a.timeTakenS}s | ${a.expectedUpperBoundS}s | ${a.timeLimitExceeded ? 'YES' : 'No'} | ${a.revisitCategory ?? 'None (Mastered)'} |`,
+      `| ${a.qno} | ${a.subject} | ${a.chapter} | ${a.diagnosticWeight} | ${a.correctAnswer} | ${a.attempted ? 'Yes' : 'No'} | ${a.selectedOption ?? '—'} | ${a.isCorrect ? 'Yes' : 'No'} | ${a.timeTakenS}s | ${a.expectedUpperBoundS}s | ${a.timeManagementLabel ?? '—'} (${a.timeManagementScore ?? '—'}) | ${a.isGuesswork ? 'YES' : 'No'} | ${a.revisitCategory ?? 'None'} |`,
     );
   });
   lines.push('');

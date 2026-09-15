@@ -80,6 +80,7 @@ import * as testsReleaseResults from './tests/release-results';
 import * as attemptsById from './attempts/by-id';
 import * as attemptsAnswers from './attempts/answers';
 import * as attemptsEvents from './attempts/events';
+import * as attemptsExtendTime from './attempts/extend-time';
 import * as attemptsQuestions from './attempts/questions';
 import * as attemptsResult from './attempts/result';
 import * as attemptsSubmit from './attempts/submit';
@@ -198,6 +199,7 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     if (s0 === 'attempts') {
       if (s2 === 'answers') return { handler: attemptsAnswers, params: { id: s1 }, pattern: '/api/attempts/[id]/answers' };
       if (s2 === 'events') return { handler: attemptsEvents, params: { id: s1 }, pattern: '/api/attempts/[id]/events' };
+      if (s2 === 'extend-time') return { handler: attemptsExtendTime, params: { id: s1 }, pattern: '/api/attempts/[id]/extend-time' };
       if (s2 === 'questions') return { handler: attemptsQuestions, params: { id: s1 }, pattern: '/api/attempts/[id]/questions' };
       if (s2 === 'result') return { handler: attemptsResult, params: { id: s1 }, pattern: '/api/attempts/[id]/result' };
       if (s2 === 'submit') return { handler: attemptsSubmit, params: { id: s1 }, pattern: '/api/attempts/[id]/submit' };
@@ -298,6 +300,7 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/attempts/[id]', verbs: ['GET'] },
   { pattern: '/api/attempts/[id]/answers', verbs: ['PATCH', 'POST'] },
   { pattern: '/api/attempts/[id]/events', verbs: ['POST'] },
+  { pattern: '/api/attempts/[id]/extend-time', verbs: ['POST'] },
   { pattern: '/api/attempts/[id]/questions', verbs: ['GET'] },
   { pattern: '/api/attempts/[id]/result', verbs: ['GET'] },
   { pattern: '/api/attempts/[id]/submit', verbs: ['POST'] },

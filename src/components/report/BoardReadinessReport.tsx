@@ -59,38 +59,30 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
   };
 
   // Category & Prep Level styling helpers
-  const getPrepLevelBadge = (level: PreparationLevel) => {
-    switch (level) {
-      case 'ADVANCED':
-        return {
-          tone: 'green' as const,
-          label: 'ADVANCED',
-          bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-          gradient: 'from-emerald-600 to-teal-700',
-        };
-      case 'PROFICIENT':
-        return {
-          tone: 'brand' as const,
-          label: 'PROFICIENT',
-          bg: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
-          gradient: 'from-blue-600 to-indigo-700',
-        };
-      case 'BASIC':
-        return {
-          tone: 'amber' as const,
-          label: 'BASIC',
-          bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
-          gradient: 'from-amber-500 to-orange-600',
-        };
-      case 'NEEDS IMMEDIATE INTERVENTION':
-      default:
-        return {
-          tone: 'red' as const,
-          label: 'NEEDS IMMEDIATE INTERVENTION',
-          bg: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
-          gradient: 'from-rose-600 to-red-700',
-        };
+  const getPrepLevelBadge = (level: PreparationLevel | string) => {
+    const norm = String(level).trim().toLowerCase();
+    if (norm.includes('high achievement') || norm === 'advanced') {
+      return {
+        tone: 'green' as const,
+        label: 'High achievement Potential',
+        bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+        gradient: 'from-emerald-600 to-teal-700',
+      };
     }
+    if (norm.includes('conceptually strong') || norm === 'proficient') {
+      return {
+        tone: 'brand' as const,
+        label: 'Conceptually Strong',
+        bg: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
+        gradient: 'from-blue-600 to-indigo-700',
+      };
+    }
+    return {
+      tone: 'amber' as const,
+      label: 'Basic',
+      bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+      gradient: 'from-amber-500 to-orange-600',
+    };
   };
 
   const getSkillCategoryBadge = (cat: SkillValueCategory) => {
@@ -356,9 +348,7 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                           ? 'text-emerald-500'
                           : report.briScore >= 60
                           ? 'text-blue-500'
-                          : report.briScore >= 40
-                          ? 'text-amber-500'
-                          : 'text-rose-500'
+                          : 'text-amber-500'
                       }`}
                       fill="transparent"
                     />

@@ -36,7 +36,14 @@ export interface StudentResponsePayload {
   responses: StudentQuestionResponse[];
 }
 
-export type PreparationLevel = 'ADVANCED' | 'PROFICIENT' | 'BASIC' | 'NEEDS IMMEDIATE INTERVENTION';
+export type PreparationLevel =
+  | 'Basic'
+  | 'Conceptually Strong'
+  | 'High achievement Potential'
+  | 'ADVANCED'
+  | 'PROFICIENT'
+  | 'BASIC'
+  | 'NEEDS IMMEDIATE INTERVENTION';
 export type SkillValueCategory = 'Good' | 'Average' | 'Needs Strengthening';
 export type PriorityLevel = 'High Priority' | 'Medium Priority' | 'Low Priority';
 export type RevisitCategory =
@@ -254,10 +261,9 @@ export function classifySkillValue(percentage: number): SkillValueCategory {
 }
 
 export function classifyPreparationLevel(bri: number): PreparationLevel {
-  if (bri >= 80) return 'ADVANCED';
-  if (bri >= 60) return 'PROFICIENT';
-  if (bri >= 40) return 'BASIC';
-  return 'NEEDS IMMEDIATE INTERVENTION';
+  if (bri >= 80) return 'High achievement Potential';
+  if (bri >= 60) return 'Conceptually Strong';
+  return 'Basic';
 }
 
 export function classifyPriority(percentage: number): PriorityLevel {
@@ -501,80 +507,145 @@ export function evaluateDiagnosticReport(
     percentage: Math.round((val.correct / val.total) * 100),
   }));
 
-  // Top 3 Strengths
-  // Candidate pool: chapters with high scores, high-scoring question types, and top skills
-  type StrengthCandidate = {
+  // Score-based candidate dimensions for Strengths & Priority Gaps
+  // Strictly based on Scores, Primary Cognitive Skills, Accuracy, and Question Structures (NOT chapters)
+  interface ScoreCandidate {
     name: string;
     percentage: number;
     scoreDetails: string;
     reason: string;
-    priorityScore: number; // For sorting
-  };
-
-  const strengthCandidates: StrengthCandidate[] = [];
-
-  for (const ch of chapterList) {
-    if (ch.percentage >= 60) {
-      strengthCandidates.push({
-        name: ch.name,
-        percentage: ch.percentage,
-        scoreDetails: `${ch.correct}/${ch.total} (${ch.percentage}%)`,
-        reason:
-          ch.percentage === 100
-            ? 'Demonstrated flawless conceptual clarity and accurate execution on all questions.'
-            : 'Consistently converted conceptual understanding into correct answers with solid foundation.',
-        priorityScore: ch.percentage * 10 + ch.total,
-      });
-    }
+    totalTested: number;
   }
 
+  const scoreCandidates: ScoreCandidate[] = [];
+
+  // 1. Accuracy
+  scoreCandidates.push({
+    name: 'Accuracy',
+    percentage: rawAccuracyPercent,
+    scoreDetails: `${totalCorrect}/${totalAttempted} attempted (${rawAccuracyPercent}%)`,
+    reason:
+      rawAccuracyPercent >= 75
+        ? 'High execution precision on attempted questions with disciplined answering and minimal calculation errors.'
+        : 'Accuracy on attempted questions indicates occasional calculation slips or careless errors under timed pressure.',
+    totalTested: totalAttempted,
+  });
+
+  // 2. Concept Application Skill
+  scoreCandidates.push({
+    name: 'Concept Application Skill',
+    percentage: conceptApplication.scorePercent,
+    scoreDetails: `${conceptApplication.earnedWeight}/${conceptApplication.totalWeight} pts (${conceptApplication.scorePercent}%)`,
+    reason:
+      conceptApplication.scorePercent >= 60
+        ? 'Strong proficiency in applying learned concepts and mathematical formulas to standard examination problems.'
+        : 'Developing ability to apply core scientific formulas and algebraic methods to standard questions.',
+    totalTested: conceptApplication.totalWeight,
+  });
+
+  // 3. Conceptual Foundation
+  scoreCandidates.push({
+    name: 'Conceptual Foundation',
+    percentage: conceptualFoundation.scorePercent,
+    scoreDetails: `${conceptualFoundation.earnedWeight}/${conceptualFoundation.totalWeight} pts (${conceptualFoundation.scorePercent}%)`,
+    reason:
+      conceptualFoundation.scorePercent >= 60
+        ? 'Solid comprehension of fundamental definitions, scientific principles, and core textbook facts.'
+        : 'Foundational concepts and textbook definitions require systematic consolidation and revision.',
+    totalTested: conceptualFoundation.totalWeight,
+  });
+
+  // 4. Problem Solving Skill
+  scoreCandidates.push({
+    name: 'Problem Solving Skill',
+    percentage: problemSolving.scorePercent,
+    scoreDetails: `${problemSolving.earnedWeight}/${problemSolving.totalWeight} pts (${problemSolving.scorePercent}%)`,
+    reason:
+      problemSolving.scorePercent >= 60
+        ? 'Robust analytical reasoning and execution when tackling complex, multi-tiered problems.'
+        : 'Analytical breakdown of compound questions and multi-step deduction requires structured practice.',
+    totalTested: problemSolving.totalWeight,
+  });
+
+  // 5. Question Interpretation Skill
+  scoreCandidates.push({
+    name: 'Question Interpretation Skill',
+    percentage: questionInterpretation.scorePercent,
+    scoreDetails: `${questionInterpretation.earnedWeight}/${questionInterpretation.totalWeight} pts (${questionInterpretation.scorePercent}%)`,
+    reason:
+      questionInterpretation.scorePercent >= 60
+        ? 'Skilled at extracting key parameters, visual clues, and qualifying constraints from problem statements.'
+        : 'Decoding question phrasing, diagrams, and implicit scientific conditions needs deliberate practice.',
+    totalTested: questionInterpretation.totalWeight,
+  });
+
+  // 6. 7 Question Structures (only those with total > 0)
   for (const st of structures) {
-    if (st.total >= 2 && st.percentage >= 60) {
-      strengthCandidates.push({
+    if (st.total > 0) {
+      let structReason = '';
+      switch (st.type) {
+        case 'Direct':
+          structReason =
+            st.percentage >= 60
+              ? 'Flawless recall and rapid retrieval on direct, single-concept questions.'
+              : 'Direct recall of fundamental definitions and factual statements needs reinforcement.';
+          break;
+        case 'Multi-step':
+          structReason =
+            st.percentage >= 60
+              ? 'Effective handling of sequential multi-tier calculations and structured workflows.'
+              : 'Cognitive strain and calculation errors during multi-step procedural sequences.';
+          break;
+        case 'Diagram-based':
+          structReason =
+            st.percentage >= 60
+              ? 'Accurate visual-spatial parsing of schematic figures, ray diagrams, and apparatus.'
+              : 'Difficulty interpreting visual ray diagrams, circuit schematics, and anatomical figures.';
+          break;
+        case 'Data-based':
+          structReason =
+            st.percentage >= 60
+              ? 'Strong ability to interpret and extract conclusions from tables, trends, and statistics.'
+              : 'Interpreting data tables and calculating derived statistical/chemical values presents friction.';
+          break;
+        case 'Application-based':
+          structReason =
+            st.percentage >= 60
+              ? 'High capability in translating theoretical textbook principles to real-world applications.'
+              : 'Connecting theoretical syllabus concepts to applied, unfamiliar examination contexts.';
+          break;
+        case 'Word Problem':
+          structReason =
+            st.percentage >= 60
+              ? 'Proficient at decoding worded problems into accurate mathematical formulations.'
+              : 'Translating worded problem narratives into mathematical models and equations.';
+          break;
+        case 'Structure-based':
+        default:
+          structReason =
+            st.percentage >= 60
+              ? 'Solid competence in analyzing molecular models, organic structures, and diagrams.'
+              : 'Comprehending structural chemical representations, electron dot structures, and isomerism.';
+          break;
+      }
+
+      scoreCandidates.push({
         name: `${st.type} Questions`,
         percentage: st.percentage,
         scoreDetails: `${st.correct}/${st.total} (${st.percentage}%)`,
-        reason: `Efficient handling and high accuracy when tackling questions structured as ${st.type.toLowerCase()}.`,
-        priorityScore: st.percentage * 10 + st.total,
+        reason: structReason,
+        totalTested: st.total,
       });
     }
   }
 
-  const skillsList = [
-    conceptualFoundation,
-    conceptApplication,
-    problemSolving,
-    questionInterpretation,
-  ];
+  // Top 3 Strengths (Score-based, NO chapters)
+  const strengthsSorted = [...scoreCandidates].sort((a, b) => {
+    if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+    return b.totalTested - a.totalTested;
+  });
 
-  for (const sk of skillsList) {
-    if (sk.scorePercent >= 60) {
-      strengthCandidates.push({
-        name: sk.name,
-        percentage: sk.scorePercent,
-        scoreDetails: `${sk.earnedWeight}/${sk.totalWeight} pts (${sk.scorePercent}%)`,
-        reason: `High proficiency (${sk.category}) in applying ${sk.name.toLowerCase()} under exam conditions.`,
-        priorityScore: sk.scorePercent * 10 + sk.totalWeight,
-      });
-    }
-  }
-
-  // Fallback if student scored lower across the board: pick highest available
-  if (strengthCandidates.length === 0) {
-    chapterList.sort((a, b) => b.percentage - a.percentage);
-    for (const ch of chapterList.slice(0, 3)) {
-      strengthCandidates.push({
-        name: ch.name,
-        percentage: ch.percentage,
-        scoreDetails: `${ch.correct}/${ch.total} (${ch.percentage}%)`,
-        reason: 'Best relative baseline performance showing developing conceptual comprehension.',
-        priorityScore: ch.percentage,
-      });
-    }
-  }
-
-  strengthCandidates.sort((a, b) => b.priorityScore - a.priorityScore);
-  const top3Strengths: StrengthItem[] = strengthCandidates.slice(0, 3).map((item, idx) => ({
+  const top3Strengths: StrengthItem[] = strengthsSorted.slice(0, 3).map((item, idx) => ({
     rank: idx + 1,
     name: item.name,
     scoreDetails: item.scoreDetails,
@@ -582,45 +653,59 @@ export function evaluateDiagnosticReport(
     reason: item.reason,
   }));
 
-  // Priority Gaps (4 lowest-scoring chapters or syllabus areas)
-  chapterList.sort((a, b) => a.percentage - b.percentage);
-  const priorityGaps: PriorityGapItem[] = chapterList.slice(0, 4).map((ch, idx) => ({
+  // Top 4 Priority Gaps (Score-based, NO chapters)
+  const gapsSorted = [...scoreCandidates].sort((a, b) => {
+    if (a.percentage !== b.percentage) return a.percentage - b.percentage;
+    return b.totalTested - a.totalTested;
+  });
+
+  const priorityGaps: PriorityGapItem[] = gapsSorted.slice(0, 4).map((item, idx) => ({
     rank: idx + 1,
-    name: ch.name,
-    scorePercent: ch.percentage,
-    priority: classifyPriority(ch.percentage),
+    name: item.name,
+    scorePercent: item.percentage,
+    priority: classifyPriority(item.percentage),
   }));
 
   // Topics to Revisit
-  // Flag every question that meets at least one of these two operational triggers:
-  // 1. Time Inefficiency: TimeTakenSeconds > upper bound of Expected Time
-  // 2. Inaccuracy: Attempted == true and SelectedOption != Answer (or skipped)
+  // Rules:
+  // 1. Only chapters where question was attempted (time spent > 10s) and is incorrect.
+  // 2. If not attempted OR time spent <= 10s: do NOT display!
+  // 3. If time spent is much more than estimated time (>= 2x upper bound):
+  //    put in topics to revisit and explicitly mention that as well!
   const topicsToRevisit: TopicToRevisitItem[] = [];
 
   for (const q of evaluatedQuestions) {
-    const isOvertime = q.timeTakenSeconds > q.upperLimit;
+    // If not attempted or time spent <= 10s: exclude!
+    if (!q.attempted || q.timeTakenSeconds <= 10) {
+      continue;
+    }
+
+    const isSevereOvertime = q.timeTakenSeconds >= 2 * q.upperLimit;
     const isIncorrect = !q.isCorrect;
 
-    if (!isOvertime && !isIncorrect) {
-      continue; // Met both time and accuracy criteria!
+    // Must be either incorrect OR severe overtime (>= 2x upper bound)
+    if (!isIncorrect && !isSevereOvertime) {
+      continue;
     }
 
     let category: RevisitCategory;
     let issueObserved: string;
 
-    if (q.isCorrect && isOvertime) {
-      category = 'Pacing / Time Management';
-      issueObserved = `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (Pacing exceeded)`;
-    } else if (isIncorrect && isOvertime) {
+    const overtimeMultiplier = (q.timeTakenSeconds / q.upperLimit).toFixed(1);
+
+    if (isSevereOvertime && isIncorrect) {
       category = 'High Friction Gap';
-      issueObserved = q.attempted
-        ? `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (Incorrect)`
-        : `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (Unattempted)`;
+      issueObserved = `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (${overtimeMultiplier}x over estimated time, Incorrect)`;
+    } else if (isSevereOvertime && !isIncorrect) {
+      category = 'Pacing / Time Management';
+      issueObserved = `Severe Overtime: Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (${overtimeMultiplier}x over estimated time, Correct)`;
     } else {
       category = 'Conceptual / Calculation Gap';
-      issueObserved = q.attempted
-        ? `Incorrect answer within ${q.timeTakenSeconds}s (limit ${q.upperLimit}s)`
-        : `Question skipped / unattempted (${q.timeTakenSeconds}s)`;
+      if (q.timeTakenSeconds > q.upperLimit) {
+        issueObserved = `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (Incorrect attempt with overtime)`;
+      } else {
+        issueObserved = `Incorrect answer within ${q.timeTakenSeconds}s (limit ${q.upperLimit}s)`;
+      }
     }
 
     const recommendedFocusArea =
@@ -642,29 +727,18 @@ export function evaluateDiagnosticReport(
   }
 
   // Dynamic Narrative Generation: Page 1 "YOUR KEY INSIGHT"
-  const studentFirstName = student.studentName.split(' ')[0] || student.studentName;
-  const mathsPct = mathsPerf.percentage;
-  const sciPct = sciencePerf.percentage;
-  const interpretationCat = questionInterpretation.category;
-  const problemSolvingCat = problemSolving.category;
-  const conceptFoundCat = conceptualFoundation.category;
-
   let keyInsight = '';
-  if (briScore >= 80) {
-    keyInsight = `${studentFirstName} demonstrates an outstanding academic foundation across both Mathematics (${mathsPct}%) and Science (${sciPct}%), placing their current preparation in the ADVANCED band. Core conceptual recall is remarkably resilient, with strong visual interpretation and systematic execution on multi-step problems. To solidify a top-tier score in the upcoming Class X Board examination, focus on eliminating minor time-leakages on high-friction calculation steps and maintaining procedural precision on descriptive questions.`;
-  } else if (briScore >= 60) {
-    if (problemSolvingCat === 'Needs Strengthening' || problemSolving.scorePercent < 50) {
-      keyInsight = `${studentFirstName} shows a promising baseline with solid conceptual understanding (${conceptFoundCat}), currently placing in the PROFICIENT readiness band. While direct factual and formula-driven questions are answered reliably, performance dips when navigating multi-step problem solving where calculations compound. Converting this understanding into consistent Board exam marks requires focused drill on algebraic multi-step pacing and bridging prerequisite concepts in complex topics.`;
-    } else {
-      keyInsight = `${studentFirstName} showcases commendable competence with balanced scores across Mathematics (${mathsPct}%) and Science (${sciPct}%), positioning their performance firmly in the PROFICIENT category. Core concepts are well understood, but occasional interpretation lapses on diagram- and data-based prompts create preventable mark losses. Enhancing systematic question-parsing before jumping into calculations will rapidly elevate this solid baseline into the 90%+ Board bracket.`;
-    }
-  } else if (briScore >= 40) {
-    keyInsight = `${studentFirstName}'s diagnostic profile reflects an active learning curve currently situated in the BASIC readiness band (${briScore}% BRI). The results show clear familiarity with elementary definitions, but substantial friction arises as questions transition from direct recall to application-based and visual interpretations. With structured topic-by-topic reinforcement in flagged high-priority chapters and guided practice on timed execution, ${studentFirstName} can make rapid, significant leaps toward Board excellence.`;
+  if (levelOfPreparation === 'Basic') {
+    keyInsight =
+      'You have started building your foundation for the Boards, and this is a good time to strengthen it further. Some gaps are currently making it difficult to consistently convert your understanding into marks. The good news is that these areas can be improved with focused practice. Read the report further to know where you can improve and how to perform better';
   } else {
-    keyInsight = `${studentFirstName}'s diagnostic results indicate that foundational concepts across critical chapters require immediate, structured intervention (${briScore}% BRI). The primary bottleneck lies in core prerequisite concepts and procedural confidence, which currently leads to hesitation and timeouts across multiple question formats. A focused revision plan targeting fundamental definitions and step-by-step worked examples will quickly rebuild confidence and yield substantial score gains.`;
+    // Conceptually Strong or High achievement Potential
+    keyInsight =
+      'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.';
   }
 
   // Dynamic Narrative Generation: Page 2 "WHAT THIS TELLS YOU"
+  const studentFirstName = student.studentName.split(' ')[0] || student.studentName;
   const directPerf = structures.find((s) => s.type === 'Direct')?.percentage ?? 0;
   const multiStepPerf = structures.find((s) => s.type === 'Multi-step')?.percentage ?? 0;
   const diagramPerf = structures.find((s) => s.type === 'Diagram-based')?.percentage ?? 0;
@@ -691,12 +765,10 @@ export function evaluateDiagnosticReport(
       briResult: briScore,
       levelRule:
         briScore >= 80
-          ? 'BRI >= 80% -> ADVANCED'
+          ? 'BRI >= 80% -> High achievement Potential'
           : briScore >= 60
-          ? '60% <= BRI < 80% -> PROFICIENT'
-          : briScore >= 40
-          ? '40% <= BRI < 60% -> BASIC'
-          : 'BRI < 40% -> NEEDS IMMEDIATE INTERVENTION',
+          ? '60% <= BRI < 80% -> Conceptually Strong'
+          : 'BRI < 60% -> Basic',
       levelResult: levelOfPreparation,
     },
     breakdowns: [
@@ -846,26 +918,7 @@ export function evaluateDiagnosticReport(
     })),
     questionAudit: evaluatedQuestions.map((eq) => {
       const isOvertime = eq.timeTakenSeconds > eq.upperLimit;
-      const isIncorrect = !eq.isCorrect;
-      let revisitCategory: RevisitCategory | null = null;
-      let revisitIssue: string | null = null;
-
-      if (isOvertime || isIncorrect) {
-        if (eq.isCorrect && isOvertime) {
-          revisitCategory = 'Pacing / Time Management';
-          revisitIssue = `Spent ${eq.timeTakenSeconds}s vs ${eq.upperLimit}s limit (Pacing exceeded)`;
-        } else if (isIncorrect && isOvertime) {
-          revisitCategory = 'High Friction Gap';
-          revisitIssue = eq.attempted
-            ? `Spent ${eq.timeTakenSeconds}s vs ${eq.upperLimit}s limit (Incorrect)`
-            : `Spent ${eq.timeTakenSeconds}s vs ${eq.upperLimit}s limit (Unattempted)`;
-        } else {
-          revisitCategory = 'Conceptual / Calculation Gap';
-          revisitIssue = eq.attempted
-            ? `Incorrect answer within ${eq.timeTakenSeconds}s (limit ${eq.upperLimit}s)`
-            : `Question skipped / unattempted (${eq.timeTakenSeconds}s)`;
-        }
-      }
+      const revisitItem = topicsToRevisit.find((t) => t.qno === eq.meta.qno);
 
       return {
         qno: eq.meta.qno,
@@ -887,8 +940,8 @@ export function evaluateDiagnosticReport(
         isCorrect: eq.isCorrect,
         diagnosticWeight: eq.weight,
         weightedScore: eq.isCorrect ? eq.weight : 0,
-        revisitIssue,
-        revisitCategory,
+        revisitIssue: revisitItem ? revisitItem.issueObserved : null,
+        revisitCategory: revisitItem ? revisitItem.category : null,
       };
     }),
   };
@@ -1114,10 +1167,9 @@ function generateReportPlainTextFormat(data: {
   lines.push(`  BRI = (Total Weighted Score / Total Diagnostic Weight) * 100%`);
   lines.push(`  BRI = (${cs.scoring.weightedScoreSum} / ${cs.scoring.diagnosticWeightSum}) * 100% = ${cs.scoring.briResult}%`);
   lines.push(`• Level of Preparation Threshold Rules:`);
-  lines.push(`  - BRI >= 80%                     -> ADVANCED`);
-  lines.push(`  - 60% <= BRI < 80%               -> PROFICIENT`);
-  lines.push(`  - 40% <= BRI < 60%               -> BASIC`);
-  lines.push(`  - BRI < 40%                      -> NEEDS IMMEDIATE INTERVENTION`);
+  lines.push(`  - BRI >= 80%                     -> High achievement Potential`);
+  lines.push(`  - 60% <= BRI < 80%               -> Conceptually Strong`);
+  lines.push(`  - BRI < 60%                      -> Basic`);
   lines.push(`• Applied Rule: ${cs.scoring.levelRule} -> Level: ${cs.scoring.levelResult}`);
   lines.push('');
   lines.push('--------------------------------------------------------------------------------');

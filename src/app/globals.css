@@ -161,18 +161,51 @@ html.dark .q-render :is(th) {
 }
 
 @media print {
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .no-print {
     display: none !important;
   }
+
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 8mm;
   }
-  body {
-    background: #ffffff !important;
+
+  /* Dark mode print retention */
+  html.dark {
+    color-scheme: dark !important;
+  }
+
+  html.dark body {
+    background-color: #090d16 !important;
+    color: #f1f5f9 !important;
+  }
+
+  html.dark .report-page-container {
+    page-break-after: always !important;
+    break-after: page !important;
+    min-height: 96vh;
+    padding: 10mm !important;
+    box-shadow: none !important;
+    border: 1px solid #1e293b !important;
+    border-radius: 12px !important;
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+  }
+
+  /* Light mode print retention */
+  html:not(.dark) body {
+    background-color: #ffffff !important;
     color: #0f172a !important;
   }
-  .report-page-container {
+
+  html:not(.dark) .report-page-container {
     page-break-after: always !important;
     break-after: page !important;
     min-height: 96vh;
@@ -180,10 +213,29 @@ html.dark .q-render :is(th) {
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
-    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
   }
+
   .report-page-container:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
   }
+
+  /* Modal Dialog clean unconstrained print expansion */
+  .fixed.inset-0 {
+    position: static !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  [role="dialog"] {
+    position: static !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+  }
 }
+

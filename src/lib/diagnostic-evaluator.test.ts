@@ -103,13 +103,13 @@ describe('SRSMA Diagnostic Evaluator', () => {
   });
 
   it('correctly classifies preparation level', () => {
-    expect(classifyPreparationLevel(85)).toBe('ADVANCED');
-    expect(classifyPreparationLevel(80)).toBe('ADVANCED');
-    expect(classifyPreparationLevel(75)).toBe('PROFICIENT');
-    expect(classifyPreparationLevel(60)).toBe('PROFICIENT');
-    expect(classifyPreparationLevel(55)).toBe('BASIC');
-    expect(classifyPreparationLevel(40)).toBe('BASIC');
-    expect(classifyPreparationLevel(35)).toBe('NEEDS IMMEDIATE INTERVENTION');
+    expect(classifyPreparationLevel(85)).toBe('High achievement Potential');
+    expect(classifyPreparationLevel(80)).toBe('High achievement Potential');
+    expect(classifyPreparationLevel(75)).toBe('Conceptually Strong');
+    expect(classifyPreparationLevel(60)).toBe('Conceptually Strong');
+    expect(classifyPreparationLevel(55)).toBe('Basic');
+    expect(classifyPreparationLevel(40)).toBe('Basic');
+    expect(classifyPreparationLevel(35)).toBe('Basic');
   });
 
   it('correctly classifies priority levels', () => {
@@ -132,11 +132,11 @@ describe('SRSMA Diagnostic Evaluator', () => {
     const studentPayload: StudentResponsePayload = {
       studentName: 'Aarav Sharma',
       responses: [
-        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 40 }, // Correct, within time (40 <= 60)
-        { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 50 }, // Correct, overtime (50 > 45) -> Pacing flag
-        { qno: 3, attempted: true, selectedOption: 'A', timeTakenSeconds: 100 }, // Wrong (A != C), within time -> Conceptual gap
-        { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 130 }, // Correct, overtime (130 > 120) -> Pacing flag
-        { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted -> Gap
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 40 }, // Correct, within time (40 <= 60) -> Excluded
+        { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 100 }, // Correct, severe overtime (100 >= 2 * 45 = 90s) -> Pacing flag with severe overtime!
+        { qno: 3, attempted: true, selectedOption: 'A', timeTakenSeconds: 100 }, // Wrong (A != C), attempted (>10s) -> Conceptual gap
+        { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 130 }, // Correct, slight overtime (130 < 240) -> Excluded
+        { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted (0s <= 10s) -> Excluded
       ],
     };
 
@@ -154,7 +154,10 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
     // BRI = (5 / 9) * 100 = 55.6%
     expect(result.briScore).toBeCloseTo(55.6, 1);
-    expect(result.levelOfPreparation).toBe('BASIC');
+    expect(result.levelOfPreparation).toBe('Basic');
+    expect(result.keyInsight).toBe(
+      'You have started building your foundation for the Boards, and this is a good time to strengthen it further. Some gaps are currently making it difficult to consistently convert your understanding into marks. The good news is that these areas can be improved with focused practice. Read the report further to know where you can improve and how to perform better',
+    );
 
     // Subject performance:
     // Maths: Q1, Q2, Q3 (total 3). Correct: Q1, Q2 => 2/3
@@ -184,15 +187,26 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(diagram?.correct).toBe(1);
     expect(diagram?.total).toBe(2);
 
+    // Strengths and Priority Gaps: MUST be based on scores and question structures / skills (NO chapters)
+    const chapterNames = sampleMetadata.map((m) => m.chapter);
+    result.strengths.forEach((s) => {
+      expect(chapterNames).not.toContain(s.name);
+    });
+    result.priorityGaps.forEach((g) => {
+      expect(chapterNames).not.toContain(g.name);
+    });
+
     // Flagged topics to revisit:
-    // Q2: Pacing / Time Management (Correct, 50s > 45s)
-    // Q3: Conceptual / Calculation Gap (Incorrect, 100s <= 120s)
-    // Q4: Pacing / Time Management (Correct, 130s > 120s)
-    // Q5: Conceptual / Calculation Gap (Unattempted)
-    expect(result.topicsToRevisit.length).toBe(4);
+    // Q1: Correct within time -> Excluded
+    // Q2: Severe overtime (100s >= 2 * 45s = 90s) -> Pacing / Time Management (mentioned severe overtime)
+    // Q3: Attempted (>10s) and incorrect -> Conceptual / Calculation Gap
+    // Q4: Correct, slight overtime (130s < 240s) -> Excluded
+    // Q5: Unattempted (0s <= 10s) -> Excluded
+    expect(result.topicsToRevisit.length).toBe(2);
 
     const q2Flag = result.topicsToRevisit.find((t) => t.qno === 2);
     expect(q2Flag?.category).toBe('Pacing / Time Management');
+    expect(q2Flag?.issueObserved).toContain('Severe Overtime');
 
     const q3Flag = result.topicsToRevisit.find((t) => t.qno === 3);
     expect(q3Flag?.category).toBe('Conceptual / Calculation Gap');
@@ -213,5 +227,45 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.calculationSteps.breakdowns.length).toBe(5);
     expect(result.calculationSteps.skills.length).toBe(5);
     expect(result.calculationSteps.questionAudit.length).toBe(5);
+  });
+
+  it('generates correct key insight for Conceptually Strong and High achievement Potential', () => {
+    // 1. High achievement Potential (100% score)
+    const highScorerPayload: StudentResponsePayload = {
+      studentName: 'Priya Patel',
+      responses: [
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+        { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 },
+        { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 },
+        { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 50 },
+        { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 20 },
+      ],
+    };
+
+    const highResult = evaluateDiagnosticReport(sampleMetadata, highScorerPayload);
+    expect(highResult.briScore).toBe(100);
+    expect(highResult.levelOfPreparation).toBe('High achievement Potential');
+    expect(highResult.keyInsight).toBe(
+      'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
+    );
+
+    // 2. Conceptually Strong (e.g. Q1, Q3, Q4 correct: 1 + 3 + 3 = 7/9 = 77.8% BRI)
+    const strongScorerPayload: StudentResponsePayload = {
+      studentName: 'Rohan Mehta',
+      responses: [
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Correct (+1)
+        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }, // Wrong (0)
+        { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 }, // Correct (+3)
+        { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 50 }, // Correct (+3)
+        { qno: 5, attempted: true, selectedOption: 'B', timeTakenSeconds: 20 }, // Wrong (0)
+      ],
+    };
+
+    const strongResult = evaluateDiagnosticReport(sampleMetadata, strongScorerPayload);
+    expect(strongResult.briScore).toBeCloseTo(77.8, 1);
+    expect(strongResult.levelOfPreparation).toBe('Conceptually Strong');
+    expect(strongResult.keyInsight).toBe(
+      'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
+    );
   });
 });

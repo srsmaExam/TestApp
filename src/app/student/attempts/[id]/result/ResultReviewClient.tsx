@@ -59,6 +59,8 @@ type ResultData = {
   rank: number;
   percentile: number;
   totalParticipants: number;
+  studentId?: string;
+  studentName?: string;
   isReportUnlocked?: boolean;
   summary: {
     totalQuestions: number;
@@ -77,9 +79,11 @@ type ResultData = {
 export function ResultReviewClient({
   attemptId,
   userRole,
+  backUrl,
 }: {
   attemptId: string;
   userRole: 'student' | 'teacher';
+  backUrl?: string;
 }) {
   const [data, setData] = useState<ResultData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,7 +153,7 @@ export function ResultReviewClient({
     }));
 
     return evaluateDiagnosticReport(metadataList, {
-      studentName: 'Student',
+      studentName: data?.studentName || 'Student',
       responses,
     });
   }, [data]);
@@ -168,7 +172,7 @@ export function ResultReviewClient({
 
   useEffect(() => {
     if (data) {
-      if (data.isReportUnlocked) {
+      if (userRole === 'teacher' || data.isReportUnlocked) {
         setReportSubmitted(true);
         if (typeof window !== 'undefined') {
           localStorage.setItem('srsma_report_unlocked', 'true');
@@ -179,9 +183,10 @@ export function ResultReviewClient({
         setReportSubmitted(false);
       }
     }
-  }, [data?.isReportUnlocked, attemptId, data]);
+  }, [data?.isReportUnlocked, attemptId, data, userRole]);
 
   useEffect(() => {
+    if (userRole === 'teacher') return;
     const handleOpenModal = (e: Event) => {
       e.preventDefault();
       setShowReportModal(true);
@@ -190,7 +195,7 @@ export function ResultReviewClient({
     return () => {
       window.removeEventListener('srsma_open_report_modal', handleOpenModal);
     };
-  }, []);
+  }, [userRole]);
 
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -365,14 +370,43 @@ export function ResultReviewClient({
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Navigation breadcrumb */}
-      <div className="flex items-center gap-2">
-        <Link
-          href={userRole === 'teacher' ? `/teacher/tests/${data.testId}/analytics` : '/student'}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          ← {userRole === 'teacher' ? 'Back to test report' : 'Back to tests'}
-        </Link>
-      </div>
+      {userRole === 'teacher' ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50/90 px-4 py-3 text-xs font-semibold text-brand-900 shadow-sm dark:border-brand-800/80 dark:bg-brand-950/60 dark:text-brand-200">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex size-6 items-center justify-center rounded-full bg-brand-600 font-bold text-white text-xs">
+              👨‍🏫
+            </span>
+            <span>
+              Faculty View: <strong className="font-bold">{data.studentName || 'Student'}</strong>’s Test Response &amp; Solutions
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {data.studentId && (
+              <Link
+                href={`/teacher/students/${data.studentId}`}
+                className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 font-bold text-brand-700 shadow-xs hover:bg-brand-50 dark:border-brand-700 dark:bg-slate-900 dark:text-brand-300"
+              >
+                ← {data.studentName ? `${data.studentName}’s Profile` : 'Student Profile'}
+              </Link>
+            )}
+            <Link
+              href={backUrl || (data.testId ? `/teacher/tests/${data.testId}/analytics` : '/teacher/students')}
+              className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 font-bold text-brand-700 shadow-xs hover:bg-brand-50 dark:border-brand-700 dark:bg-slate-900 dark:text-brand-300"
+            >
+              ← Back
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Link
+            href="/student"
+            className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            ← Back to tests
+          </Link>
+        </div>
+      )}
 
       {/* 1. Scorecard Hero Banner */}
       <div className="rounded-xl bg-gradient-to-br from-slate-900 via-brand-950 to-brand-900 p-6 text-white shadow-md sm:p-8">
@@ -595,11 +629,15 @@ export function ResultReviewClient({
               View 3-Page Board Report
             </Button>
             <Link
-              href="/student/analytics"
+              href={
+                userRole === 'teacher' && data.studentId
+                  ? `/teacher/students/${data.studentId}?tab=analytics`
+                  : '/student/analytics'
+              }
               className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition"
             >
               <FileText className="size-4" />
-              Detailed Analytics &amp; History
+              {userRole === 'teacher' ? 'Student Analytics & History' : 'Detailed Analytics & History'}
               <ArrowRight className="size-4" />
             </Link>
           </div>

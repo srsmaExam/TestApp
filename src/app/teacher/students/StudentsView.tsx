@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Download,
+  Eye,
   KeyRound,
   Plus,
   RotateCw,
@@ -17,6 +19,7 @@ import {
   Alert,
   Badge,
   Button,
+  buttonClass,
   Card,
   CardBody,
   CardHeader,
@@ -580,7 +583,13 @@ export function StudentsView() {
                       />
                     </TableCell>
                     <TableCell>
-                      <p className="font-semibold text-slate-900 dark:text-slate-100">{s.fullName}</p>
+                      <Link
+                        href={`/teacher/students/${s.id}`}
+                        className="font-semibold text-slate-900 hover:text-brand-600 hover:underline dark:text-slate-100 dark:hover:text-brand-400"
+                        title="Open Student Profile & Analytics"
+                      >
+                        {s.fullName}
+                      </Link>
                       <p className="text-xs text-slate-400 dark:text-slate-500">
                         {s.phone ? (
                           <span className="font-mono font-medium text-brand-700 dark:text-brand-300">
@@ -611,9 +620,17 @@ export function StudentsView() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <Link
+                          href={`/teacher/students/${s.id}`}
+                          className={buttonClass('primary', 'sm')}
+                          title="View Student's Analytics and Test Responses"
+                        >
+                          <Eye className="size-3.5" />
+                          <span className="hidden sm:inline">Student View</span>
+                        </Link>
                         {s.isProvisional ? (
                           <Button
-                            variant="primary"
+                            variant="secondary"
                             size="sm"
                             onClick={() => {
                               setConvertTarget(s);
@@ -622,7 +639,7 @@ export function StudentsView() {
                             title="Convert to a real enrolled student"
                           >
                             <UserCheck className="size-3.5" />
-                            <span className="hidden sm:inline">Convert to Enrolled</span>
+                            <span className="hidden sm:inline">Convert</span>
                           </Button>
                         ) : null}
                         <Button

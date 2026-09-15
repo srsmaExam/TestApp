@@ -80,7 +80,15 @@ interface StudentAnalyticsData {
   }>;
 }
 
-export function StudentAnalyticsClient({ studentName }: { studentName: string }) {
+export function StudentAnalyticsClient({
+  studentName,
+  studentId,
+  isTeacherView = false,
+}: {
+  studentName?: string;
+  studentId?: string;
+  isTeacherView?: boolean;
+}) {
   const [data, setData] = useState<StudentAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +110,10 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/analytics/student/me');
+      const url = studentId
+        ? `/api/analytics/student/me?studentId=${encodeURIComponent(studentId)}`
+        : '/api/analytics/student/me';
+      const res = await fetch(url);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? 'Failed to load analytics');
@@ -118,17 +129,19 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [studentId]);
 
   useEffect(() => {
+    if (isTeacherView) return;
     const isLocalUnlocked =
       typeof window !== 'undefined' && localStorage.getItem('srsma_report_unlocked') === 'true';
     if (data && data.isReportUnlocked === false && !isLocalUnlocked) {
       setShowUnlockModal(true);
     }
-  }, [data]);
+  }, [data, isTeacherView]);
 
   useEffect(() => {
+    if (isTeacherView) return;
     const handleOpenModal = (e: Event) => {
       e.preventDefault();
       setShowUnlockModal(true);
@@ -137,7 +150,7 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
     return () => {
       window.removeEventListener('srsma_open_report_modal', handleOpenModal);
     };
-  }, []);
+  }, [isTeacherView]);
 
   async function handleUnlockSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -424,12 +437,18 @@ export function StudentAnalyticsClient({ studentName }: { studentName: string })
 
         <EmptyState
           title="No completed tests yet"
-          hint="Take and submit your first Board Readiness Challenge test to unlock your personalized 3-page diagnostic report with Board Readiness Index (BRI), cognitive skills breakdown, and priority gaps."
+          hint={
+            isTeacherView
+              ? "This student has not completed or submitted any tests yet."
+              : "Take and submit your first Board Readiness Challenge test to unlock your personalized 3-page diagnostic report with Board Readiness Index (BRI), cognitive skills breakdown, and priority gaps."
+          }
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link href="/student" className={buttonClass('primary', 'md')}>
-                Browse Available Tests
-              </Link>
+              {!isTeacherView && (
+                <Link href="/student" className={buttonClass('primary', 'md')}>
+                  Browse Available Tests
+                </Link>
+              )}
               {data.sampleDiagnosticReport && (
                 <Button
                   variant="secondary"

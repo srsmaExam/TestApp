@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles } from 'lucide-react';
 import { getDb } from '@/db/client';
@@ -10,6 +11,7 @@ import { StudentChrome } from '../StudentChrome';
 export async function StudentDashboardView() {
   const session = await getSession();
   if (!session) return null;
+  if (session.role === 'teacher') redirect('/teacher');
 
   const db = await getDb();
   const now = new Date();

@@ -17,6 +17,7 @@ import {
   Calendar,
   Clock,
   Download,
+  Eye,
   Flame,
   HelpCircle,
   Layers,
@@ -95,6 +96,7 @@ type TestAnalyticsData = {
     avgTimeMin: number;
   }>;
   leaderboard: Array<{
+    attemptId?: string;
     studentId: string;
     fullName: string;
     username: string;
@@ -400,7 +402,8 @@ export function TestAnalyticsClient({ testId }: { testId: string }) {
                 <TableHead>Total Score</TableHead>
                 <TableHead>Percentile</TableHead>
                 <TableHead>Time</TableHead>
-                <TableHead className="text-right">Date</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -415,7 +418,15 @@ export function TestAnalyticsClient({ testId }: { testId: string }) {
                       <span className="tnum">#{row.rank}</span>
                     )}
                   </TableCell>
-                  <TableCell className="font-semibold text-slate-900 dark:text-slate-100">{row.fullName}</TableCell>
+                  <TableCell className="font-semibold text-slate-900 dark:text-slate-100">
+                    <Link
+                      href={`/teacher/students/${row.studentId}`}
+                      className="hover:text-brand-600 hover:underline dark:hover:text-brand-400"
+                      title="View Student Profile"
+                    >
+                      {row.fullName}
+                    </Link>
+                  </TableCell>
                   <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.username}</TableCell>
                   <TableCell className="text-slate-600 dark:text-slate-300">{row.batch}</TableCell>
                   {!bestOnly && (
@@ -426,15 +437,36 @@ export function TestAnalyticsClient({ testId }: { testId: string }) {
                     {row.percentile !== null ? `${row.percentile}%` : '—'}
                   </TableCell>
                   <TableCell className="tnum text-slate-500 dark:text-slate-400">{row.timeSpentMin} min</TableCell>
-                  <TableCell className="text-right text-slate-400 dark:text-slate-500">
+                  <TableCell className="text-slate-400 dark:text-slate-500">
                     {new Date(row.submittedAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.attemptId ? (
+                      <Link
+                        href={`/teacher/students/${row.studentId}/attempts/${row.attemptId}`}
+                        className={buttonClass('secondary', 'sm')}
+                        title="View Student's Test Response & Solutions"
+                      >
+                        <Eye className="size-3.5" />
+                        <span className="hidden lg:inline">View Response</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/teacher/students/${row.studentId}`}
+                        className={buttonClass('secondary', 'sm')}
+                        title="Open Student Profile"
+                      >
+                        <Eye className="size-3.5" />
+                        <span className="hidden lg:inline">Profile</span>
+                      </Link>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
 
               {data.leaderboard.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={bestOnly ? 8 : 9} className="p-6 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={bestOnly ? 9 : 10} className="p-6 text-center text-slate-400 dark:text-slate-500">
                     No attempts submitted yet for this test.
                   </TableCell>
                 </TableRow>

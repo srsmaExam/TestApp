@@ -55,6 +55,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
 
   const [studentProfile] = await db
     .select({
+      fullName: profiles.fullName,
       isProvisional: profiles.isProvisional,
       whatsappConsent: profiles.whatsappConsent,
       city: profiles.city,
@@ -198,6 +199,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
 
   return json({
     attemptId: attempt.id,
+    studentId: attempt.studentId,
+    studentName: studentProfile?.fullName,
     testId: test.id,
     testTitle: test.title,
     attemptNo: attempt.attemptNo,

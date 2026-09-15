@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
-import { apiStudent } from '@/lib/auth';
-import { json, withApi } from '@/lib/http';
+import { apiSession } from '@/lib/auth';
+import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
 import { attemptAnswers, attempts, profiles, questions, testQuestions, tests } from '@/db/schema';
 import {
@@ -10,26 +10,69 @@ import {
   type StudentQuestionResponse,
 } from '@/lib/diagnostic-evaluator';
 
-export const GET = withApi(async () => {
-  const session = await apiStudent();
+export const GET = withApi(async (req) => {
+  const session = await apiSession();
   const db = await getDb();
 
-  const [profile] = await db
-    .select({
-      whatsappConsent: profiles.whatsappConsent,
-      city: profiles.city,
-      isProvisional: profiles.isProvisional,
-    })
-    .from(profiles)
-    .where(eq(profiles.id, session.userId));
+  let targetUserId = session.userId;
+  let targetStudentName = session.fullName || 'Student';
+  let isReportUnlocked = false;
 
-  const isReportUnlocked = Boolean(
-    session.role === 'teacher' || (profile && profile.whatsappConsent && profile.city),
-  );
+  const url = new URL(req.url);
+  const queryStudentId = url.searchParams.get('studentId');
+
+  if (session.role === 'teacher') {
+    if (queryStudentId) {
+      const [targetStudent] = await db
+        .select({
+          id: profiles.id,
+          fullName: profiles.fullName,
+          role: profiles.role,
+        })
+        .from(profiles)
+        .where(eq(profiles.id, queryStudentId));
+
+      if (!targetStudent || targetStudent.role !== 'student') {
+        throw new HttpError(404, 'not_found', 'Student profile not found.');
+      }
+      targetUserId = targetStudent.id;
+      targetStudentName = targetStudent.fullName;
+    }
+    isReportUnlocked = true;
+  } else if (session.role === 'student') {
+    targetUserId = session.userId;
+    targetStudentName = session.fullName || 'Student';
+    const [profile] = await db
+      .select({
+        whatsappConsent: profiles.whatsappConsent,
+        city: profiles.city,
+        isProvisional: profiles.isProvisional,
+      })
+      .from(profiles)
+      .where(eq(profiles.id, session.userId));
+
+    isReportUnlocked = Boolean(profile && profile.whatsappConsent && profile.city);
+  } else {
+    throw new HttpError(403, 'forbidden', 'Access denied.');
+  }
 
   // Completed attempts by this student whose results are available.
-  // Gated on results_policy: attempts for 'on_release' tests with released_at IS NULL
+  // For students, gated on results_policy: attempts for 'on_release' tests with released_at IS NULL
   // are excluded so scores/rankings are not leaked before teacher release.
+  // For teachers, all submitted attempts are visible.
+  const releaseCondition =
+    session.role === 'teacher'
+      ? undefined
+      : or(eq(tests.resultsPolicy, 'immediate'), isNotNull(tests.releasedAt));
+
+  const whereConditions = [
+    eq(attempts.studentId, targetUserId),
+    sql`${attempts.status} <> 'in_progress'`,
+  ];
+  if (releaseCondition) {
+    whereConditions.push(releaseCondition);
+  }
+
   const studentAttempts = await db
     .select({
       attemptId: attempts.id,
@@ -44,18 +87,14 @@ export const GET = withApi(async () => {
     })
     .from(attempts)
     .innerJoin(tests, eq(tests.id, attempts.testId))
-    .where(
-      and(
-        eq(attempts.studentId, session.userId),
-        sql`${attempts.status} <> 'in_progress'`,
-        or(eq(tests.resultsPolicy, 'immediate'), isNotNull(tests.releasedAt)),
-      ),
-    )
+    .where(and(...whereConditions))
     .orderBy(desc(attempts.submittedAt));
 
   if (studentAttempts.length === 0) {
-    const sampleDiagnosticReport = getSampleDiagnosticReport(session.fullName || 'Student');
+    const sampleDiagnosticReport = getSampleDiagnosticReport(targetStudentName);
     return json({
+      studentId: targetUserId,
+      studentName: targetStudentName,
       isReportUnlocked,
       totalAttempts: 0,
       avgScore: 0,
@@ -81,7 +120,7 @@ export const GET = withApi(async () => {
     rank: number;
     percentile: number;
   }>('SELECT test_id, student_id, attempt_no, rank, percentile FROM v_test_ranks WHERE student_id = $1', [
-    session.userId,
+    targetUserId,
   ]);
 
   const ranksMap = new Map(ranksRes.rows.map((r) => [`${r.test_id}-${r.attempt_no}`, r]));
@@ -250,13 +289,15 @@ export const GET = withApi(async () => {
       });
 
       diagnosticReport = evaluateDiagnosticReport(metadataList, {
-        studentName: session.fullName || 'Student',
+        studentName: targetStudentName,
         responses,
       });
     }
   }
 
   return json({
+    studentId: targetUserId,
+    studentName: targetStudentName,
     isReportUnlocked,
     totalAttempts: studentAttempts.length,
     avgScore: Math.round((totalScore / studentAttempts.length) * 10) / 10,

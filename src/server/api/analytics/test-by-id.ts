@@ -54,7 +54,8 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
        r.rank,
        r.percentile,
        a.submitted_at,
-       a.total_time_s
+       a.total_time_s,
+       a.id as attempt_id
      FROM v_test_ranks r
      JOIN profiles p ON p.id = r.student_id
      JOIN attempts a ON a.test_id = r.test_id AND a.student_id = r.student_id AND a.attempt_no = r.attempt_no
@@ -64,6 +65,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   );
 
   const rawLeaderboard = leaderboardRes.rows.map((row) => ({
+    attemptId: (row as any).attempt_id,
     studentId: row.student_id,
     fullName: row.full_name,
     username: row.username,

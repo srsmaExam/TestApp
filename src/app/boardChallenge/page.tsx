@@ -113,79 +113,147 @@ export default function BoardChallengePage() {
 
         {/* Hero Section */}
         <main className="flex-1">
-          <section className="mx-auto max-w-5xl px-4 pt-6 pb-12 text-center sm:px-6 sm:pt-10 sm:pb-20">
-            <div className="flex flex-col items-center">
-              {/* 1. ARE YOU BOARD READY? (Occupies ~30% of screen height, Center Aligned, Massive Typography) */}
-              <div className="flex min-h-[25vh] w-full flex-col items-center justify-center py-2 sm:min-h-[30vh]">
-                <h1 className="w-full text-balance font-black tracking-tight uppercase text-5xl sm:text-7xl md:text-8xl lg:text-[100px] xl:text-[114px] leading-[0.92]">
-                  <span className="block text-slate-900 drop-shadow-[0_2px_20px_rgba(0,0,0,0.12)] dark:text-white dark:drop-shadow-[0_2px_24px_rgba(255,255,255,0.35)]">
-                    ARE YOU
+          <section className="mx-auto max-w-6xl px-3.5 pt-3 pb-10 sm:px-6 sm:pt-6 sm:pb-16">
+            {/* Split layout on md/lg, stacked on mobile */}
+            <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-12 md:gap-8 lg:gap-12">
+              {/* Left Column (Desktop) / Top Intro (Mobile) */}
+              <div className="flex flex-col items-center text-center md:col-span-7 md:items-start md:text-left">
+                {/* 1. ARE YOU BOARD READY? (Massive, High-Impact Typography) */}
+                <div className="w-full">
+                  <h1 className="text-balance font-black tracking-tight uppercase text-4xl xs:text-5xl sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl leading-[0.92]">
+                    <span className="block text-slate-900 drop-shadow-[0_2px_20px_rgba(0,0,0,0.12)] dark:text-white dark:drop-shadow-[0_2px_24px_rgba(255,255,255,0.35)]">
+                      ARE YOU
+                    </span>
+                    <span className="mt-1 block bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(245,158,11,0.5)] dark:from-amber-300 dark:via-amber-400 dark:to-orange-500 dark:drop-shadow-[0_6px_36px_rgba(245,158,11,0.65)]">
+                      BOARD READY?
+                    </span>
+                  </h1>
+                </div>
+
+                {/* 2. Text : "Presenting" in stylish way */}
+                <div className="my-1.5 flex w-full max-w-xs items-center justify-center gap-2 sm:my-3 sm:max-w-sm sm:gap-3 md:justify-start">
+                  <span className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent via-amber-400/80 to-amber-500 md:hidden" />
+                  <span className="font-serif text-sm font-medium italic tracking-[0.22em] text-amber-700 drop-shadow-sm sm:text-xl md:text-2xl dark:text-amber-300 dark:drop-shadow-[0_2px_12px_rgba(245,158,11,0.35)]">
+                    — Presenting —
                   </span>
-                  <span className="mt-2 block bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(245,158,11,0.5)] dark:from-amber-300 dark:via-amber-400 dark:to-orange-500 dark:drop-shadow-[0_6px_36px_rgba(245,158,11,0.65)]">
-                    BOARD READY?
-                  </span>
-                </h1>
-              </div>
+                  <span className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-amber-400/80 to-amber-500" />
+                </div>
 
-              {/* 2. Text : "Presenting" in stylish way */}
-              <div className="my-5 flex w-full max-w-md items-center justify-center gap-3 sm:my-7 sm:max-w-lg sm:gap-5">
-                <span className="h-[1.5px] flex-1 bg-gradient-to-r from-transparent via-amber-400/80 to-amber-500" />
-                <span className="font-serif text-xl font-medium italic tracking-[0.25em] text-amber-700 drop-shadow-sm sm:text-3xl md:text-4xl dark:text-amber-300 dark:drop-shadow-[0_2px_12px_rgba(245,158,11,0.35)]">
-                  — Presenting —
-                </span>
-                <span className="h-[1.5px] flex-1 bg-gradient-to-l from-transparent via-amber-400/80 to-amber-500" />
-              </div>
+                {/* 3. Board Readiness Challenge (Commanding Header) */}
+                <h2 className="text-balance text-xl font-black tracking-tight uppercase text-slate-900 drop-shadow-sm xs:text-2xl sm:text-4xl md:text-4xl lg:text-5xl dark:text-white">
+                  BOARD READINESS CHALLENGE
+                </h2>
 
-              {/* 3. Board Readiness Challenge (Commanding Header, Not a Button) */}
-              <h2 className="text-balance text-3xl font-black tracking-tight uppercase text-slate-900 drop-shadow-sm sm:text-5xl md:text-6xl lg:text-7xl dark:text-white">
-                BOARD READINESS CHALLENGE
-              </h2>
+                {/* 4. Subtitle */}
+                <p className="mt-1.5 max-w-xl text-balance text-xs font-semibold leading-relaxed text-slate-600 sm:mt-2.5 sm:text-base md:text-lg dark:text-slate-300">
+                  A Comprehensive Diagnostic Test For Class 10 Students in Mathematics &amp; Science
+                </p>
 
-              {/* 4. Subtitle */}
-              <p className="mt-4 max-w-3xl text-balance text-base font-semibold leading-relaxed text-slate-600 sm:text-2xl dark:text-slate-300">
-                A Comprehensive Diagnostic Test For Class 10 Students in Mathematics &amp; Science
-              </p>
+                {/* Desktop-Only Primary Call-to-Action Area */}
+                <div className="hidden w-full max-w-md flex-col items-start gap-3.5 pt-6 md:flex">
+                  <Link
+                    href={destination}
+                    className="relative group flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-4 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-xl"
+                  >
+                    <span className="relative z-10 flex items-center gap-2.5">
+                      <Zap className="size-5 fill-slate-950 text-slate-950" />
+                      <span>{ctaLabel}</span>
+                      <ArrowRight className="size-5 transition group-hover:translate-x-1" />
+                    </span>
+                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  </Link>
 
-              {/* Primary Call-to-Action Area */}
-              <div className="mt-8 flex w-full max-w-md flex-col items-center gap-3.5">
-                <Link
-                  href={destination}
-                  className="relative group flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-4.5 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-2xl"
-                >
-                  <span className="relative z-10 flex items-center gap-2.5">
-                    <Zap className="size-5.5 fill-slate-950 text-slate-950" />
-                    <span>{ctaLabel}</span>
-                    <ArrowRight className="size-5.5 transition group-hover:translate-x-1" />
-                  </span>
-                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                </Link>
+                  <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-600 sm:text-sm dark:text-slate-300">
+                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>{ctaSubtext}</span>
+                  </div>
 
-                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-600 sm:text-base dark:text-slate-300">
-                  <CheckCircle2 className="size-4.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                  <span>{ctaSubtext}</span>
+                  {/* Trust Badges */}
+                  <div className="mt-3 flex flex-wrap items-center gap-y-2 gap-x-4 border-t border-slate-200 pt-4 text-xs font-semibold text-slate-700 sm:text-sm dark:border-slate-800/80 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="size-4 text-amber-600 dark:text-amber-400" />
+                      <span>By IIT Alumni</span>
+                    </div>
+                    <span className="text-slate-400 dark:text-slate-600">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <BarChart3 className="size-4 text-blue-600 dark:text-blue-400" />
+                      <span>Topic-Wise Precision</span>
+                    </div>
+                    <span className="text-slate-400 dark:text-slate-600">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>100% Free Assessment</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Trust Badges */}
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-y-2.5 gap-x-6 border-t border-slate-200 pt-5 text-sm font-semibold text-slate-700 sm:text-base dark:border-slate-800/80 dark:text-slate-300">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="size-4.5 text-amber-600 dark:text-amber-400" />
-                  <span>By IIT Alumni</span>
+              {/* Right Column (Desktop) / Central Visual (Mobile): Student Girl with Books */}
+              <div className="relative flex w-full flex-col items-center justify-center md:col-span-5">
+                {/* Background Ambient Aura and Concentric Science Accent Rings */}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="size-48 rounded-full bg-amber-500/20 blur-3xl sm:size-72 lg:size-96" />
+                  <div className="absolute size-36 rounded-full bg-blue-600/20 blur-2xl sm:size-60 lg:size-80" />
+                  <div className="absolute size-44 rounded-full border border-amber-400/20 opacity-50 sm:size-64 lg:size-80" />
+                  <div className="absolute size-32 rounded-full border border-dashed border-blue-400/20 opacity-40 sm:size-52 lg:size-64" />
                 </div>
-                <span className="hidden text-slate-300 sm:inline dark:text-slate-700">•</span>
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="size-4.5 text-blue-600 dark:text-blue-400" />
-                  <span>Topic-Wise Precision</span>
+
+                {/* Student Hero Image with Smooth Gradient Mask at Bottom */}
+                <div className="relative z-10 mx-auto flex w-full max-w-[280px] justify-center xs:max-w-[320px] sm:max-w-[380px] md:max-w-none">
+                  <div className="relative [mask-image:linear-gradient(to_bottom,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_82%,transparent_100%)]">
+                    <Image
+                      src="/board-challenge/girl.png"
+                      alt="Class 10 Student holding Mathematics and Science textbooks for Board Readiness Challenge"
+                      width={971}
+                      height={1484}
+                      priority
+                      className="h-[230px] w-auto object-contain drop-shadow-[0_12px_32px_rgba(0,0,0,0.6)] xs:h-[270px] sm:h-[350px] md:h-[460px] lg:h-[520px] xl:h-[560px]"
+                    />
+                  </div>
                 </div>
-                <span className="hidden text-slate-300 sm:inline dark:text-slate-700">•</span>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>100% Free Assessment</span>
+
+                {/* Mobile-Only CTA Button and Trust Badges (Positioned immediately below student visual) */}
+                <div className="mt-3 flex w-full max-w-sm flex-col items-center gap-2.5 md:hidden">
+                  <Link
+                    href={destination}
+                    className="relative group flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-3 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all active:scale-[0.98]"
+                  >
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Zap className="size-4.5 fill-slate-950 text-slate-950" />
+                      <span>{ctaLabel}</span>
+                      <ArrowRight className="size-4" />
+                    </span>
+                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  </Link>
+
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                    <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
+                    <span>{ctaSubtext}</span>
+                  </div>
+
+                  {/* Mobile Trust Badges Row */}
+                  <div className="mt-0.5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-semibold text-slate-400">
+                    <div className="flex items-center gap-1">
+                      <ShieldCheck className="size-3.5 text-amber-400" />
+                      <span>By IIT Alumni</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <BarChart3 className="size-3.5 text-blue-400" />
+                      <span>Topic-Wise Precision</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5 text-emerald-400" />
+                      <span>100% Free</span>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* The 4 Core Challenge Badges matching pamphlet (Centered 2x2 Grid) */}
-              <div className="mt-12 grid w-full grid-cols-1 gap-4 text-left sm:grid-cols-2">
+            {/* The 4 Core Challenge Badges matching pamphlet (Below Hero Grid) */}
+            <div className="mt-12 grid w-full grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
                 {/* Item 1: Diagnostic Test for Class 10 */}
                 <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
@@ -238,7 +306,6 @@ export default function BoardChallengePage() {
                   </div>
                 </div>
               </div>
-            </div>
           </section>
 
           {/* Section: How It Works in 3 Easy Steps */}

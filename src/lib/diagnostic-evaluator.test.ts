@@ -196,9 +196,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
     result.strengths.forEach((s) => {
       expect(chapterNames).not.toContain(s.name);
     });
+    // Weakness categories (Priority Gaps) must only include categories where score is < 75%
     result.priorityGaps.forEach((g) => {
       expect(chapterNames).not.toContain(g.name);
+      expect(g.scorePercent).toBeLessThan(75);
     });
+    expect(result.priorityGaps.length).toBeLessThanOrEqual(4);
 
     // Flagged topics to revisit:
     // Q1: Correct within time -> Excluded
@@ -251,6 +254,11 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(highResult.levelOfPreparation).toBe('High achievement Potential');
     expect(highResult.keyInsight).toBe(
       'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
+    );
+    // When no categories are < 75%, priorityGaps is empty and congratulations is displayed
+    expect(highResult.priorityGaps.length).toBe(0);
+    expect(highResult.plainTextReport).toContain(
+      'Congratulations! Outstanding performance — no weakness areas detected (< 75%)',
     );
 
     // 2. Conceptually Strong (e.g. Q1, Q3, Q4 correct: 1 + 3 + 3 = 7/9 = 77.8% BRI)
@@ -392,6 +400,139 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(report.calculationSteps.timeManagement).toBeDefined();
       expect(report.calculationSteps.timeManagement?.finalScorePercent).toBe(67);
       expect(report.calculationSteps.timeManagement?.ratingResult).toBe('Good');
+    });
+  });
+
+  describe('Weakness Category (< 75% score) and Congratulations Logic', () => {
+    it('only displays categories where score is less than 75%', () => {
+      // Create student payload where some categories score < 75% and some >= 75%
+      const payload: StudentResponsePayload = {
+        studentName: 'Ananya Sharma',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Q1 correct (Direct Recall: 100%)
+          { qno: 2, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Q2 wrong (Diagram-based: 0%)
+          { qno: 3, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Q3 wrong (Multi-step: 0%)
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Q4 correct (Application-based: 100%)
+          { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }, // Q5 correct (Diagram-based: 1/2 = 50%)
+        ],
+      };
+
+      const report = evaluateDiagnosticReport(sampleMetadata, payload);
+
+      // Every category in priorityGaps MUST be < 75%
+      expect(report.priorityGaps.length).toBeGreaterThan(0);
+      report.priorityGaps.forEach((gap) => {
+        expect(gap.scorePercent).toBeLessThan(75);
+      });
+
+      // Categories that scored 100% must NOT be in priority gaps
+      const gapNames = report.priorityGaps.map((g) => g.name);
+      expect(gapNames).not.toContain('Direct Recall Questions');
+      expect(gapNames).not.toContain('Application-based Questions');
+    });
+
+    it('displays only the available categories if there are fewer than 4 with score < 75%', () => {
+      // 4 questions where Easy is 3/4 = 75%, Direct is 3/4 = 75%, Calculation is 3/3 = 100%,
+      // and only Visual Interpretation is 0/1 = 0% (< 75%).
+      const customMeta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Maths',
+          chapter: 'Triangles',
+          topic: 'Similarity',
+          difficulty: 'Easy',
+          primarySkill: 'Visual Interpretation',
+          secondarySkill: 'Visual Interpretation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60 sec',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'HCF',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          secondarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60 sec',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 3,
+          subject: 'Maths',
+          chapter: 'Polynomials',
+          topic: 'Zeroes',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          secondarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60 sec',
+          answer: 'C',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 4,
+          subject: 'Maths',
+          chapter: 'Linear Equations',
+          topic: 'Solutions',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          secondarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60 sec',
+          answer: 'D',
+          diagnosticWeight: 1,
+        },
+      ];
+
+      const payload: StudentResponsePayload = {
+        studentName: 'Vikram Singh',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Wrong (Visual Interpretation: 0%)
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Correct
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 }, // Correct
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Correct
+        ],
+      };
+
+      const report = evaluateDiagnosticReport(customMeta, payload);
+
+      // Exactly 1 category ('Question Interpretation Skill') has score < 75%
+      expect(report.priorityGaps.length).toBe(1);
+      expect(report.priorityGaps[0].name).toBe('Question Interpretation Skill');
+      expect(report.priorityGaps[0].scorePercent).toBe(0);
+      expect(report.priorityGaps[0].priority).toBe('High Priority');
+    });
+
+    it('congratulates student when there are no categories with score < 75%', () => {
+      // 100% correct answers
+      const perfectPayload: StudentResponsePayload = {
+        studentName: 'Neha Verma',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 },
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+        ],
+      };
+
+      const report = evaluateDiagnosticReport(sampleMetadata, perfectPayload);
+
+      // Priority gaps must be completely empty
+      expect(report.priorityGaps.length).toBe(0);
+      // Plain text report must congratulate them
+      expect(report.plainTextReport).toContain(
+        'Congratulations! Outstanding performance — no weakness areas detected (< 75%)',
+      );
     });
   });
 });

@@ -671,64 +671,74 @@ export function evaluateDiagnosticReport(
   const scoreCandidates: ScoreCandidate[] = [];
 
   // 1. Accuracy
-  scoreCandidates.push({
-    name: 'Accuracy',
-    percentage: rawAccuracyPercent,
-    scoreDetails: `${totalCorrect}/${totalAttempted} attempted (${rawAccuracyPercent}%)`,
-    reason:
-      rawAccuracyPercent >= 75
-        ? 'High execution precision on attempted questions with disciplined answering and minimal calculation errors.'
-        : 'Accuracy on attempted questions indicates occasional calculation slips or careless errors under timed pressure.',
-    totalTested: totalAttempted,
-  });
+  if (totalAttempted > 0) {
+    scoreCandidates.push({
+      name: 'Accuracy',
+      percentage: rawAccuracyPercent,
+      scoreDetails: `${totalCorrect}/${totalAttempted} attempted (${rawAccuracyPercent}%)`,
+      reason:
+        rawAccuracyPercent >= 75
+          ? 'High execution precision on attempted questions with disciplined answering and minimal calculation errors.'
+          : 'Accuracy on attempted questions indicates occasional calculation slips or careless errors under timed pressure.',
+      totalTested: totalAttempted,
+    });
+  }
 
   // 2. Concept Application Skill
-  scoreCandidates.push({
-    name: 'Concept Application Skill',
-    percentage: conceptApplication.scorePercent,
-    scoreDetails: `${conceptApplication.earnedWeight}/${conceptApplication.totalWeight} pts (${conceptApplication.scorePercent}%)`,
-    reason:
-      conceptApplication.scorePercent >= 60
-        ? 'Strong proficiency in applying learned concepts and mathematical formulas to standard examination problems.'
-        : 'Developing ability to apply core scientific formulas and algebraic methods to standard questions.',
-    totalTested: conceptApplication.totalWeight,
-  });
+  if (conceptApplication.totalWeight > 0) {
+    scoreCandidates.push({
+      name: 'Concept Application Skill',
+      percentage: conceptApplication.scorePercent,
+      scoreDetails: `${conceptApplication.earnedWeight}/${conceptApplication.totalWeight} pts (${conceptApplication.scorePercent}%)`,
+      reason:
+        conceptApplication.scorePercent >= 60
+          ? 'Strong proficiency in applying learned concepts and mathematical formulas to standard examination problems.'
+          : 'Developing ability to apply core scientific formulas and algebraic methods to standard questions.',
+      totalTested: conceptApplication.totalWeight,
+    });
+  }
 
   // 3. Conceptual Foundation
-  scoreCandidates.push({
-    name: 'Conceptual Foundation',
-    percentage: conceptualFoundation.scorePercent,
-    scoreDetails: `${conceptualFoundation.earnedWeight}/${conceptualFoundation.totalWeight} pts (${conceptualFoundation.scorePercent}%)`,
-    reason:
-      conceptualFoundation.scorePercent >= 60
-        ? 'Solid comprehension of fundamental definitions, scientific principles, and core textbook facts.'
-        : 'Foundational concepts and textbook definitions require systematic consolidation and revision.',
-    totalTested: conceptualFoundation.totalWeight,
-  });
+  if (conceptualFoundation.totalWeight > 0) {
+    scoreCandidates.push({
+      name: 'Conceptual Foundation',
+      percentage: conceptualFoundation.scorePercent,
+      scoreDetails: `${conceptualFoundation.earnedWeight}/${conceptualFoundation.totalWeight} pts (${conceptualFoundation.scorePercent}%)`,
+      reason:
+        conceptualFoundation.scorePercent >= 60
+          ? 'Solid comprehension of fundamental definitions, scientific principles, and core textbook facts.'
+          : 'Foundational concepts and textbook definitions require systematic consolidation and revision.',
+      totalTested: conceptualFoundation.totalWeight,
+    });
+  }
 
   // 4. Problem Solving Skill
-  scoreCandidates.push({
-    name: 'Problem Solving Skill',
-    percentage: problemSolving.scorePercent,
-    scoreDetails: `${problemSolving.earnedWeight}/${problemSolving.totalWeight} pts (${problemSolving.scorePercent}%)`,
-    reason:
-      problemSolving.scorePercent >= 60
-        ? 'Robust analytical reasoning and execution when tackling complex, multi-tiered problems.'
-        : 'Analytical breakdown of compound questions and multi-step deduction requires structured practice.',
-    totalTested: problemSolving.totalWeight,
-  });
+  if (problemSolving.totalWeight > 0) {
+    scoreCandidates.push({
+      name: 'Problem Solving Skill',
+      percentage: problemSolving.scorePercent,
+      scoreDetails: `${problemSolving.earnedWeight}/${problemSolving.totalWeight} pts (${problemSolving.scorePercent}%)`,
+      reason:
+        problemSolving.scorePercent >= 60
+          ? 'Robust analytical reasoning and execution when tackling complex, multi-tiered problems.'
+          : 'Analytical breakdown of compound questions and multi-step deduction requires structured practice.',
+      totalTested: problemSolving.totalWeight,
+    });
+  }
 
   // 5. Question Interpretation Skill
-  scoreCandidates.push({
-    name: 'Question Interpretation Skill',
-    percentage: questionInterpretation.scorePercent,
-    scoreDetails: `${questionInterpretation.earnedWeight}/${questionInterpretation.totalWeight} pts (${questionInterpretation.scorePercent}%)`,
-    reason:
-      questionInterpretation.scorePercent >= 60
-        ? 'Skilled at extracting key parameters, visual clues, and qualifying constraints from problem statements.'
-        : 'Decoding question phrasing, diagrams, and implicit scientific conditions needs deliberate practice.',
-    totalTested: questionInterpretation.totalWeight,
-  });
+  if (questionInterpretation.totalWeight > 0) {
+    scoreCandidates.push({
+      name: 'Question Interpretation Skill',
+      percentage: questionInterpretation.scorePercent,
+      scoreDetails: `${questionInterpretation.earnedWeight}/${questionInterpretation.totalWeight} pts (${questionInterpretation.scorePercent}%)`,
+      reason:
+        questionInterpretation.scorePercent >= 60
+          ? 'Skilled at extracting key parameters, visual clues, and qualifying constraints from problem statements.'
+          : 'Decoding question phrasing, diagrams, and implicit scientific conditions needs deliberate practice.',
+      totalTested: questionInterpretation.totalWeight,
+    });
+  }
 
   // 6. 7 Question Structures (only those with total > 0)
   for (const st of structures) {
@@ -804,12 +814,14 @@ export function evaluateDiagnosticReport(
     reason: item.reason,
   }));
 
-  // Top 4 Priority Gaps (Score-based, NO chapters)
-  const gapsSorted = [...scoreCandidates].sort((a, b) => {
+  // Priority Gaps / Weakness Areas: only categories where score is less than 75%
+  const gapsFiltered = scoreCandidates.filter((item) => item.percentage < 75);
+  const gapsSorted = [...gapsFiltered].sort((a, b) => {
     if (a.percentage !== b.percentage) return a.percentage - b.percentage;
     return b.totalTested - a.totalTested;
   });
 
+  // Display only categories < 75%; if less than 4, display only those (up to 4)
   const priorityGaps: PriorityGapItem[] = gapsSorted.slice(0, 4).map((item, idx) => ({
     rank: idx + 1,
     name: item.name,
@@ -1320,9 +1332,13 @@ function generateReportPlainTextFormat(data: {
   lines.push('PAGE 3 — WHERE SHOULD YOU IMPROVE?');
   lines.push('');
   lines.push('YOUR PRIORITY GAPS');
-  data.priorityGaps.forEach((g) => {
-    lines.push(`${g.rank}. ${g.name}: ${g.scorePercent}% — Priority: ${g.priority.replace(' Priority', '')}`);
-  });
+  if (data.priorityGaps.length === 0) {
+    lines.push('🎉 Congratulations! Outstanding performance — no weakness areas detected (< 75%). All evaluated categories scored 75% or higher.');
+  } else {
+    data.priorityGaps.forEach((g) => {
+      lines.push(`${g.rank}. ${g.name}: ${g.scorePercent}% — Priority: ${g.priority.replace(' Priority', '')}`);
+    });
+  }
   lines.push('');
   lines.push('*(Priority Benchmarks: < 40% = High Priority | 40% to 55% = Medium Priority | 55% to 74% = Low Priority)*');
   lines.push('');

@@ -178,6 +178,15 @@ export function TestRunnerClient({
   const submitStartedRef = useRef(false);
 
   const currentQ = questions[currentIndex];
+  const isLastQuestion = questions.length > 0 && currentIndex === questions.length - 1;
+  const isLastQuestionAnswered =
+    isLastQuestion &&
+    Boolean(
+      currentQ?.response?.key ||
+        currentQ?.response?.value !== undefined ||
+        currentQ?.state === 'answered' ||
+        currentQ?.state === 'answered_flagged',
+    );
 
   // Subject tabs are derived from the paper, not hardcoded — a Physics-only
   // sectional test used to render two dead tabs reading 0/0.
@@ -569,6 +578,10 @@ export function TestRunnerClient({
       goToQuestion(currentIndex + 1);
     } else {
       scheduleSync();
+      const currentHasResponse = Boolean(currentQ?.response?.key || currentQ?.response?.value !== undefined);
+      if (currentHasResponse || isLastQuestionAnswered) {
+        setSubmitModalOpen(true);
+      }
     }
   };
 
@@ -688,14 +701,20 @@ export function TestRunnerClient({
 
       if (diff <= 0) {
         clearInterval(interval);
-        void closeAttempt('auto', { autoSubmitted: true, reason: 'deadline_expired' });
+        if (extensionCount < 2) {
+          setPopupTimer(60);
+          setExtensionError(null);
+          setTimeExtensionModalOpen(true);
+        } else {
+          void closeAttempt('auto', { autoSubmitted: true, reason: 'deadline_expired' });
+        }
       }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [currentDeadline, closeAttempt]);
+  }, [currentDeadline, closeAttempt, extensionCount]);
 
   // 3. 60-Second Auto-Submit Timer for the "Need More Time?" Popup
   useEffect(() => {
@@ -717,13 +736,7 @@ export function TestRunnerClient({
   }, [timeExtensionModalOpen, closeAttempt]);
 
   const handleSubmitClick = () => {
-    if (extensionCount < 2) {
-      setPopupTimer(60);
-      setExtensionError(null);
-      setTimeExtensionModalOpen(true);
-    } else {
-      setSubmitModalOpen(true);
-    }
+    setSubmitModalOpen(true);
   };
 
   const handleRequestMoreTime = async () => {
@@ -1102,15 +1115,27 @@ export function TestRunnerClient({
                 Previous
               </Button>
 
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSaveAndNext}
-                className="bg-brand-700 hover:bg-brand-800"
-              >
-                Save & Next
-                <ChevronRight className="ml-1 size-4" />
-              </Button>
+              {isLastQuestion && isLastQuestionAnswered ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveAndNext}
+                  className="bg-emerald-600 hover:bg-emerald-700 font-bold"
+                >
+                  <Check className="mr-1 size-4" />
+                  Submit
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveAndNext}
+                  className="bg-brand-700 hover:bg-brand-800"
+                >
+                  Save & Next
+                  <ChevronRight className="ml-1 size-4" />
+                </Button>
+              )}
 
               {/* Mobile Palette Drawer Toggle */}
               <button

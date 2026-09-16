@@ -793,47 +793,76 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
           </div>
 
           {/* Priority Gaps */}
-          <div className="mt-6 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-              <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-                Your Priority Gaps
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                (Priority Benchmarks: &lt; 40% = High Priority | 40% to 55% = Medium Priority | 55% to 74% = Low Priority)
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {report.priorityGaps.map((g) => (
-                <div
-                  key={g.rank}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900/90"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-400">#{g.rank} Priority Area</span>
-                    {getPriorityBadge(g.priority)}
-                  </div>
-                  <h4 className="mt-2 text-sm font-black text-slate-900 dark:text-white line-clamp-1">{g.name}</h4>
-                  <div className="mt-2 flex items-baseline justify-between">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Accuracy</span>
-                    <span className="tnum text-base font-black text-slate-900 dark:text-white">{g.scorePercent}%</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div
-                      className={`h-full rounded-full ${
-                        g.priority === 'High Priority'
-                          ? 'bg-rose-500'
-                          : g.priority === 'Medium Priority'
-                          ? 'bg-amber-500'
-                          : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${Math.max(4, g.scorePercent)}%` }}
-                    />
-                  </div>
+          {(() => {
+            const weaknessGaps = (report.priorityGaps || []).filter((g) => g.scorePercent < 75).slice(0, 4);
+            return (
+              <div className="mt-6 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                  <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                    Your Priority Gaps
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                    (Priority Benchmarks: &lt; 40% = High Priority | 40% to 55% = Medium Priority | 55% to 74% = Low Priority)
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                {weaknessGaps.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-emerald-50/80 p-6 text-center shadow-xs dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
+                      <Sparkles className="size-6 animate-pulse" />
+                    </div>
+                    <h4 className="mt-3 text-base font-extrabold text-emerald-900 dark:text-emerald-200">
+                      Congratulations! No Weakness Areas Detected
+                    </h4>
+                    <p className="mt-1 max-w-md text-xs text-emerald-700 dark:text-emerald-400">
+                      Outstanding performance! You scored 75% or higher across all evaluated syllabus categories. Keep up the phenomenal work for your board exams!
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className={`grid gap-3 sm:grid-cols-2 ${
+                      weaknessGaps.length === 1
+                        ? 'lg:grid-cols-1 max-w-md'
+                        : weaknessGaps.length === 2
+                        ? 'lg:grid-cols-2'
+                        : weaknessGaps.length === 3
+                        ? 'lg:grid-cols-3'
+                        : 'lg:grid-cols-4'
+                    }`}
+                  >
+                    {weaknessGaps.map((g) => (
+                      <div
+                        key={g.rank}
+                        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900/90"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-400">#{g.rank} Priority Area</span>
+                          {getPriorityBadge(g.priority)}
+                        </div>
+                        <h4 className="mt-2 text-sm font-black text-slate-900 dark:text-white line-clamp-1">{g.name}</h4>
+                        <div className="mt-2 flex items-baseline justify-between">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Accuracy</span>
+                          <span className="tnum text-base font-black text-slate-900 dark:text-white">{g.scorePercent}%</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div
+                            className={`h-full rounded-full ${
+                              g.priority === 'High Priority'
+                                ? 'bg-rose-500'
+                                : g.priority === 'Medium Priority'
+                                ? 'bg-amber-500'
+                                : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${Math.max(4, g.scorePercent)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Topics to Revisit Table */}
           <div className="mt-8 space-y-4">

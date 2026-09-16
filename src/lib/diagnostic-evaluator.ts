@@ -49,7 +49,9 @@ export type PriorityLevel = 'High Priority' | 'Medium Priority' | 'Low Priority'
 export type RevisitCategory =
   | 'Pacing / Time Management'
   | 'Conceptual / Calculation Gap'
-  | 'High Friction Gap';
+  | 'High Friction Gap'
+  | 'Rapid Guesswork'
+  | 'Unattempted';
 
 export interface AreaPerformance {
   score: number;
@@ -831,15 +833,55 @@ export function evaluateDiagnosticReport(
 
   // Topics to Revisit
   // Rules:
-  // 1. Only chapters where question was attempted (time spent > 10s) and is incorrect.
-  // 2. If not attempted OR time spent <= 10s: do NOT display!
-  // 3. If time spent is much more than estimated time (>= 2x upper bound):
-  //    put in topics to revisit and explicitly mention that as well!
+  // 1. Unattempted questions: Flagged as 'Unattempted' (competency cannot be assessed without an attempt).
+  // 2. Rapid guesswork: Answered very fast (<= 15s or < 20s and <= 25% of limit, right or wrong) -> Flagged as 'Rapid Guesswork'
+  // 3. Severe overtime (>= 2x limit) & Incorrect -> 'High Friction Gap'
+  // 4. Severe overtime (>= 2x limit) & Correct -> 'Pacing / Time Management'
+  // 5. Normal pacing incorrect -> 'Conceptual / Calculation Gap'
+  // 6. Normal pacing correct -> Mastered (excluded)
   const topicsToRevisit: TopicToRevisitItem[] = [];
 
   for (const q of evaluatedQuestions) {
-    // If not attempted or time spent <= 10s: exclude!
-    if (!q.attempted || q.timeTakenSeconds <= 10) {
+    // 1. Unattempted
+    if (!q.attempted || q.timeTakenSeconds === 0) {
+      topicsToRevisit.push({
+        qno: q.meta.qno,
+        subject: q.meta.subject,
+        chapter: q.meta.chapter,
+        topic: q.meta.topic,
+        issueObserved:
+          'Unattempted. Since this question was not attempted, competency in this chapter could not be assessed.',
+        category: 'Unattempted',
+        recommendedFocusArea:
+          q.meta.conceptTested || q.meta.prerequisiteConcept || q.meta.topic,
+        timeTaken: q.timeTakenSeconds,
+        expectedLimit: q.upperLimit,
+        isCorrect: false,
+        attempted: false,
+      });
+      continue;
+    }
+
+    // 2. Very fast attempt (guesswork, right or wrong)
+    const isVeryFast =
+      q.timeTakenSeconds <= 15 ||
+      (q.timeTakenSeconds < 20 && q.timeTakenSeconds <= q.upperLimit * 0.25);
+
+    if (isVeryFast) {
+      topicsToRevisit.push({
+        qno: q.meta.qno,
+        subject: q.meta.subject,
+        chapter: q.meta.chapter,
+        topic: q.meta.topic,
+        issueObserved: `Answered rapidly in ${q.timeTakenSeconds}s (vs ${q.upperLimit}s limit). This chapter appears to be guesswork, so competency cannot be confirmed.`,
+        category: 'Rapid Guesswork',
+        recommendedFocusArea:
+          q.meta.conceptTested || q.meta.prerequisiteConcept || q.meta.topic,
+        timeTaken: q.timeTakenSeconds,
+        expectedLimit: q.upperLimit,
+        isCorrect: q.isCorrect,
+        attempted: true,
+      });
       continue;
     }
 
@@ -1261,7 +1303,7 @@ function generateReportPlainTextFormat(data: {
   lines.push(
     `OVERALL SCORE: ${data.totalRawScore} / ${data.totalQuestions} (${data.totalWeightedScore} / ${data.totalDiagnosticWeight} Weighted Points)`,
   );
-  lines.push(`BOARD READINESS INDEX: ${data.briScore}%`);
+  lines.push(`BOARD READINESS INDEX: ${data.briScore} / 100`);
   lines.push(`LEVEL OF PREPARATION: ${data.levelOfPreparation}`);
   if (data.timeManagement) {
     lines.push(

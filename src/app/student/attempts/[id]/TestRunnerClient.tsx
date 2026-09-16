@@ -178,15 +178,9 @@ export function TestRunnerClient({
   const submitStartedRef = useRef(false);
 
   const currentQ = questions[currentIndex];
-  const isLastQuestion = questions.length > 0 && currentIndex === questions.length - 1;
-  const isLastQuestionAnswered =
-    isLastQuestion &&
-    Boolean(
-      currentQ?.response?.key ||
-        currentQ?.response?.value !== undefined ||
-        currentQ?.state === 'answered' ||
-        currentQ?.state === 'answered_flagged',
-    );
+  const allQuestionsVisited =
+    questions.length > 0 &&
+    questions.every((q, idx) => idx === currentIndex || q.state !== 'not_seen');
 
   // Subject tabs are derived from the paper, not hardcoded — a Physics-only
   // sectional test used to render two dead tabs reading 0/0.
@@ -557,6 +551,26 @@ export function TestRunnerClient({
     scheduleSync();
   };
 
+  // Action: Save & Submit (when all questions are visited)
+  const handleSaveAndSubmit = () => {
+    flushTimeSpent();
+    setQuestions((prev) => {
+      const copy = [...prev];
+      const q = copy[currentIndex];
+      if (q) {
+        const hasResponse = q.response?.key || q.response?.value !== undefined;
+        const wasFlagged = q.state === 'flagged_unanswered' || q.state === 'answered_flagged';
+        copy[currentIndex] = {
+          ...q,
+          state: hasResponse ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
+        };
+      }
+      return copy;
+    });
+    scheduleSync();
+    setSubmitModalOpen(true);
+  };
+
   // Action: Save & Next
   const handleSaveAndNext = () => {
     flushTimeSpent();
@@ -577,9 +591,14 @@ export function TestRunnerClient({
     if (currentIndex < questions.length - 1) {
       goToQuestion(currentIndex + 1);
     } else {
-      scheduleSync();
-      const currentHasResponse = Boolean(currentQ?.response?.key || currentQ?.response?.value !== undefined);
-      if (currentHasResponse || isLastQuestionAnswered) {
+      // At last question: if some earlier questions are not visited yet, jump to the first unvisited question
+      const firstUnvisitedIdx = questions.findIndex(
+        (q, idx) => idx !== currentIndex && q.state === 'not_seen',
+      );
+      if (firstUnvisitedIdx !== -1) {
+        goToQuestion(firstUnvisitedIdx);
+      } else {
+        scheduleSync();
         setSubmitModalOpen(true);
       }
     }
@@ -944,7 +963,11 @@ export function TestRunnerClient({
             variant="primary"
             size="sm"
             onClick={handleSubmitClick}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className={`font-bold transition-all ${
+              allQuestionsVisited
+                ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400 ring-offset-1 shadow-md animate-pulse'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+            }`}
           >
             Submit Test
           </Button>
@@ -1133,22 +1156,34 @@ export function TestRunnerClient({
                 Previous
               </Button>
 
-              {isLastQuestion && isLastQuestionAnswered ? (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleSaveAndNext}
-                  className="bg-emerald-600 hover:bg-emerald-700 font-bold"
-                >
-                  <Check className="mr-1 size-4" />
-                  Submit
-                </Button>
+              {allQuestionsVisited ? (
+                <>
+                  {currentIndex < questions.length - 1 && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSaveAndNext}
+                    >
+                      Next
+                      <ChevronRight className="ml-1 size-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveAndSubmit}
+                    className="bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white shadow-lg ring-2 ring-emerald-400 ring-offset-2 animate-pulse dark:ring-offset-slate-900"
+                  >
+                    <Check className="mr-1.5 size-4" />
+                    Submit Test
+                  </Button>
+                </>
               ) : (
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={handleSaveAndNext}
-                  className="bg-brand-700 hover:bg-brand-800"
+                  className="bg-brand-700 hover:bg-brand-800 font-semibold"
                 >
                   Save & Next
                   <ChevronRight className="ml-1 size-4" />

@@ -126,17 +126,31 @@ export function TeacherCreateTestView() {
               </div>
 
               <div>
-                <Label htmlFor="maxAttempts">Max Retakes / Attempts *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="maxAttempts">Max Retakes / Attempts *</Label>
+                  <label className="flex items-center gap-1.5 text-xs text-brand-700 font-semibold cursor-pointer dark:text-brand-400">
+                    <input
+                      type="checkbox"
+                      checked={maxAttempts === 0}
+                      onChange={(e) => setMaxAttempts(e.target.checked ? 0 : 1)}
+                      className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    Unlimited Attempts
+                  </label>
+                </div>
                 <Input
                   id="maxAttempts"
                   type="number"
-                  min={1}
-                  max={10}
+                  min={0}
+                  max={50}
                   value={maxAttempts}
-                  onChange={(e) => setMaxAttempts(Number(e.target.value))}
+                  disabled={maxAttempts === 0}
+                  onChange={(e) => setMaxAttempts(Math.max(0, Number(e.target.value)))}
                   required
                 />
-                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Usually 1 attempt for mock exams</p>
+                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  {maxAttempts === 0 ? 'Students can retake this test unlimited times' : 'Set to 0 or check Unlimited for unrestricted retakes'}
+                </p>
               </div>
             </div>
 

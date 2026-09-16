@@ -100,6 +100,7 @@ export async function TeacherTestsView() {
                       <Users className="size-3.5" />
                       {t.attemptCount} attempt{t.attemptCount === 1 ? '' : 's'}
                     </span>
+                    {t.maxAttempts === 0 ? <span>• Unlimited Retakes</span> : t.maxAttempts > 1 ? <span>• Max {t.maxAttempts} Attempts</span> : null}
                     {t.shuffleQuestions && <span>• Shuffled Qs</span>}
                     {t.shuffleOptions && <span>• Shuffled Options</span>}
                   </div>

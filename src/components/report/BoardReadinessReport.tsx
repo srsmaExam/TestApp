@@ -22,6 +22,7 @@ import {
   Compass,
   Calculator,
   Wrench,
+  HelpCircle,
 } from 'lucide-react';
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import type {
@@ -177,6 +178,20 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
           <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
             <AlertTriangle className="size-3" />
             Conceptual / Calculation Gap
+          </span>
+        );
+      case 'Rapid Guesswork':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-50 px-2 py-0.5 text-xs font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+            <Zap className="size-3 text-orange-600" />
+            Rapid Guesswork
+          </span>
+        );
+      case 'Unattempted':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <HelpCircle className="size-3 text-slate-500" />
+            Unattempted
           </span>
         );
       case 'High Friction Gap':
@@ -382,7 +397,10 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                   </svg>
                   <div className="text-center z-10">
                     <span className="tnum text-3xl font-black text-slate-900 dark:text-white">
-                      {report.briScore}%
+                      {report.briScore}
+                    </span>
+                    <span className="text-sm font-bold text-slate-400 dark:text-slate-500">
+                      {' '}/ 100
                     </span>
                     <span className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       BRI Score
@@ -392,9 +410,11 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
               </div>
 
               <div className="text-center">
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Level of Preparation</span>
-                <div className="mt-1">
-                  <span className={`inline-block rounded-xl border px-3.5 py-1 text-xs font-black tracking-wide ${prepStyle.bg}`}>
+                <span className="text-base font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                  Level of Preparation
+                </span>
+                <div className="mt-1.5">
+                  <span className={`inline-block rounded-xl border px-4 py-1.5 text-sm sm:text-base font-black tracking-wide shadow-xs ${prepStyle.bg}`}>
                     {prepStyle.label}
                   </span>
                 </div>
@@ -414,7 +434,13 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
-                      className="h-full bg-brand-600 rounded-full"
+                      className={`h-full rounded-full transition-all ${
+                        report.totalRawScore <= 8
+                          ? 'bg-rose-500'
+                          : report.totalRawScore <= 14
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                      }`}
                       style={{ width: `${(report.totalRawScore / Math.max(1, report.totalQuestions)) * 100}%` }}
                     />
                   </div>
@@ -864,111 +890,186 @@ export function BoardReadinessReport({ report, onRetakeOrBrowse }: BoardReadines
             );
           })()}
 
-          {/* Topics to Revisit Table */}
-          <div className="mt-8 space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-                  Topics to Revisit
-                </h3>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  List of topics where pacing or accuracy issues occurred during the test:
-                </p>
-              </div>
-
-              {/* Interactive Category Filter (Hidden in Print) */}
-              <div className="no-print flex flex-wrap gap-1">
-                <button
-                  type="button"
-                  onClick={() => setRevisitFilter('all')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                    revisitFilter === 'all'
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  All Issues ({report.topicsToRevisit.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRevisitFilter('High Friction Gap')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                    revisitFilter === 'High Friction Gap'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  High Friction ({report.topicsToRevisit.filter((t) => t.category === 'High Friction Gap').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRevisitFilter('Pacing / Time Management')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                    revisitFilter === 'Pacing / Time Management'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  Pacing ({report.topicsToRevisit.filter((t) => t.category === 'Pacing / Time Management').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRevisitFilter('Conceptual / Calculation Gap')}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                    revisitFilter === 'Conceptual / Calculation Gap'
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  Concepts ({report.topicsToRevisit.filter((t) => t.category === 'Conceptual / Calculation Gap').length})
-                </button>
-              </div>
+          {/* Topics to Revisit: 2 Distinct Tables (Mathematics & Science) */}
+          <div className="mt-8 space-y-6">
+            <div>
+              <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                Topics to Revisit
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Detailed chapter-wise observations for Mathematics and Science requiring review or reinforcement:
+              </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
-                    <TableHead className="w-12 text-center text-xs font-bold uppercase tracking-wider">Q#</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Subject</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Chapter &amp; Topic</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Issue Observed</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Category</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Recommended Focus Area</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTopics.map((t) => (
-                    <TableRow key={t.qno} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <TableCell className="text-center font-bold text-slate-900 dark:text-white">
-                        {t.qno}
-                      </TableCell>
-                      <TableCell className="font-semibold text-slate-800 dark:text-slate-200">
-                        {t.subject}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-bold text-slate-900 dark:text-slate-100">{t.chapter}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{t.topic}</div>
-                      </TableCell>
-                      <TableCell className="font-medium text-slate-700 dark:text-slate-300 text-xs">
-                        {t.issueObserved}
-                      </TableCell>
-                      <TableCell>{getRevisitBadge(t.category)}</TableCell>
-                      <TableCell className="text-xs font-semibold text-brand-700 dark:text-brand-400 max-w-xs">
-                        {t.recommendedFocusArea}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredTopics.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-slate-400 dark:text-slate-500">
-                        No topics match the selected category.
-                      </TableCell>
-                    </TableRow>
+            {/* TABLE 1: Mathematics */}
+            {(() => {
+              const mathsTopics = report.topicsToRevisit.filter(
+                (t) => t.subject.toLowerCase() === 'maths' || t.subject.toLowerCase() === 'mathematics',
+              );
+              const hasGuesswork = mathsTopics.some((t) => t.category === 'Rapid Guesswork');
+              const hasUnattempted = mathsTopics.some((t) => t.category === 'Unattempted');
+
+              return (
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-7 items-center justify-center rounded-lg bg-blue-100 text-blue-800 font-bold text-xs dark:bg-blue-950 dark:text-blue-300">
+                        📐
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Mathematics — Topics to Revisit ({mathsTopics.length})
+                      </h4>
+                    </div>
+                  </div>
+
+                  {(hasGuesswork || hasUnattempted) && (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                      <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div className="space-y-1">
+                        {hasGuesswork && (
+                          <p>
+                            <strong>Rapid Responses / Guesswork:</strong> Some chapters were answered very quickly. These chapters appear to be guesswork, so we cannot reliably determine conceptual competency.
+                          </p>
+                        )}
+                        {hasUnattempted && (
+                          <p>
+                            <strong>Unattempted Chapters:</strong> These questions were left unattempted during the exam, so competency could not be assessed and requires independent practice.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                          <TableHead className="w-12 text-center text-xs font-bold uppercase tracking-wider">Q#</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Chapter &amp; Topic</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Issue Observed</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Category</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Recommended Focus Area</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {mathsTopics.map((t) => (
+                          <TableRow key={t.qno} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <TableCell className="text-center font-bold text-slate-900 dark:text-white">
+                              {t.qno}
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-bold text-slate-900 dark:text-slate-100">{t.chapter}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">{t.topic}</div>
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-700 dark:text-slate-300 text-xs">
+                              {t.issueObserved}
+                            </TableCell>
+                            <TableCell>{getRevisitBadge(t.category)}</TableCell>
+                            <TableCell className="text-xs font-semibold text-brand-700 dark:text-brand-400 max-w-xs">
+                              {t.recommendedFocusArea}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {mathsTopics.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-6 text-center text-slate-400 dark:text-slate-500">
+                              🎉 No Mathematics topics require revisit. High accuracy and disciplined pacing maintained!
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* TABLE 2: Science */}
+            {(() => {
+              const scienceTopics = report.topicsToRevisit.filter((t) =>
+                ['physics', 'chemistry', 'biology', 'science'].includes(t.subject.toLowerCase()),
+              );
+              const hasGuesswork = scienceTopics.some((t) => t.category === 'Rapid Guesswork');
+              const hasUnattempted = scienceTopics.some((t) => t.category === 'Unattempted');
+
+              return (
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs dark:bg-emerald-950 dark:text-emerald-300">
+                        🧪
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Science — Topics to Revisit ({scienceTopics.length})
+                      </h4>
+                    </div>
+                  </div>
+
+                  {(hasGuesswork || hasUnattempted) && (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                      <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div className="space-y-1">
+                        {hasGuesswork && (
+                          <p>
+                            <strong>Rapid Responses / Guesswork:</strong> Some chapters were answered very quickly. These chapters appear to be guesswork, so we cannot reliably determine conceptual competency.
+                          </p>
+                        )}
+                        {hasUnattempted && (
+                          <p>
+                            <strong>Unattempted Chapters:</strong> These questions were left unattempted during the exam, so competency could not be assessed and requires independent practice.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                          <TableHead className="w-12 text-center text-xs font-bold uppercase tracking-wider">Q#</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Branch</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Chapter &amp; Topic</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Issue Observed</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Category</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider">Recommended Focus Area</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {scienceTopics.map((t) => (
+                          <TableRow key={t.qno} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <TableCell className="text-center font-bold text-slate-900 dark:text-white">
+                              {t.qno}
+                            </TableCell>
+                            <TableCell className="font-semibold text-slate-800 capitalize dark:text-slate-200">
+                              {t.subject}
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-bold text-slate-900 dark:text-slate-100">{t.chapter}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">{t.topic}</div>
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-700 dark:text-slate-300 text-xs">
+                              {t.issueObserved}
+                            </TableCell>
+                            <TableCell>{getRevisitBadge(t.category)}</TableCell>
+                            <TableCell className="text-xs font-semibold text-brand-700 dark:text-brand-400 max-w-xs">
+                              {t.recommendedFocusArea}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {scienceTopics.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="py-6 text-center text-slate-400 dark:text-slate-500">
+                              🎉 No Science topics require revisit. High accuracy and disciplined pacing maintained!
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })()}
 
             <p className="text-[11px] text-slate-400 italic text-center sm:text-left">
               *Topic observations are based only on the questions tested.*

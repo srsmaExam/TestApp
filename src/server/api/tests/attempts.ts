@@ -63,7 +63,7 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     }
   }
 
-  if (existingAttempts.length >= test.maxAttempts) {
+  if (test.maxAttempts > 0 && existingAttempts.length >= test.maxAttempts) {
     throw new HttpError(
       403,
       'max_attempts_exceeded',
@@ -128,7 +128,7 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
           .from(attempts)
           .where(and(eq(attempts.testId, testId), eq(attempts.studentId, session.userId)));
 
-        if (used >= test.maxAttempts) {
+        if (test.maxAttempts > 0 && used >= test.maxAttempts) {
           throw new HttpError(
             403,
             'max_attempts_exceeded',

@@ -208,8 +208,8 @@ describe('SRSMA Diagnostic Evaluator', () => {
     // Q2: Severe overtime (100s >= 2 * 45s = 90s) -> Pacing / Time Management (mentioned severe overtime)
     // Q3: Attempted (>10s) and incorrect -> Conceptual / Calculation Gap
     // Q4: Correct, slight overtime (130s < 240s) -> Excluded
-    // Q5: Unattempted (0s <= 10s) -> Excluded
-    expect(result.topicsToRevisit.length).toBe(2);
+    // Q5: Unattempted (0s) -> Unattempted (competency cannot be assessed)
+    expect(result.topicsToRevisit.length).toBe(3);
 
     const q2Flag = result.topicsToRevisit.find((t) => t.qno === 2);
     expect(q2Flag?.category).toBe('Pacing / Time Management');
@@ -217,6 +217,10 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
     const q3Flag = result.topicsToRevisit.find((t) => t.qno === 3);
     expect(q3Flag?.category).toBe('Conceptual / Calculation Gap');
+
+    const q5Flag = result.topicsToRevisit.find((t) => t.qno === 5);
+    expect(q5Flag?.category).toBe('Unattempted');
+    expect(q5Flag?.issueObserved).toContain('Unattempted');
 
     // Plain text report generation
     expect(result.plainTextReport).toContain('PAGE 1: SRSMA BOARD READINESS CHALLENGE REPORT');
@@ -279,6 +283,28 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(strongResult.keyInsight).toBe(
       'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
     );
+  });
+
+  it('flags rapid guesswork in topics to revisit even if answer is correct or wrong', () => {
+    const rapidPayload: StudentResponsePayload = {
+      studentName: 'Aarav Rapid',
+      responses: [
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 8 }, // Very fast correct -> Rapid Guesswork
+        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 10 }, // Very fast incorrect -> Rapid Guesswork
+        { qno: 3, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted -> Unattempted
+      ],
+    };
+
+    const res = evaluateDiagnosticReport(sampleMetadata, rapidPayload);
+    const q1 = res.topicsToRevisit.find((t) => t.qno === 1);
+    const q2 = res.topicsToRevisit.find((t) => t.qno === 2);
+    const q3 = res.topicsToRevisit.find((t) => t.qno === 3);
+
+    expect(q1?.category).toBe('Rapid Guesswork');
+    expect(q1?.issueObserved).toContain('guesswork');
+    expect(q2?.category).toBe('Rapid Guesswork');
+    expect(q2?.issueObserved).toContain('guesswork');
+    expect(q3?.category).toBe('Unattempted');
   });
 
   describe('Time Management & Guesswork Scoring Engine', () => {

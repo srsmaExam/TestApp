@@ -13,7 +13,7 @@ const patchTestSchema = z.object({
   durationS: z.number().int().min(60).max(86400).optional(),
   opensAt: z.string().datetime().optional().nullable(),
   closesAt: z.string().datetime().optional().nullable(),
-  maxAttempts: z.number().int().min(1).optional(),
+  maxAttempts: z.number().int().min(0).optional(),
   shuffleQuestions: z.boolean().optional(),
   shuffleOptions: z.boolean().optional(),
   resultsPolicy: z.enum(['immediate', 'on_release']).optional(),

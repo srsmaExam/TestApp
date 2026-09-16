@@ -63,7 +63,7 @@ export async function StudentDashboardView() {
     ).length;
 
     const isOpen = (!t.opensAt || new Date(t.opensAt) <= now) && (!t.closesAt || new Date(t.closesAt) >= now);
-    const canAttempt = isOpen && completedCount < t.maxAttempts;
+    const canAttempt = isOpen && (t.maxAttempts === 0 || completedCount < t.maxAttempts);
 
     return {
       ...t,
@@ -71,7 +71,7 @@ export async function StudentDashboardView() {
       canAttempt,
       activeAttempt,
       completedCount,
-      attemptsRemaining: Math.max(0, t.maxAttempts - completedCount),
+      attemptsRemaining: t.maxAttempts === 0 ? 'Unlimited' : Math.max(0, t.maxAttempts - completedCount),
     };
   });
 
@@ -157,7 +157,11 @@ export async function StudentDashboardView() {
                         {t.questionCount} Questions
                       </span>
                       <span>
-                        Attempts Left: <strong>{t.attemptsRemaining}</strong> / {t.maxAttempts}
+                        {t.maxAttempts === 0 ? (
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-400">Unlimited Attempts</span>
+                        ) : (
+                          <>Attempts Left: <strong>{t.attemptsRemaining}</strong> / {t.maxAttempts}</>
+                        )}
                       </span>
                     </div>
                   </div>

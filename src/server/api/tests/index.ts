@@ -11,7 +11,7 @@ const createTestSchema = z.object({
   durationS: z.number().int().min(60, 'Duration must be at least 1 minute (60s)').max(86400),
   opensAt: z.string().datetime().optional().nullable(),
   closesAt: z.string().datetime().optional().nullable(),
-  maxAttempts: z.number().int().min(1).default(1),
+  maxAttempts: z.number().int().min(0).default(1),
   shuffleQuestions: z.boolean().default(false),
   shuffleOptions: z.boolean().default(false),
   resultsPolicy: z.enum(['immediate', 'on_release']).default('immediate'),

@@ -127,7 +127,11 @@ export function TestInstructionClient({
           </div>
           <div className="flex items-center gap-1.5 rounded-md bg-slate-50 px-3 py-1.5 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
             <span>
-              Attempt <strong>{attemptsUsed + 1}</strong> of <strong>{test.maxAttempts}</strong>
+              {test.maxAttempts === 0 ? (
+                <>Attempt <strong>{attemptsUsed + 1}</strong> (Unlimited allowed)</>
+              ) : (
+                <>Attempt <strong>{attemptsUsed + 1}</strong> of <strong>{test.maxAttempts}</strong></>
+              )}
             </span>
           </div>
         </div>

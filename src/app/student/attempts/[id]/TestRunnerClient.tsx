@@ -693,6 +693,7 @@ export function TestRunnerClient({
   // 2. Countdown Timer. Depends on closeAttempt (stable) and currentDeadline.
   useEffect(() => {
     const targetTime = new Date(currentDeadline).getTime();
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     const updateTimer = () => {
       const adjustedNow = Date.now() - clockOffsetRef.current;
@@ -700,7 +701,10 @@ export function TestRunnerClient({
       setRemainingSeconds(diff);
 
       if (diff <= 0) {
-        clearInterval(interval);
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
         if (extensionCount < 2) {
           setPopupTimer(60);
           setExtensionError(null);
@@ -708,22 +712,34 @@ export function TestRunnerClient({
         } else {
           void closeAttempt('auto', { autoSubmitted: true, reason: 'deadline_expired' });
         }
+        return false;
       }
+      return true;
     };
 
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
+    const hasTimeRemaining = updateTimer();
+    if (hasTimeRemaining) {
+      interval = setInterval(updateTimer, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [currentDeadline, closeAttempt, extensionCount]);
 
   // 3. 60-Second Auto-Submit Timer for the "Need More Time?" Popup
   useEffect(() => {
     if (!timeExtensionModalOpen) return;
 
-    const timer = setInterval(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    timer = setInterval(() => {
       setPopupTimer((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
           setTimeExtensionModalOpen(false);
           void closeAttempt('auto', { autoSubmitted: true, reason: 'popup_timeout_60s' });
           return 0;
@@ -732,7 +748,9 @@ export function TestRunnerClient({
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [timeExtensionModalOpen, closeAttempt]);
 
   const handleSubmitClick = () => {

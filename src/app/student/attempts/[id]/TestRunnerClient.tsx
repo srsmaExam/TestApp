@@ -7,6 +7,7 @@ import { get, set } from 'idb-keyval';
 import {
   AlertTriangle,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -424,11 +425,14 @@ export function TestRunnerClient({
     // button showing the wrong icon.
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
 
-    // FBR-04: this used to also call requestFullscreen() here, on mount. Every
-    // browser rejects fullscreen outside a direct user gesture, so that call
-    // threw a console error on every exam load and did nothing — fullscreen
-    // entry only ever works from the on-click toggle below (and from the
-    // instructions page, on click). Just sync the initial icon state.
+    // FBR-04: On mobile, fullscreen is disabled. If any browser opened fullscreen, exit it.
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    if (isMobile && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+
     setIsFullscreen(Boolean(document.fullscreenElement));
 
     window.addEventListener('online', handleOnline);
@@ -437,7 +441,6 @@ export function TestRunnerClient({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('beforeunload', handleBeforeUnload);
-
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -449,9 +452,14 @@ export function TestRunnerClient({
     };
   }, [attemptId, buildAnswersPayload, flushTimeSpent, syncWithServer]);
 
-  // Toggle Fullscreen. `isFullscreen` is driven by the fullscreenchange
+  // Toggle Fullscreen (Desktop only). `isFullscreen` is driven by the fullscreenchange
   // listener above rather than set optimistically here.
   const toggleFullscreen = () => {
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    if (isMobile) return;
+
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
     } else {
@@ -827,6 +835,21 @@ export function TestRunnerClient({
     return { answered, notAnswered, notVisited, markedForReview, answeredMarked };
   }, [questions]);
 
+  // Derived completion states for highlighting the palette
+  const isAllQuestionsAnswered = useMemo(() => {
+    return (
+      questions.length > 0 &&
+      paletteStats.answered + paletteStats.answeredMarked === questions.length
+    );
+  }, [questions.length, paletteStats.answered, paletteStats.answeredMarked]);
+
+  const isAllQuestionsCompleted = useMemo(() => {
+    return (
+      questions.length > 0 &&
+      (isAllQuestionsAnswered || allQuestionsVisited || paletteStats.notVisited === 0)
+    );
+  }, [questions.length, isAllQuestionsAnswered, allQuestionsVisited, paletteStats.notVisited]);
+
   // Derived from the questions actually present, so a single-subject paper
   // doesn't report totals for subjects it doesn't contain.
   const subjectCounts = useMemo(() => {
@@ -1117,13 +1140,9 @@ export function TestRunnerClient({
             ) : null}
           </div>
 
-          {/* 3. Bottom Action Navigation Bar.
-              FBR-08: this used to `flex-wrap` onto two rows at 360px, which
-              the runner's height math (subtracting only AppShell's header)
-              never accounted for — one more source of the nested-scroll
-              overflow. Scrolling horizontally on very narrow phones keeps
-              this bar at one predictable row height instead. */}
-          <div className="flex shrink-0 items-center justify-between gap-2 overflow-x-auto border-t border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6 dark:border-slate-800 dark:bg-slate-900">
+          {/* 3. Bottom Action Navigation Bar */}
+          {/* Desktop Single-Row Navigation Bar */}
+          <div className="hidden sm:flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-white px-6 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="secondary"
@@ -1189,25 +1208,138 @@ export function TestRunnerClient({
                   <ChevronRight className="ml-1 size-4" />
                 </Button>
               )}
+            </div>
+          </div>
 
-              {/* Mobile Palette Drawer Toggle */}
+          {/* Mobile 2-Line Action Bar (all buttons visible without horizontal scroll) */}
+          <div className="flex sm:hidden shrink-0 flex-col gap-2 border-t border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            {/* Line 1: Question response actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleClearResponse}
+                disabled={!currentQ?.response && !currentQ?.draftValue}
+                className="h-9 flex-1 justify-center text-xs"
+              >
+                Clear Response
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleMarkForReviewAndNext}
+                className="h-9 flex-[1.3] justify-center border-purple-300 text-purple-800 hover:bg-purple-50 text-xs dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/50"
+              >
+                <Flag className="mr-1 size-3.5 text-purple-700 dark:text-purple-400 shrink-0" />
+                Mark for Review & Next
+              </Button>
+            </div>
+
+            {/* Line 2: Navigation & Palette */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setMobilePaletteOpen(true)}
-                className="inline-flex items-center gap-1 rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 sm:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-all ${
+                  isAllQuestionsCompleted
+                    ? 'border-2 border-emerald-500 bg-emerald-50 text-emerald-800 shadow-xs ring-2 ring-emerald-400/50 hover:bg-emerald-100 dark:border-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300'
+                    : 'border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
               >
-                <Layers className="size-3.5" />
-                Palette ({paletteStats.answered}/{questions.length})
+                {isAllQuestionsCompleted ? (
+                  <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Layers className="size-3.5" />
+                )}
+                Palette ({paletteStats.answered + paletteStats.answeredMarked}/{questions.length})
               </button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => goToQuestion(currentIndex - 1)}
+                disabled={currentIndex === 0}
+                className="h-9 px-2.5 text-xs shrink-0"
+              >
+                <ChevronLeft className="mr-0.5 size-4" />
+                Prev
+              </Button>
+
+              {allQuestionsVisited ? (
+                <>
+                  {currentIndex < questions.length - 1 && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSaveAndNext}
+                      className="h-9 flex-1 justify-center text-xs"
+                    >
+                      Next
+                      <ChevronRight className="ml-0.5 size-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveAndSubmit}
+                    className="h-9 flex-1 justify-center bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white text-xs shadow-md ring-2 ring-emerald-400 ring-offset-1 animate-pulse dark:ring-offset-slate-900"
+                  >
+                    <Check className="mr-1 size-3.5 shrink-0" />
+                    Submit
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveAndNext}
+                  className="h-9 flex-1 justify-center bg-brand-700 hover:bg-brand-800 font-bold text-xs"
+                >
+                  Save & Next
+                  <ChevronRight className="ml-1 size-4 shrink-0" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right Side: Desktop 75-Cell Question Palette */}
-        <aside className="hidden w-80 shrink-0 flex-col border-l border-slate-200 bg-white sm:flex dark:border-slate-800 dark:bg-slate-900">
+        <aside
+          className={`hidden w-80 shrink-0 flex-col border-l bg-white transition-all sm:flex dark:bg-slate-900 ${
+            isAllQuestionsCompleted
+              ? 'border-l-2 border-l-emerald-500 shadow-md ring-1 ring-emerald-400/30 dark:border-l-emerald-400 dark:ring-emerald-500/20'
+              : 'border-slate-200 dark:border-slate-800'
+          }`}
+        >
           {/* Palette Legend */}
           <div className="border-b border-slate-200 p-3.5 dark:border-slate-800">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Question Palette</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Question Palette</h2>
+              {isAllQuestionsCompleted && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+                  All Completed
+                </span>
+              )}
+            </div>
+
+            {/* Completed Highlight Banner */}
+            {isAllQuestionsCompleted && (
+              <div className="mt-2.5 flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50/90 px-2.5 py-2 text-xs font-medium text-emerald-900 shadow-xs dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <div className="leading-tight">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-200">
+                    {isAllQuestionsAnswered ? 'All Questions Answered!' : 'All Questions Reviewed!'}
+                  </span>
+                  <p className="mt-0.5 text-[10px] text-emerald-700 dark:text-emerald-400">
+                    {isAllQuestionsAnswered
+                      ? `${paletteStats.answered + paletteStats.answeredMarked}/${questions.length} questions attempted. You can review or submit.`
+                      : `${paletteStats.answered + paletteStats.answeredMarked}/${questions.length} attempted, none unvisited. Ready to submit.`}
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
               <div className="flex items-center gap-1.5">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded bg-emerald-600 text-[10px] font-bold text-white">
@@ -1285,7 +1417,15 @@ export function TestRunnerClient({
         <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 sm:hidden">
           <div className="max-h-[80vh] rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-800">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100">Question Palette</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Question Palette</h3>
+                {isAllQuestionsCompleted && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                    <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+                    Completed
+                  </span>
+                )}
+              </div>
               <button onClick={() => setMobilePaletteOpen(false)} className="rounded p-1 text-slate-500 dark:text-slate-400">
                 <X className="size-5" />
               </button>

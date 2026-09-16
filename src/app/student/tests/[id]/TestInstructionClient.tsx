@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, HelpCircle, Play } from 'lucide-react';
+import { Clock, HelpCircle, Play, ShieldAlert } from 'lucide-react';
 import { Alert, Button, Card, CardBody, CardHeader, CardTitle, Spinner } from '@/components/ui';
 
 /** One distinct marking rule in this test, and how many questions use it. */
@@ -53,9 +53,12 @@ export function TestInstructionClient({
     setLoading(true);
     setError(null);
 
-    // Request fullscreen immediately upon user click gesture
+    // Request fullscreen immediately upon user click gesture (Desktop only — disabled on mobile)
     try {
-      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      const isMobile =
+        typeof window !== 'undefined' &&
+        (window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+      if (!isMobile && !document.fullscreenElement && document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen().catch(() => {});
       }
     } catch {
@@ -281,6 +284,31 @@ export function TestInstructionClient({
             </p>
           </div>
 
+          {/* 5. Test Environment, Academic Honesty & Diagnostic Accuracy */}
+          <div className="rounded-lg border border-amber-300 bg-amber-50/80 p-4 shadow-xs dark:border-amber-700/60 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <div className="rounded-md bg-amber-500/20 p-2 text-amber-700 shrink-0 dark:text-amber-400">
+                <ShieldAlert className="size-5" />
+              </div>
+              <div className="space-y-2 text-xs text-amber-950 dark:text-amber-200">
+                <h4 className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                  5. Test Environment, Academic Honesty & Diagnostic Accuracy
+                </h4>
+                <ul className="list-disc space-y-1.5 pl-4 leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                  <li>
+                    <strong>Uninterrupted & Proper Test Environment:</strong> Please take this examination in a quiet, distraction-free environment without interruptions. Ensure your device is sufficiently charged and your network connection is stable before beginning.
+                  </li>
+                  <li>
+                    <strong>Strict Academic Honesty:</strong> Complete the exam with absolute integrity. Do not refer to textbooks, notebooks, other browser tabs, secondary devices, or seek external assistance.
+                  </li>
+                  <li>
+                    <strong>Do NOT Guess on Unsure Questions:</strong> Please refrain from guessing answers to questions you are unsure about. This test generates a comprehensive diagnostic report to highlight your genuine strengths and learning gaps — guessing introduces incorrect data points that lead to an inaccurate diagnostic report.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Declaration */}
           <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800">
@@ -291,7 +319,7 @@ export function TestInstructionClient({
                 className="mt-0.5 size-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
               />
               <span className="text-xs text-slate-800 dark:text-slate-200">
-                I have read and understood all the instructions given above. I agree that I will not use any unfair means during the examination.
+                I have read and understood all the instructions given above. I agree to take the test uninterrupted in a proper environment, maintain complete academic honesty, and avoid guessing unsure questions so that my diagnostic report is authentic and accurate.
               </span>
             </label>
           </div>

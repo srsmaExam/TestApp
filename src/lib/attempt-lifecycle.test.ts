@@ -334,6 +334,24 @@ describe('Attempt Lifecycle Integration & Security Suite', () => {
     expect(attemptCount > 0).toBe(true);
   });
 
+  it('allows teacher to modify maxAttempts even when attempts exist', async () => {
+    const [{ attemptCount }] = await db
+      .select({ attemptCount: sql<number>`cast(count(*) as int)` })
+      .from(schema.attempts)
+      .where(eq(schema.attempts.testId, testId));
+    expect(attemptCount).toBeGreaterThan(0);
+
+    // Updating maxAttempts to allow more retakes (e.g. 5)
+    await db.update(schema.tests).set({ maxAttempts: 5 }).where(eq(schema.tests.id, testId));
+    const [testAfterUpdate] = await db.select().from(schema.tests).where(eq(schema.tests.id, testId));
+    expect(testAfterUpdate.maxAttempts).toBe(5);
+
+    // Updating maxAttempts to 0 for unlimited retakes
+    await db.update(schema.tests).set({ maxAttempts: 0 }).where(eq(schema.tests.id, testId));
+    const [testUnlimited] = await db.select().from(schema.tests).where(eq(schema.tests.id, testId));
+    expect(testUnlimited.maxAttempts).toBe(0);
+  });
+
   it('sequential attempt allocation preserves uniqueness (A-16)', async () => {
     // Max attempt_no query inside transaction
     const [{ maxAttemptNo }] = await db

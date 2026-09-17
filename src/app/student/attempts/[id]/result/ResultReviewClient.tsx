@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight, Check, X, Lock, Award } from 'lucide-react';
+import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight, Check, X, Lock, Award, AlertTriangle } from 'lucide-react';
 import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Label } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
 import { QuestionBody } from '@/components/Katex';
@@ -465,25 +465,35 @@ export function ResultReviewClient({
 
       {/* Front Page Guesswork Alert Banner */}
       {timeManagementMetrics && timeManagementMetrics.guessworkQuestions.length > 0 && (
-        <div className="rounded-2xl border border-amber-300/90 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 p-4 sm:p-5 shadow-xs dark:border-amber-600/40 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/40">
+        <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-amber-50/40 to-yellow-50/60 p-4 sm:p-5 shadow-xs dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-slate-900/95 dark:via-amber-950/20 dark:to-slate-900/95 dark:shadow-[0_0_20px_-3px_rgba(245,158,11,0.12)]">
           <div className="flex items-start gap-3.5">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs mt-0.5">
-              ⚠️
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 font-black shadow-sm ring-1 ring-amber-400/40">
+              <AlertTriangle className="size-4.5 text-slate-950" />
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-400/20 dark:text-amber-200">
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-900 dark:bg-amber-400/15 dark:text-amber-300 ring-1 ring-amber-500/20">
                   Rapid Response Alert
                 </span>
-                <span className="text-xs text-amber-700/80 dark:text-amber-400 font-medium">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                   Attempt Time &lt; 20s
                 </span>
               </div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                Possibility of Guesswork Detected
+              </h4>
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-relaxed">
                 There is possibility of guesswork being done in answering{' '}
-                <strong className="text-amber-900 dark:text-amber-200 underline decoration-amber-500 decoration-2 underline-offset-2">
-                  {timeManagementMetrics.guessworkQuestions.map((q) => `Q${q}`).join(', ')}
-                </strong>{' '}
+                <span className="inline-flex flex-wrap items-center gap-1 align-baseline my-0.5">
+                  {timeManagementMetrics.guessworkQuestions.map((q) => (
+                    <span
+                      key={q}
+                      className="inline-flex items-center rounded-md bg-amber-200/80 px-1.5 py-0.5 text-xs font-black text-amber-950 dark:bg-amber-400/20 dark:text-amber-200 dark:border dark:border-amber-400/30"
+                    >
+                      Q{q}
+                    </span>
+                  ))}
+                </span>{' '}
                 (responses submitted in less than 20 seconds).
               </p>
             </div>

@@ -18,6 +18,7 @@ import {
   RotateCw,
   Search,
   Sparkles,
+  Trash2,
   User,
   Users,
 } from 'lucide-react';
@@ -30,6 +31,7 @@ import {
   CardBody,
   CardHeader,
   CardTitle,
+  ConfirmDialog,
   EmptyState,
   Select,
   Spinner,
@@ -39,6 +41,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useToast,
 } from '@/components/ui';
 import { StudentAnalyticsClient } from '@/app/student/analytics/StudentAnalyticsClient';
 
@@ -81,6 +84,7 @@ export function TeacherStudentDetailClient({
   initialTab?: 'analytics' | 'responses';
 }) {
   const router = useRouter();
+  const { toast } = useToast();
 
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
@@ -88,6 +92,8 @@ export function TeacherStudentDetailClient({
   const [activeTab, setActiveTab] = useState<'analytics' | 'responses'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   // Load student profile & attempts
   useEffect(() => {
@@ -144,7 +150,29 @@ export function TeacherStudentDetailClient({
     (a) => a.status === 'submitted' || a.status === 'auto_submitted',
   );
 
+  // Delete student permanently
+  async function handleDeleteStudent() {
+    if (!student) return;
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch('/api/students/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: [student.id], purge: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to delete student');
+      toast.success(`Deleted ${student.fullName}`);
+      router.push('/teacher/students');
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
   return (
+    <>
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
       {/* Top Breadcrumb & Switcher Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -267,6 +295,18 @@ export function TeacherStudentDetailClient({
                   </p>
                 </div>
               </div>
+            </div>
+            <div className="mt-4 flex justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                title="Delete student permanently"
+              >
+                <Trash2 className="mr-1 size-3.5" />
+                Delete Student
+              </Button>
             </div>
           </CardBody>
         </Card>
@@ -435,5 +475,17 @@ export function TeacherStudentDetailClient({
         </div>
       )}
     </div>
+
+    {/* Delete Student Confirm Dialog */}
+    <ConfirmDialog
+      isOpen={deleteConfirmOpen}
+      onClose={() => !deleteSubmitting && setDeleteConfirmOpen(false)}
+      onConfirm={handleDeleteStudent}
+      title={`Delete ${student?.fullName}?`}
+      description={`This will permanently delete ${student?.fullName} (${student?.username}) and all their test attempts, exam history, and scores. This action cannot be undone.`}
+      confirmText={deleteSubmitting ? 'Deleting…' : 'Delete Permanently'}
+      tone="danger"
+    />
+    </>
   );
 }

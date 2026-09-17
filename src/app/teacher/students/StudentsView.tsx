@@ -9,6 +9,7 @@ import {
   Plus,
   RotateCw,
   Search,
+  Trash2,
   Upload,
   UserCheck,
   UserPlus,
@@ -98,6 +99,12 @@ export function StudentsView() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [activeToggleTarget, setActiveToggleTarget] = useState<Student | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [bulkDeleteSubmitting, setBulkDeleteSubmitting] = useState(false);
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -379,6 +386,53 @@ export function StudentsView() {
     }
   }
 
+  // Delete a single student
+  async function handleDeleteStudent() {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch('/api/students/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: [deleteTarget.id], purge: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to delete student');
+      toast.success(`Deleted ${deleteTarget.fullName}`);
+      setDeleteTarget(null);
+      loadStudents();
+      loadBatches();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
+  // Bulk delete selected students
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    setBulkDeleteSubmitting(true);
+    try {
+      const res = await fetch('/api/students/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: Array.from(selectedIds), purge: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Bulk delete failed');
+      toast.success(json.message || `Deleted ${selectedIds.size} student(s)`);
+      setSelectedIds(new Set());
+      setBulkDeleteConfirm(false);
+      loadStudents();
+      loadBatches();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setBulkDeleteSubmitting(false);
+    }
+  }
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -520,6 +574,15 @@ export function StudentsView() {
           <div className="flex items-center gap-2">
             <Button variant="primary" size="sm" onClick={() => setBatchModalOpen(true)}>
               Assign to Batch
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setBulkDeleteConfirm(true)}
+              className="text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+            >
+              <Trash2 className="mr-1 size-3.5" />
+              Delete Selected
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setSelectedIds(new Set())}>
               Clear Selection
@@ -663,6 +726,15 @@ export function StudentsView() {
                           title={s.isActive ? 'Deactivate account' : 'Activate account'}
                         >
                           {s.isActive ? <UserX className="size-3.5" /> : <UserCheck className="size-3.5" />}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setDeleteTarget(s)}
+                          className="text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                          title="Delete student permanently"
+                        >
+                          <Trash2 className="size-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -996,6 +1068,28 @@ export function StudentsView() {
           </datalist>
         </form>
       </Dialog>
+
+      {/* 7. Delete Single Student Confirm */}
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => !deleteSubmitting && setDeleteTarget(null)}
+        onConfirm={handleDeleteStudent}
+        title={`Delete ${deleteTarget?.fullName}?`}
+        description={`This will permanently delete ${deleteTarget?.fullName} (${deleteTarget?.username}) and all their test attempts and exam history. This action cannot be undone.`}
+        confirmText={deleteSubmitting ? 'Deleting…' : 'Delete Permanently'}
+        tone="danger"
+      />
+
+      {/* 8. Bulk Delete Confirm */}
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirm}
+        onClose={() => !bulkDeleteSubmitting && setBulkDeleteConfirm(false)}
+        onConfirm={handleBulkDelete}
+        title={`Delete ${selectedIds.size} Student${selectedIds.size === 1 ? '' : 's'}?`}
+        description={`This will permanently delete ${selectedIds.size} selected student account${selectedIds.size === 1 ? '' : 's'} and all associated test data. This action cannot be undone.`}
+        confirmText={bulkDeleteSubmitting ? 'Deleting…' : `Delete ${selectedIds.size} Student${selectedIds.size === 1 ? '' : 's'}`}
+        tone="danger"
+      />
     </div>
   );
 }

@@ -1598,7 +1598,7 @@ function generateReportPlainTextFormat(data: {
 
   // PAGE 2
   lines.push('================================================================================');
-  lines.push('PAGE 2: PERFORMANCE ANALYSIS & PATTERNS');
+  lines.push('PAGE 2: YOUR STRENGTHS');
   lines.push('================================================================================');
   lines.push('');
   lines.push(data.strengthsTitle || 'YOUR STRENGTHS');

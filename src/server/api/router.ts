@@ -48,6 +48,7 @@ import * as batches from './batches/index';
 import * as students from './students/index';
 import * as studentsById from './students/by-id';
 import * as studentsBulkBatch from './students/bulk-batch';
+import * as studentsBulkDelete from './students/bulk-delete';
 import * as studentsBulkImport from './students/bulk-import';
 
 // 5. Question Bank Handlers
@@ -143,6 +144,7 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     // /api/students/*
     if (s0 === 'students') {
       if (s1 === 'bulk-batch') return { handler: studentsBulkBatch, params: {}, pattern: '/api/students/bulk-batch' };
+      if (s1 === 'bulk-delete') return { handler: studentsBulkDelete, params: {}, pattern: '/api/students/bulk-delete' };
       if (s1 === 'bulk-import') return { handler: studentsBulkImport, params: {}, pattern: '/api/students/bulk-import' };
       return { handler: studentsById, params: { id: s1 }, pattern: '/api/students/[id]' };
     }
@@ -276,6 +278,7 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/students', verbs: ['GET', 'POST'] },
   { pattern: '/api/students/[id]', verbs: ['DELETE', 'GET', 'PATCH'] },
   { pattern: '/api/students/bulk-batch', verbs: ['POST'] },
+  { pattern: '/api/students/bulk-delete', verbs: ['POST'] },
   { pattern: '/api/students/bulk-import', verbs: ['POST'] },
   { pattern: '/api/questions', verbs: ['GET'] },
   { pattern: '/api/questions/[id]', verbs: ['DELETE', 'GET', 'PATCH'] },

@@ -316,29 +316,26 @@ function BriSpeedometerGauge({
       {/* 3-Tier Mini Scale Bar */}
       <div className="w-full mt-1 grid grid-cols-3 gap-1 px-2 text-center text-[10px] font-bold">
         <div
-          className={`rounded py-0.5 border ${
-            !isHigh && !isMed
+          className={`rounded py-0.5 border ${!isHigh && !isMed
               ? 'bg-amber-500/15 text-amber-800 border-amber-400 dark:text-amber-300'
               : 'text-slate-400 border-transparent'
-          }`}
+            }`}
         >
           Basic &lt;60
         </div>
         <div
-          className={`rounded py-0.5 border ${
-            isMed
+          className={`rounded py-0.5 border ${isMed
               ? 'bg-blue-500/15 text-blue-800 border-blue-400 dark:text-blue-300'
               : 'text-slate-400 border-transparent'
-          }`}
+            }`}
         >
           Strong 60–79
         </div>
         <div
-          className={`rounded py-0.5 border ${
-            isHigh
+          className={`rounded py-0.5 border ${isHigh
               ? 'bg-emerald-500/15 text-emerald-800 border-emerald-400 dark:text-emerald-300'
               : 'text-slate-400 border-transparent'
-          }`}
+            }`}
         >
           High 80+
         </div>
@@ -971,7 +968,7 @@ export function BoardReadinessReport({
       )}
 
       {/* =========================================================================
-          PAGE 2: PERFORMANCE ANALYSIS & PATTERNS
+          PAGE 2: YOUR STRENGTHS
           ========================================================================= */}
       {(activeTab === 'all' || activeTab === 'page2') && (
         <section className="report-page-container relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900">
@@ -981,7 +978,7 @@ export function BoardReadinessReport({
                 Shri Ram Smart Minds Academy
               </span>
               <h2 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl dark:text-white">
-                PAGE 2: PERFORMANCE ANALYSIS &amp; PATTERNS
+                PAGE 2: YOUR STRENGTHS
               </h2>
             </div>
             <div className="text-right">
@@ -1009,18 +1006,18 @@ export function BoardReadinessReport({
                     className={`flex flex-col justify-between rounded-2xl border p-4 ${s.isEmerging
                       ? 'border-amber-200/80 bg-gradient-to-br from-amber-50/70 to-orange-50/30 dark:border-amber-900/40 dark:from-amber-950/30 dark:to-orange-950/20'
                       : 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-teal-950/20'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between">
                         <span className={`flex size-7 items-center justify-center rounded-lg font-black text-xs text-white shadow-xs ${s.isEmerging ? 'bg-amber-600' : 'bg-emerald-600'}`}>
                           #{s.rank}
                         </span>
-                        <span className={`tnum text-xs font-black ${s.isEmerging ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}`}>
-                          {s.scoreDetails}
-                        </span>
                       </div>
                       <h4 className="mt-2.5 text-sm font-bold text-slate-900 dark:text-white">{s.name}</h4>
+                      <div className="mt-2">
+                        <EcommerceStarRating rating={Math.round((s.percentage / 100) * 5 * 10) / 10} />
+                      </div>
                       <p className="mt-1.5 text-xs text-slate-600 leading-relaxed dark:text-slate-300">
                         {s.reason}
                       </p>
@@ -1171,20 +1168,8 @@ export function BoardReadinessReport({
                           {getPriorityBadge(g.priority)}
                         </div>
                         <h4 className="mt-2 text-sm font-black text-slate-900 dark:text-white line-clamp-1">{g.name}</h4>
-                        <div className="mt-2 flex items-baseline justify-between">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">Accuracy</span>
-                          <span className="tnum text-base font-black text-slate-900 dark:text-white">{g.scorePercent}%</span>
-                        </div>
-                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                          <div
-                            className={`h-full rounded-full ${g.priority === 'High Priority'
-                              ? 'bg-rose-500'
-                              : g.priority === 'Medium Priority'
-                                ? 'bg-amber-500'
-                                : 'bg-blue-500'
-                              }`}
-                            style={{ width: `${Math.max(4, g.scorePercent)}%` }}
-                          />
+                        <div className="mt-2.5">
+                          <EcommerceStarRating rating={Math.round((g.scorePercent / 100) * 5 * 10) / 10} />
                         </div>
                       </div>
                     ))}

@@ -245,7 +245,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
     // Plain text report generation
     expect(result.plainTextReport).toContain('PAGE 1: BOARD READINESS CHALLENGE REPORT');
-    expect(result.plainTextReport).toContain('PAGE 2: PERFORMANCE ANALYSIS & PATTERNS');
+    expect(result.plainTextReport).toContain('PAGE 2: YOUR STRENGTHS');
     expect(result.plainTextReport).toContain('PAGE 3: WHERE SHOULD YOU IMPROVE?');
     expect(result.plainTextReport).toContain('PAGE 4: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
     expect(result.plainTextReport).toContain('Dear Aarav Sharma,');

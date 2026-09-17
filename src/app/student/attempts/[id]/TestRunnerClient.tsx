@@ -797,12 +797,17 @@ export function TestRunnerClient({
       }
       if (data.deadlineAt) {
         setCurrentDeadline(data.deadlineAt);
+        const targetTime = new Date(data.deadlineAt).getTime();
+        const adjustedNow = Date.now() - clockOffsetRef.current;
+        const diff = Math.max(0, Math.floor((targetTime - adjustedNow) / 1000));
+        setRemainingSeconds(diff);
       }
       if (typeof data.timeExtensionsCount === 'number') {
         setExtensionCount(data.timeExtensionsCount);
       } else {
         setExtensionCount((prev) => prev + 1);
       }
+      setPopupTimer(60);
       setTimeExtensionModalOpen(false);
     } catch (err: any) {
       setExtensionError(err.message || 'Could not extend test time.');

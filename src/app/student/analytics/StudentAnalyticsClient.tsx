@@ -3,45 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Award,
   RotateCw,
-  Target,
-  TrendingUp,
   Lock,
   FileText,
-  CheckCircle2,
 } from 'lucide-react';
 import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  Cell,
-  Legend,
-} from 'recharts';
-import {
   Alert,
-  Badge,
   Button,
   buttonClass,
-  Card,
-  CardBody,
-  CardHeader,
-  CardTitle,
   EmptyState,
   Spinner,
-  StatTile,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Input,
   Label,
 } from '@/components/ui';
@@ -51,6 +22,15 @@ import type { DiagnosticEvaluationResult } from '@/lib/diagnostic-evaluator';
 
 interface StudentAnalyticsData {
   isReportUnlocked?: boolean;
+  gender?: string | null;
+  studentDetails?: {
+    board?: string | null;
+    school?: string | null;
+    city?: string | null;
+    classLevel?: string | null;
+    gender?: string | null;
+    isFormFilled?: boolean;
+  } | null;
   totalAttempts: number;
   avgScore: number;
   avgPercentile: number | null;
@@ -92,7 +72,6 @@ export function StudentAnalyticsClient({
   const [data, setData] = useState<StudentAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewTab, setViewTab] = useState<'report' | 'charts'>('report');
   const [showSamplePreview, setShowSamplePreview] = useState(false);
 
   // Unlock Modal State
@@ -133,9 +112,7 @@ export function StudentAnalyticsClient({
 
   useEffect(() => {
     if (isTeacherView) return;
-    const isLocalUnlocked =
-      typeof window !== 'undefined' && localStorage.getItem('srsma_report_unlocked') === 'true';
-    if (data && data.isReportUnlocked === false && !isLocalUnlocked) {
+    if (data && data.isReportUnlocked === false) {
       setShowUnlockModal(true);
     }
   }, [data, isTeacherView]);
@@ -236,9 +213,7 @@ export function StudentAnalyticsClient({
     );
   }
 
-  const isLocalUnlocked =
-    typeof window !== 'undefined' && localStorage.getItem('srsma_report_unlocked') === 'true';
-  const isLocked = data.isReportUnlocked === false && !isLocalUnlocked;
+  const isLocked = !isTeacherView && data.isReportUnlocked === false;
 
   if (isLocked) {
     return (
@@ -260,7 +235,7 @@ export function StudentAnalyticsClient({
             Your Detailed Diagnostic Report is Locked
           </h2>
           <p className="mx-auto mt-2 max-w-md text-xs text-slate-600 sm:text-sm dark:text-slate-300">
-            Unlock your personalized percentile trends, subject accuracy radars, and chapter-by-chapter mastery breakdown.
+            Unlock your personalized 3-page diagnostic report with Board Readiness Index (BRI), cognitive skills breakdown, and priority gaps.
           </p>
           <div className="mt-6 flex justify-center">
             <Button
@@ -319,24 +294,40 @@ export function StudentAnalyticsClient({
                 <button
                   type="button"
                   onClick={() => setGender('Male')}
-                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
-                    gender === 'Male'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
+                  className={`group relative flex items-center justify-center gap-2.5 rounded-xl border py-2.5 px-4 text-sm font-bold transition-all shadow-xs ${gender === 'Male'
+                      ? 'border-blue-500 bg-blue-50/90 text-blue-800 ring-2 ring-blue-500/30 dark:border-blue-400 dark:bg-blue-950/70 dark:text-blue-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30'
+                    }`}
                 >
-                  Male
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-base dark:bg-blue-900/60 shadow-xs">
+                    👦
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    Male
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <circle cx="10" cy="14" r="5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 5l-5.4 5.4M19 5h-4.5M19 5v4.5" />
+                    </svg>
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setGender('Female')}
-                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
-                    gender === 'Female'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
+                  className={`group relative flex items-center justify-center gap-2.5 rounded-xl border py-2.5 px-4 text-sm font-bold transition-all shadow-xs ${gender === 'Female'
+                      ? 'border-pink-500 bg-pink-50/90 text-pink-800 ring-2 ring-pink-500/30 dark:border-pink-400 dark:bg-pink-950/70 dark:text-pink-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-pink-300 hover:bg-pink-50/40 hover:text-pink-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-pink-700 dark:hover:bg-pink-950/30'
+                    }`}
                 >
-                  Female
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100 text-base dark:bg-pink-900/60 shadow-xs">
+                    👧
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    Female
+                    <svg className="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <circle cx="12" cy="9" r="5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14v7M9.5 18h5" />
+                    </svg>
+                  </span>
                 </button>
               </div>
             </div>
@@ -428,7 +419,7 @@ export function StudentAnalyticsClient({
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            SRSMA Board Readiness Challenge Report
+            BOARD READINESS CHALLENGE REPORT
           </h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             Personalized diagnostic evaluation, cognitive skills profile, and actionable Class X Board recommendations.
@@ -469,24 +460,6 @@ export function StudentAnalyticsClient({
 
   const activeReport = showSamplePreview ? data.sampleDiagnosticReport : data.diagnosticReport;
 
-  // Chart Data: Score progression
-  const trendChartData = [...data.recentTests]
-    .reverse()
-    .map((t) => ({
-      name: t.testTitle.length > 18 ? t.testTitle.slice(0, 16) + '...' : t.testTitle,
-      score: t.score,
-      maxMarks: t.maxMarks,
-      percentile: t.percentile !== null ? t.percentile : null,
-    }));
-
-  // Subject Bar Data
-  const subjectChartData = [
-    { subject: 'Physics', accuracy: data.subjectBreakdown.physics?.accuracy ?? 0, fill: '#3b5bdb' },
-    { subject: 'Chemistry', accuracy: data.subjectBreakdown.chemistry?.accuracy ?? 0, fill: '#059669' },
-    { subject: 'Maths', accuracy: data.subjectBreakdown.maths?.accuracy ?? 0, fill: '#f59e0b' },
-    { subject: 'Biology', accuracy: data.subjectBreakdown.biology?.accuracy ?? 0, fill: '#9333ea' },
-  ];
-
   return (
     <div className="space-y-6 pb-12">
       {/* Sample Preview Banner */}
@@ -516,216 +489,20 @@ export function StudentAnalyticsClient({
         </div>
       )}
 
-      {/* Main View Switcher (Only shown if student has actual attempts & reports) */}
-      {data.totalAttempts > 0 && data.diagnosticReport && (
-        <div className="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-              SRSMA Diagnostic &amp; Performance Report
-            </h1>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Personalized Board readiness evaluation for <strong>{studentName}</strong>
-            </p>
-          </div>
-
-          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/80">
-            <button
-              type="button"
-              onClick={() => setViewTab('report')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
-                viewTab === 'report'
-                  ? 'bg-white text-brand-700 shadow-xs dark:bg-slate-900 dark:text-brand-400'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              📄 3-Page Board Readiness Report
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewTab('charts')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
-                viewTab === 'charts'
-                  ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              📈 Historical Curves &amp; Radar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 1. Primary View: 3-Page SRSMA Board Readiness Challenge Report */}
-      {viewTab === 'report' && activeReport && (
-        <BoardReadinessReport report={activeReport} />
-      )}
-
-      {/* 2. Secondary View: Historical Charts & Analytics */}
-      {(viewTab === 'charts' || (!activeReport && data.totalAttempts > 0)) && (
-        <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile
-          label="Average Percentile"
-          value={data.avgPercentile !== null ? `${data.avgPercentile} %ile` : '—'}
-          tone="brand"
-          subtext={`Across ${data.totalAttempts} completed exam${data.totalAttempts === 1 ? '' : 's'}`}
-          icon={<Award className="size-4" />}
+      {/* Board Readiness Report View */}
+      {activeReport ? (
+        <BoardReadinessReport
+          report={activeReport}
+          studentGender={data.gender || gender}
+          studentDetails={data.studentDetails}
+          isTeacherView={isTeacherView}
         />
-        <StatTile
-          label="Average Score"
-          value={`${data.avgScore} Marks`}
-          tone="emerald"
-          subtext="Mean marks per mock attempt"
-          icon={<TrendingUp className="size-4" />}
-        />
-        <StatTile
-          label="Tests Attempted"
-          value={data.totalAttempts}
-          tone="amber"
-          subtext="Practice & timed exams"
-          icon={<Target className="size-4" />}
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Score Progression Line Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Score Progression Curve</CardTitle>
-          </CardHeader>
-          <CardBody className="p-4">
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendChartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
-                  <XAxis dataKey="name" className="text-slate-500 dark:text-slate-400" fontSize={11} />
-                  <YAxis className="text-slate-500 dark:text-slate-400" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-surface, #ffffff)',
-                      borderColor: 'var(--color-hairline, #e2e8f0)',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      color: 'var(--color-ink, #0f172a)',
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    name="Score (Marks)"
-                    stroke="#3b5bdb"
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="percentile"
-                    name="Percentile (%ile)"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Subject Accuracy Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Subject-Wise Accuracy (%)</CardTitle>
-          </CardHeader>
-          <CardBody className="p-4">
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={subjectChartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
-                  <XAxis dataKey="subject" className="text-slate-500 dark:text-slate-400" fontSize={11} />
-                  <YAxis className="text-slate-500 dark:text-slate-400" fontSize={11} domain={[0, 100]} unit="%" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-surface, #ffffff)',
-                      borderColor: 'var(--color-hairline, #e2e8f0)',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      color: 'var(--color-ink, #0f172a)',
-                    }}
-                    formatter={(val: any) => [`${val}%`, 'Accuracy']}
-                  />
-                  <Bar dataKey="accuracy" radius={[6, 6, 0, 0]}>
-                    {subjectChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Chapter Strength & Weakness List */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Chapter Mastery & Weak Areas</h2>
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>Chapter</TableHead>
-                <TableHead>Questions Attempted</TableHead>
-                <TableHead>Accuracy</TableHead>
-                <TableHead className="text-right">Proficiency</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.chapterBreakdown.map((c, i) => (
-                <TableRow key={i}>
-                  <TableCell className="font-bold uppercase text-slate-700 dark:text-slate-300">
-                    <Badge
-                      tone={
-                        c.subject === 'physics'
-                          ? 'brand'
-                          : c.subject === 'chemistry'
-                          ? 'green'
-                          : c.subject === 'maths'
-                          ? 'amber'
-                          : 'purple'
-                      }
-                    >
-                      {c.subject}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium text-slate-900 dark:text-slate-100">{c.chapter}</TableCell>
-                  <TableCell className="tnum text-slate-600 dark:text-slate-400">
-                    {c.correct} correct / {c.attempted} attempted ({c.total} served)
-                  </TableCell>
-                  <TableCell className="tnum font-bold text-slate-900 dark:text-slate-100">{c.accuracy}%</TableCell>
-                  <TableCell className="text-right">
-                    {c.accuracy >= 70 ? (
-                      <Badge tone="green">Mastered</Badge>
-                    ) : c.accuracy >= 40 ? (
-                      <Badge tone="amber">Needs Practice</Badge>
-                    ) : (
-                      <Badge tone="red">Weak Chapter</Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {data.chapterBreakdown.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-center text-slate-400 dark:text-slate-500">
-                    No chapter breakdown data available yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Card>
-      </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+          <EmptyState
+            title="No diagnostic reports available yet"
+            hint="Take and submit your first test to unlock your personalized diagnostic report."
+          />
         </div>
       )}
     </div>

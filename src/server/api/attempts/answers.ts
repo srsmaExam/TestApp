@@ -45,9 +45,13 @@ const handler = withApi<Ctx>(async (req, { params }) => {
     throw new HttpError(403, 'attempt_closed', 'This attempt is no longer in progress.');
   }
 
-  // Past the deadline: close AND grade. This branch used to set status without
-  // scoring, which combined with submit's short-circuit left the student at 0/0.
-  if (Date.now() > new Date(attempt.deadlineAt).getTime()) {
+  // Past the deadline: close AND grade.
+  // If extensions remain (< 2), allow a 90s grace period so periodic autosaves
+  // don't prematurely auto-submit while the student considers the 60s extension prompt.
+  const currentExtensions = attempt.timeExtensionsCount ?? 0;
+  const deadlineMs = new Date(attempt.deadlineAt).getTime();
+  const gracePeriodMs = currentExtensions < 2 ? 90 * 1000 : 0;
+  if (Date.now() > deadlineMs + gracePeriodMs) {
     await gradeAndCloseAttempt(db, attemptId, 'auto_submitted');
     throw new HttpError(403, 'attempt_expired', 'Your time is up. This attempt has been auto-submitted.');
   }

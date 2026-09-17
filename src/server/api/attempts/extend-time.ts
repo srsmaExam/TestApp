@@ -24,10 +24,6 @@ export const POST = withApi<Ctx>(async (_req, { params }) => {
     throw new HttpError(403, 'forbidden', 'You cannot extend another student’s attempt.');
   }
 
-  if (attempt.status !== 'in_progress') {
-    throw new HttpError(400, 'attempt_closed', 'This attempt is no longer in progress.');
-  }
-
   const currentCount = attempt.timeExtensionsCount ?? 0;
   if (currentCount >= 2) {
     throw new HttpError(
@@ -37,8 +33,15 @@ export const POST = withApi<Ctx>(async (_req, { params }) => {
     );
   }
 
-  // Extend by 10 minutes (600,000 ms) from current deadline or now, whichever is greater
   const currentDeadlineMs = new Date(attempt.deadlineAt).getTime();
+  const isRecentlyAutoSubmitted =
+    attempt.status === 'auto_submitted' && Date.now() - currentDeadlineMs < 180_000;
+
+  if (attempt.status !== 'in_progress' && !isRecentlyAutoSubmitted) {
+    throw new HttpError(400, 'attempt_closed', 'This attempt is no longer in progress.');
+  }
+
+  // Extend by 10 minutes (600,000 ms) from current deadline or now, whichever is greater
   const baseMs = Math.max(Date.now(), currentDeadlineMs);
   const newDeadline = new Date(baseMs + 10 * 60 * 1000);
   const nextCount = currentCount + 1;
@@ -46,6 +49,8 @@ export const POST = withApi<Ctx>(async (_req, { params }) => {
   await db
     .update(attempts)
     .set({
+      status: 'in_progress',
+      submittedAt: null,
       deadlineAt: newDeadline,
       timeExtensionsCount: nextCount,
     })

@@ -33,6 +33,7 @@ export interface StudentQuestionResponse {
 
 export interface StudentResponsePayload {
   studentName: string;
+  studentGender?: 'Male' | 'Female' | string | null;
   responses: StudentQuestionResponse[];
 }
 
@@ -80,6 +81,25 @@ export interface StrengthItem {
   scoreDetails: string;
   percentage: number;
   reason: string;
+  isEmerging?: boolean;
+}
+
+export interface DifficultyLevelPerformance {
+  level: 'Easy' | 'Medium' | 'Hard';
+  score: number;
+  total: number;
+  percentage: number;
+}
+
+export interface SubjectDifficultyBreakdown {
+  easy: DifficultyLevelPerformance;
+  medium: DifficultyLevelPerformance;
+  hard: DifficultyLevelPerformance;
+}
+
+export interface SubjectDifficultyBreakdowns {
+  mathematics: SubjectDifficultyBreakdown;
+  science: SubjectDifficultyBreakdown;
 }
 
 export interface PriorityGapItem {
@@ -230,6 +250,7 @@ export interface DiagnosticCalculationSteps {
 
 export interface DiagnosticEvaluationResult {
   studentName: string;
+  studentGender?: 'Male' | 'Female' | string | null;
   totalQuestions: number;
   totalRawScore: number;
   totalDiagnosticWeight: number;
@@ -241,10 +262,16 @@ export interface DiagnosticEvaluationResult {
   breakdown: {
     mathematics: AreaPerformance;
     science: AreaPerformance;
+    physics: AreaPerformance;
+    chemistry: AreaPerformance;
+    biology: AreaPerformance;
     easy: AreaPerformance;
     medium: AreaPerformance;
     difficult: AreaPerformance;
+    difficultyBySubject?: SubjectDifficultyBreakdowns;
   };
+
+  subjectDifficultyBreakdowns: SubjectDifficultyBreakdowns;
 
   // Primary Skills & Accuracy
   skills: {
@@ -264,6 +291,7 @@ export interface DiagnosticEvaluationResult {
   structures: QuestionStructurePerformance[];
 
   // Insights & Patterns
+  strengthsTitle: string;
   strengths: StrengthItem[];
   priorityGaps: PriorityGapItem[];
   topicsToRevisit: TopicToRevisitItem[];
@@ -498,11 +526,20 @@ export function evaluateDiagnosticReport(
     (eq) => eq.meta.subject.toLowerCase() === 'maths' || eq.meta.subject.toLowerCase() === 'mathematics',
   );
   const scienceQs = evaluatedQuestions.filter((eq) =>
-    ['physics', 'chemistry', 'biology'].includes(eq.meta.subject.toLowerCase()),
+    ['physics', 'chemistry', 'biology', 'science'].includes(eq.meta.subject.toLowerCase()),
   );
 
   const mathsScore = mathsQs.filter((q) => q.isCorrect).length;
   const scienceScore = scienceQs.filter((q) => q.isCorrect).length;
+
+  // Science Sub-divisions (Physics, Chemistry, Biology)
+  const physicsQs = evaluatedQuestions.filter((eq) => eq.meta.subject.toLowerCase() === 'physics');
+  const chemistryQs = evaluatedQuestions.filter((eq) => eq.meta.subject.toLowerCase() === 'chemistry');
+  const biologyQs = evaluatedQuestions.filter((eq) => eq.meta.subject.toLowerCase() === 'biology');
+
+  const physicsScore = physicsQs.filter((q) => q.isCorrect).length;
+  const chemistryScore = chemistryQs.filter((q) => q.isCorrect).length;
+  const biologyScore = biologyQs.filter((q) => q.isCorrect).length;
 
   const mathsPerf: AreaPerformance = {
     score: mathsScore,
@@ -514,6 +551,24 @@ export function evaluateDiagnosticReport(
     score: scienceScore,
     totalQuestions: scienceQs.length,
     percentage: scienceQs.length > 0 ? Math.round((scienceScore / scienceQs.length) * 100) : 0,
+  };
+
+  const physicsPerf: AreaPerformance = {
+    score: physicsScore,
+    totalQuestions: physicsQs.length,
+    percentage: physicsQs.length > 0 ? Math.round((physicsScore / physicsQs.length) * 100) : 0,
+  };
+
+  const chemistryPerf: AreaPerformance = {
+    score: chemistryScore,
+    totalQuestions: chemistryQs.length,
+    percentage: chemistryQs.length > 0 ? Math.round((chemistryScore / chemistryQs.length) * 100) : 0,
+  };
+
+  const biologyPerf: AreaPerformance = {
+    score: biologyScore,
+    totalQuestions: biologyQs.length,
+    percentage: biologyQs.length > 0 ? Math.round((biologyScore / biologyQs.length) * 100) : 0,
   };
 
   // Difficulty breakdowns
@@ -543,6 +598,66 @@ export function evaluateDiagnosticReport(
     score: diffScore,
     totalQuestions: diffQs.length,
     percentage: diffQs.length > 0 ? Math.round((diffScore / diffQs.length) * 100) : 0,
+  };
+
+  // Subject Difficulty breakdowns (Mathematics and Science)
+  const mathsEasyQs = mathsQs.filter((q) => isEasy(String(q.meta.difficulty)));
+  const mathsMedQs = mathsQs.filter((q) => isMed(String(q.meta.difficulty)));
+  const mathsDiffQs = mathsQs.filter((q) => isDiff(String(q.meta.difficulty)));
+
+  const mathsEasyScore = mathsEasyQs.filter((q) => q.isCorrect).length;
+  const mathsMedScore = mathsMedQs.filter((q) => q.isCorrect).length;
+  const mathsDiffScore = mathsDiffQs.filter((q) => q.isCorrect).length;
+
+  const scienceEasyQs = scienceQs.filter((q) => isEasy(String(q.meta.difficulty)));
+  const scienceMedQs = scienceQs.filter((q) => isMed(String(q.meta.difficulty)));
+  const scienceDiffQs = scienceQs.filter((q) => isDiff(String(q.meta.difficulty)));
+
+  const scienceEasyScore = scienceEasyQs.filter((q) => q.isCorrect).length;
+  const scienceMedScore = scienceMedQs.filter((q) => q.isCorrect).length;
+  const scienceDiffScore = scienceDiffQs.filter((q) => q.isCorrect).length;
+
+  const subjectDifficultyBreakdowns: SubjectDifficultyBreakdowns = {
+    mathematics: {
+      easy: {
+        level: 'Easy',
+        score: mathsEasyScore,
+        total: mathsEasyQs.length,
+        percentage: mathsEasyQs.length > 0 ? Math.round((mathsEasyScore / mathsEasyQs.length) * 100) : 0,
+      },
+      medium: {
+        level: 'Medium',
+        score: mathsMedScore,
+        total: mathsMedQs.length,
+        percentage: mathsMedQs.length > 0 ? Math.round((mathsMedScore / mathsMedQs.length) * 100) : 0,
+      },
+      hard: {
+        level: 'Hard',
+        score: mathsDiffScore,
+        total: mathsDiffQs.length,
+        percentage: mathsDiffQs.length > 0 ? Math.round((mathsDiffScore / mathsDiffQs.length) * 100) : 0,
+      },
+    },
+    science: {
+      easy: {
+        level: 'Easy',
+        score: scienceEasyScore,
+        total: scienceEasyQs.length,
+        percentage: scienceEasyQs.length > 0 ? Math.round((scienceEasyScore / scienceEasyQs.length) * 100) : 0,
+      },
+      medium: {
+        level: 'Medium',
+        score: scienceMedScore,
+        total: scienceMedQs.length,
+        percentage: scienceMedQs.length > 0 ? Math.round((scienceMedScore / scienceMedQs.length) * 100) : 0,
+      },
+      hard: {
+        level: 'Hard',
+        score: scienceDiffScore,
+        total: scienceDiffQs.length,
+        percentage: scienceDiffQs.length > 0 ? Math.round((scienceDiffScore / scienceDiffQs.length) * 100) : 0,
+      },
+    },
   };
 
   // Primary Skills Weighted Calculations
@@ -615,15 +730,23 @@ export function evaluateDiagnosticReport(
   const interpQs = evaluatedQuestions.filter(isInterpMatch);
   const questionInterpretation = computeWeightedSkill(isInterpMatch, 'Question Interpretation Skill');
 
-  // Question Structure Performance (7 Structural Types)
+  // Time Management & Guesswork Evaluation
+  const timeManagement = evaluateTimeManagement(
+    evaluatedQuestions.map((eq) => ({
+      qno: eq.meta.qno,
+      attempted: eq.attempted,
+      timeTakenSeconds: eq.timeTakenSeconds,
+      expectedUpperBoundS: eq.upperLimit,
+    })),
+  );
+
+  // Question Structure Performance (5 Performance Patterns: Direct, Multi-step, Diagram-based, Application-based, Word Problem)
   const STRUCTURAL_TYPES = [
     { key: 'Direct', label: 'Direct', regex: /\bdirect\b/i },
     { key: 'Multi-step', label: 'Multi-step', regex: /\bmulti[- ]step\b/i },
     { key: 'Diagram-based', label: 'Diagram-based', regex: /\bdiagram[- ]based\b/i },
-    { key: 'Data-based', label: 'Data-based', regex: /\bdata[- ]based\b/i },
     { key: 'Application-based', label: 'Application-based', regex: /\bapplication[- ]based\b/i },
     { key: 'Word problem', label: 'Word Problem', regex: /\bword problem\b/i },
-    { key: 'Structure-based', label: 'Structure-based', regex: /\bstructure[- ]based\b/i },
   ];
 
   const structures: QuestionStructurePerformance[] = STRUCTURAL_TYPES.map((st) => {
@@ -802,28 +925,124 @@ export function evaluateDiagnosticReport(
     }
   }
 
-  // Top 3 Strengths (Score-based, NO chapters)
-  const strengthsSorted = [...scoreCandidates].sort((a, b) => {
+  // 6 Candidate Strengths Engine (strictly limited to 6 candidates)
+  interface CandidateStrength {
+    id: string;
+    strongName: string;
+    developingName: string;
+    percentage: number;
+    totalTested: number;
+    strongReason: string;
+    developingReason: string;
+  }
+
+  const strengthCandidates: CandidateStrength[] = [
+    {
+      id: 'concept_clarity',
+      strongName: 'CONCEPT CLARITY',
+      developingName: 'CONCEPT CLARITY',
+      percentage: conceptualFoundation.scorePercent,
+      totalTested: conceptualFoundation.totalWeight,
+      strongReason:
+        'You understand Class X board concepts well and have built a strong base to build upon. Keep deepening your understanding—you’re on the right track!',
+      developingReason:
+        'This is one of your stronger areas right now. With focused practice, you can build even greater clarity here.',
+    },
+    {
+      id: 'concept_application',
+      strongName: 'CONCEPT APPLICATION',
+      developingName: 'CONCEPT APPLICATION',
+      percentage: conceptApplication.scorePercent,
+      totalTested: conceptApplication.totalWeight,
+      strongReason:
+        'You are good at putting what you learn into practice. Keep exploring unfamiliar questions to make this strength even stronger!',
+      developingReason:
+        'You are showing a promising start in applying concepts. More practice with varied questions can strengthen this further.',
+    },
+    {
+      id: 'problem_solving',
+      strongName: 'PROBLEM SOLVING SKILL',
+      developingName: 'PROBLEM SOLVING',
+      percentage: problemSolving.scorePercent,
+      totalTested: problemSolving.totalWeight,
+      strongReason:
+        'You show good logical thinking and can work through challenging problems. Keep challenging yourself—you have a strong problem-solving foundation!',
+      developingReason:
+        'You show a developing ability to work through problems. Regular practice can help you become more confident and effective.',
+    },
+    {
+      id: 'visual_understanding',
+      strongName: 'VISUAL UNDERSTANDING SKILL',
+      developingName: 'VISUAL UNDERSTANDING',
+      percentage: questionInterpretation.scorePercent,
+      totalTested: questionInterpretation.totalWeight,
+      strongReason:
+        'You are comfortable understanding information through diagrams, graphs and figures. Use this strength to tackle more challenging visual and application-based questions!',
+      developingReason:
+        'You are showing a good starting point with visual information. More exposure to graphs, diagrams and figures can strengthen this skill.',
+    },
+    {
+      id: 'accuracy',
+      strongName: 'ACCURACY',
+      developingName: 'ACCURACY',
+      percentage: rawAccuracyPercent,
+      totalTested: totalAttempted,
+      strongReason:
+        'You answer questions with good care and precision. Keep building this strength while maintaining your solving speed!',
+      developingReason:
+        'Your accuracy is currently among your better-performing areas. With careful practice, you can make this an even stronger skill.',
+    },
+    {
+      id: 'time_management',
+      strongName: 'TIME MANAGEMENT SKILL',
+      developingName: 'TIME MANAGEMENT',
+      percentage: timeManagement.finalScorePercent,
+      totalTested: timeManagement.maxPossibleScore,
+      strongReason:
+        'You use your test time effectively and manage your questions well. Keep practising under timed conditions to make this strength even stronger!',
+      developingReason:
+        'You are making a good start in managing your test time. Timed practice can help you become faster and more consistent.',
+    },
+  ];
+
+  // Sort descending by percentage, then by totalTested
+  const sortedStrengths = [...strengthCandidates].sort((a, b) => {
     if (b.percentage !== a.percentage) return b.percentage - a.percentage;
     return b.totalTested - a.totalTested;
   });
 
-  const top3Strengths: StrengthItem[] = strengthsSorted.slice(0, 3).map((item, idx) => ({
-    rank: idx + 1,
-    name: item.name,
-    scoreDetails: item.scoreDetails,
-    percentage: item.percentage,
-    reason: item.reason,
-  }));
+  const top3Selected = sortedStrengths.slice(0, 3);
+  const strongCount = top3Selected.filter((item) => item.percentage >= 70).length;
 
-  // Priority Gaps / Weakness Areas: only categories where score is less than 75%
-  const gapsFiltered = scoreCandidates.filter((item) => item.percentage < 75);
+  let strengthsTitle = 'YOUR STRENGTHS';
+  if (strongCount >= 3) {
+    strengthsTitle = 'YOUR STRENGTHS';
+  } else if (strongCount === 1 || strongCount === 2) {
+    strengthsTitle = 'YOUR EMERGING STRENGTHS';
+  } else {
+    strengthsTitle = 'AREAS WITH MOST POTENTIAL';
+  }
+
+  const top3Strengths: StrengthItem[] = top3Selected.map((item, idx) => {
+    const isStrong = item.percentage >= 70;
+    return {
+      rank: idx + 1,
+      name: isStrong ? item.strongName : item.developingName,
+      scoreDetails: `${item.percentage}%`,
+      percentage: item.percentage,
+      reason: isStrong ? item.strongReason : item.developingReason,
+      isEmerging: !isStrong,
+    };
+  });
+
+  // Priority Gaps / Weakness Areas: only categories where score is 70% or less
+  const gapsFiltered = scoreCandidates.filter((item) => item.percentage <= 70);
   const gapsSorted = [...gapsFiltered].sort((a, b) => {
     if (a.percentage !== b.percentage) return a.percentage - b.percentage;
     return b.totalTested - a.totalTested;
   });
 
-  // Display only categories < 75%; if less than 4, display only those (up to 4)
+  // Display only categories <= 70%; if less than 4, display only those (up to 4)
   const priorityGaps: PriorityGapItem[] = gapsSorted.slice(0, 4).map((item, idx) => ({
     rank: idx + 1,
     name: item.name,
@@ -862,18 +1081,17 @@ export function evaluateDiagnosticReport(
       continue;
     }
 
-    // 2. Very fast attempt (guesswork, right or wrong)
-    const isVeryFast =
+    // 2. Rapid Guesswork
+    const isRapidGuesswork =
       q.timeTakenSeconds <= 15 ||
-      (q.timeTakenSeconds < 20 && q.timeTakenSeconds <= q.upperLimit * 0.25);
-
-    if (isVeryFast) {
+      (q.timeTakenSeconds < 20 && q.timeTakenSeconds <= 0.25 * q.upperLimit);
+    if (isRapidGuesswork) {
       topicsToRevisit.push({
         qno: q.meta.qno,
         subject: q.meta.subject,
         chapter: q.meta.chapter,
         topic: q.meta.topic,
-        issueObserved: `Answered rapidly in ${q.timeTakenSeconds}s (vs ${q.upperLimit}s limit). This chapter appears to be guesswork, so competency cannot be confirmed.`,
+        issueObserved: `Rapid submission (${q.timeTakenSeconds}s vs limit ${q.upperLimit}s). High possibility of unverified guesswork.`,
         category: 'Rapid Guesswork',
         recommendedFocusArea:
           q.meta.conceptTested || q.meta.prerequisiteConcept || q.meta.topic,
@@ -885,50 +1103,69 @@ export function evaluateDiagnosticReport(
       continue;
     }
 
-    const isSevereOvertime = q.timeTakenSeconds >= 2 * q.upperLimit;
-    const isIncorrect = !q.isCorrect;
-
-    // Must be either incorrect OR severe overtime (>= 2x upper bound)
-    if (!isIncorrect && !isSevereOvertime) {
+    // 3. Severe Overtime & Incorrect
+    if (q.timeTakenSeconds >= 2 * q.upperLimit && !q.isCorrect) {
+      topicsToRevisit.push({
+        qno: q.meta.qno,
+        subject: q.meta.subject,
+        chapter: q.meta.chapter,
+        topic: q.meta.topic,
+        issueObserved: `Severe Overtime (${q.timeTakenSeconds}s vs limit ${q.upperLimit}s) and incorrect. High friction & deep conceptual bottleneck.`,
+        category: 'High Friction Gap',
+        recommendedFocusArea:
+          q.meta.prerequisiteConcept || q.meta.conceptTested || q.meta.topic,
+        timeTaken: q.timeTakenSeconds,
+        expectedLimit: q.upperLimit,
+        isCorrect: false,
+        attempted: true,
+      });
       continue;
     }
 
-    let category: RevisitCategory;
-    let issueObserved: string;
-
-    const overtimeMultiplier = (q.timeTakenSeconds / q.upperLimit).toFixed(1);
-
-    if (isSevereOvertime && isIncorrect) {
-      category = 'High Friction Gap';
-      issueObserved = `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (${overtimeMultiplier}x over estimated time, Incorrect)`;
-    } else if (isSevereOvertime && !isIncorrect) {
-      category = 'Pacing / Time Management';
-      issueObserved = `Severe Overtime: Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (${overtimeMultiplier}x over estimated time, Correct)`;
-    } else {
-      category = 'Conceptual / Calculation Gap';
-      if (q.timeTakenSeconds > q.upperLimit) {
-        issueObserved = `Spent ${q.timeTakenSeconds}s vs ${q.upperLimit}s limit (Incorrect attempt with overtime)`;
-      } else {
-        issueObserved = `Incorrect answer within ${q.timeTakenSeconds}s (limit ${q.upperLimit}s)`;
-      }
+    // 4. Severe Overtime & Correct
+    if (q.timeTakenSeconds >= 2 * q.upperLimit && q.isCorrect) {
+      topicsToRevisit.push({
+        qno: q.meta.qno,
+        subject: q.meta.subject,
+        chapter: q.meta.chapter,
+        topic: q.meta.topic,
+        issueObserved: `Severe Overtime: Correct response but required ${q.timeTakenSeconds}s (limit: ${q.upperLimit}s). Requires pacing refinement.`,
+        category: 'Pacing / Time Management',
+        recommendedFocusArea:
+          q.meta.conceptTested || q.meta.topic || 'Solving Routine & Speed Drills',
+        timeTaken: q.timeTakenSeconds,
+        expectedLimit: q.upperLimit,
+        isCorrect: true,
+        attempted: true,
+      });
+      continue;
     }
 
-    const recommendedFocusArea =
-      q.meta.conceptTested || q.meta.prerequisiteConcept || q.meta.topic;
+    // 5. Normal pacing incorrect
+    if (!q.isCorrect) {
+      const category: RevisitCategory = 'Conceptual / Calculation Gap';
 
-    topicsToRevisit.push({
-      qno: q.meta.qno,
-      subject: q.meta.subject,
-      chapter: q.meta.chapter,
-      topic: q.meta.topic,
-      issueObserved,
-      category,
-      recommendedFocusArea,
-      timeTaken: q.timeTakenSeconds,
-      expectedLimit: q.upperLimit,
-      isCorrect: q.isCorrect,
-      attempted: q.attempted,
-    });
+      const recommendedFocusArea =
+        q.meta.prerequisiteConcept && q.meta.prerequisiteConcept.trim().length > 0
+          ? `${q.meta.prerequisiteConcept} (Prerequisite Foundation)`
+          : q.meta.conceptTested && q.meta.conceptTested.trim().length > 0
+            ? q.meta.conceptTested
+            : q.meta.topic;
+
+      topicsToRevisit.push({
+        qno: q.meta.qno,
+        subject: q.meta.subject,
+        chapter: q.meta.chapter,
+        topic: q.meta.topic,
+        issueObserved: `Incorrect response under normal pacing (${q.timeTakenSeconds}s). Indicates misconception or calculation error.`,
+        category,
+        recommendedFocusArea,
+        timeTaken: q.timeTakenSeconds,
+        expectedLimit: q.upperLimit,
+        isCorrect: q.isCorrect,
+        attempted: q.attempted,
+      });
+    }
   }
 
   // Dynamic Narrative Generation: Page 1 "YOUR KEY INSIGHT"
@@ -959,16 +1196,6 @@ export function evaluateDiagnosticReport(
     performancePatternInsight = `The performance distribution indicates that question structure substantially impacts ${studentFirstName}'s response consistency. Direct prompts are approached with fair confidence, but accuracy declines when questions incorporate compound conditions or data extraction. Strengthening procedural routines for multi-step and diagram-driven questions will prevent hesitation and unlock higher consistency across all syllabus units.`;
   }
 
-  // Time Management & Guesswork Evaluation
-  const timeManagement = evaluateTimeManagement(
-    evaluatedQuestions.map((eq) => ({
-      qno: eq.meta.qno,
-      attempted: eq.attempted,
-      timeTakenSeconds: eq.timeTakenSeconds,
-      expectedUpperBoundS: eq.upperLimit,
-    })),
-  );
-
   // Page 4: Detailed Diagnostic Calculation Steps & Audit Trail (Dev/Audit Mode)
   const calculationSteps: DiagnosticCalculationSteps = {
     scoring: {
@@ -982,8 +1209,8 @@ export function evaluateDiagnosticReport(
         briScore >= 80
           ? 'BRI >= 80% -> High achievement Potential'
           : briScore >= 60
-          ? '60% <= BRI < 80% -> Conceptually Strong'
-          : 'BRI < 60% -> Basic',
+            ? '60% <= BRI < 80% -> Conceptually Strong'
+            : 'BRI < 60% -> Basic',
       levelResult: levelOfPreparation,
     },
     breakdowns: [
@@ -1120,8 +1347,8 @@ export function evaluateDiagnosticReport(
         g.scorePercent < 40
           ? 'Score < 40% -> High Priority'
           : g.scorePercent <= 55
-          ? '40% <= Score <= 55% -> Medium Priority'
-          : '55% < Score <= 74% -> Low Priority',
+            ? '40% <= Score <= 55% -> Medium Priority'
+            : '55% < Score <= 70% -> Low Priority',
     })),
     allChapterScores: chapterList.map((c) => ({
       chapter: c.name,
@@ -1186,8 +1413,13 @@ export function evaluateDiagnosticReport(
     levelOfPreparation,
     mathsScore: mathsPerf.score,
     mathsTotalQuestions: mathsPerf.totalQuestions,
+    mathsPercentage: mathsPerf.percentage,
     scienceScore: sciencePerf.score,
     scienceTotalQuestions: sciencePerf.totalQuestions,
+    sciencePercentage: sciencePerf.percentage,
+    physicsPercentage: physicsPerf.percentage,
+    chemistryPercentage: chemistryPerf.percentage,
+    biologyPercentage: biologyPerf.percentage,
     easyScore: easyPerf.score,
     easyTotalQuestions: easyPerf.totalQuestions,
     mediumScore: medPerf.score,
@@ -1200,17 +1432,20 @@ export function evaluateDiagnosticReport(
     accuracyCategory,
     questionInterpretationCategory: questionInterpretation.category,
     keyInsight,
+    strengthsTitle,
     top3Strengths,
     structures,
     performancePatternInsight,
     priorityGaps,
     topicsToRevisit,
     timeManagement,
+    subjectDifficultyBreakdowns,
     calculationSteps,
   });
 
   return {
     studentName: student.studentName,
+    studentGender: student.studentGender ?? null,
     totalQuestions: N,
     totalRawScore,
     totalDiagnosticWeight,
@@ -1220,10 +1455,15 @@ export function evaluateDiagnosticReport(
     breakdown: {
       mathematics: mathsPerf,
       science: sciencePerf,
+      physics: physicsPerf,
+      chemistry: chemistryPerf,
+      biology: biologyPerf,
       easy: easyPerf,
       medium: medPerf,
       difficult: diffPerf,
+      difficultyBySubject: subjectDifficultyBreakdowns,
     },
+    subjectDifficultyBreakdowns,
     skills: {
       conceptualFoundation,
       conceptApplication,
@@ -1237,6 +1477,7 @@ export function evaluateDiagnosticReport(
       questionInterpretation,
     },
     structures,
+    strengthsTitle,
     strengths: top3Strengths,
     priorityGaps,
     topicsToRevisit,
@@ -1258,8 +1499,13 @@ function generateReportPlainTextFormat(data: {
   levelOfPreparation: PreparationLevel;
   mathsScore: number;
   mathsTotalQuestions: number;
+  mathsPercentage: number;
   scienceScore: number;
   scienceTotalQuestions: number;
+  sciencePercentage: number;
+  physicsPercentage: number;
+  chemistryPercentage: number;
+  biologyPercentage: number;
   easyScore: number;
   easyTotalQuestions: number;
   mediumScore: number;
@@ -1272,22 +1518,24 @@ function generateReportPlainTextFormat(data: {
   accuracyCategory: SkillValueCategory;
   questionInterpretationCategory: SkillValueCategory;
   keyInsight: string;
+  strengthsTitle?: string;
   top3Strengths: StrengthItem[];
   structures: QuestionStructurePerformance[];
   performancePatternInsight: string;
   priorityGaps: PriorityGapItem[];
   topicsToRevisit: TopicToRevisitItem[];
   timeManagement?: TimeManagementSummary;
+  subjectDifficultyBreakdowns?: SubjectDifficultyBreakdowns;
   calculationSteps: DiagnosticCalculationSteps;
 }): string {
   const lines: string[] = [];
 
   // PAGE 1
   lines.push('================================================================================');
-  lines.push('PAGE 1: SRSMA BOARD READINESS CHALLENGE REPORT');
+  lines.push('PAGE 1: BOARD READINESS CHALLENGE REPORT');
   lines.push('================================================================================');
   lines.push('');
-  lines.push('SRSMA BOARD READINESS CHALLENGE REPORT');
+  lines.push('BOARD READINESS CHALLENGE REPORT');
   lines.push('');
   lines.push(`Dear ${data.studentName},`);
   lines.push('');
@@ -1300,9 +1548,7 @@ function generateReportPlainTextFormat(data: {
   lines.push('--------------------------------------------------------------------------------');
   lines.push('');
   lines.push('YOUR BOARD READINESS SNAPSHOT');
-  lines.push(
-    `OVERALL SCORE: ${data.totalRawScore} / ${data.totalQuestions} (${data.totalWeightedScore} / ${data.totalDiagnosticWeight} Weighted Points)`,
-  );
+  lines.push(`OVERALL RAW SCORE: ${data.totalRawScore} / ${data.totalQuestions}`);
   lines.push(`BOARD READINESS INDEX: ${data.briScore} / 100`);
   lines.push(`LEVEL OF PREPARATION: ${data.levelOfPreparation}`);
   if (data.timeManagement) {
@@ -1311,25 +1557,32 @@ function generateReportPlainTextFormat(data: {
     );
   }
   lines.push('');
-  lines.push('| Area                 | Performance                                  |');
+  lines.push('| Subject              | Score (%)                                    |');
   lines.push('|----------------------|----------------------------------------------|');
-  lines.push(`| Mathematics          | ${(data.mathsScore + ' / ' + data.mathsTotalQuestions).padEnd(44)} |`);
-  lines.push(`| Science              | ${(data.scienceScore + ' / ' + data.scienceTotalQuestions).padEnd(44)} |`);
-  lines.push(`| Easy Questions       | ${(data.easyScore + ' / ' + data.easyTotalQuestions).padEnd(44)} |`);
-  lines.push(`| Medium Questions     | ${(data.mediumScore + ' / ' + data.mediumTotalQuestions).padEnd(44)} |`);
-  lines.push(`| Difficult Questions  | ${(data.difficultScore + ' / ' + data.difficultTotalQuestions).padEnd(44)} |`);
+  lines.push(`| Mathematics          | ${String(data.mathsPercentage + '%').padEnd(44)} |`);
+  lines.push(`| Science              | ${String(data.sciencePercentage + '%').padEnd(44)} |`);
+  lines.push(`|   • Physics          | ${String(data.physicsPercentage + '%').padEnd(44)} |`);
+  lines.push(`|   • Chemistry        | ${String(data.chemistryPercentage + '%').padEnd(44)} |`);
+  lines.push(`|   • Biology          | ${String(data.biologyPercentage + '%').padEnd(44)} |`);
   lines.push('');
-  lines.push('YOUR BOARD READINESS PROFILE');
-  lines.push(`• Conceptual Foundation       — ${data.conceptualFoundationCategory}`);
-  lines.push(`• Concept Application Skill   — ${data.conceptApplicationCategory}`);
-  lines.push(`• Problem Solving Skill       — ${data.problemSolvingCategory}`);
-  lines.push(`• Accuracy                    — ${data.accuracyCategory}`);
-  lines.push(`• Question Interpretation Skill — ${data.questionInterpretationCategory}`);
-  if (data.timeManagement) {
-    lines.push(`• Time Management             — ${data.timeManagement.rating} (${data.timeManagement.finalScorePercent}%)`);
+  const subjectInsight =
+    data.mathsPercentage > data.sciencePercentage
+      ? 'You seem to be doing better in Maths compared to Science.'
+      : data.sciencePercentage > data.mathsPercentage
+        ? 'You seem to be doing better in Science compared to Maths.'
+        : 'Your performance in Maths and Science seems to be well balanced.';
+  lines.push(`SUBJECT INSIGHT: ${subjectInsight}`);
+
+  if (data.subjectDifficultyBreakdowns) {
+    lines.push('');
+    lines.push('DIFFICULTY LEVEL PERFORMANCE (PERCENTAGE SOLVED)');
+    lines.push(
+      `Mathematics: Easy: ${data.subjectDifficultyBreakdowns.mathematics.easy.percentage}%, Medium: ${data.subjectDifficultyBreakdowns.mathematics.medium.percentage}%, Hard: ${data.subjectDifficultyBreakdowns.mathematics.hard.percentage}%`,
+    );
+    lines.push(
+      `Science: Easy: ${data.subjectDifficultyBreakdowns.science.easy.percentage}%, Medium: ${data.subjectDifficultyBreakdowns.science.medium.percentage}%, Hard: ${data.subjectDifficultyBreakdowns.science.hard.percentage}%`,
+    );
   }
-  lines.push('');
-  lines.push('(Three Levels: Good | Average | Needs Strengthening)');
 
   if (data.timeManagement && data.timeManagement.guessworkQuestions.length > 0) {
     lines.push('');
@@ -1348,17 +1601,20 @@ function generateReportPlainTextFormat(data: {
   lines.push('PAGE 2: PERFORMANCE ANALYSIS & PATTERNS');
   lines.push('================================================================================');
   lines.push('');
-  lines.push('YOUR STRENGTHS');
+  lines.push(data.strengthsTitle || 'YOUR STRENGTHS');
   data.top3Strengths.forEach((s) => {
     lines.push(`${s.rank}. ${s.name}: ${s.scoreDetails} — ${s.reason}`);
   });
   lines.push('');
   lines.push('YOUR PERFORMANCE PATTERN');
-  lines.push('| Question Type     | Correct / Total                           | Performance (%) |');
-  lines.push('|-------------------|-------------------------------------------|-----------------|');
+  lines.push('| Question Type     | Rating (up to 5 Stars)                         |');
+  lines.push('|-------------------|------------------------------------------------|');
   data.structures.forEach((st) => {
+    const starVal = Math.round((st.percentage / 100) * 5 * 10) / 10;
+    const filledCount = Math.round(starVal);
+    const starIcons = '★'.repeat(filledCount) + '☆'.repeat(5 - filledCount);
     lines.push(
-      `| ${st.type.padEnd(17)} | ${(st.correct + ' / ' + st.total).padEnd(41)} | ${String(st.percentage + '%').padEnd(15)} |`,
+      `| ${st.type.padEnd(17)} | ${(`${starIcons} (${starVal}/5 Stars)`).padEnd(46)} |`,
     );
   });
   lines.push('');
@@ -1375,23 +1631,21 @@ function generateReportPlainTextFormat(data: {
   lines.push('');
   lines.push('YOUR PRIORITY GAPS');
   if (data.priorityGaps.length === 0) {
-    lines.push('🎉 Congratulations! Outstanding performance — no weakness areas detected (< 75%). All evaluated categories scored 75% or higher.');
+    lines.push('🎉 Congratulations! Outstanding performance — no weakness areas detected (<= 70%). All evaluated categories scored above 70%.');
   } else {
     data.priorityGaps.forEach((g) => {
       lines.push(`${g.rank}. ${g.name}: ${g.scorePercent}% — Priority: ${g.priority.replace(' Priority', '')}`);
     });
   }
   lines.push('');
-  lines.push('*(Priority Benchmarks: < 40% = High Priority | 40% to 55% = Medium Priority | 55% to 74% = Low Priority)*');
-  lines.push('');
   lines.push('TOPICS TO REVISIT');
   lines.push('List of topics where pacing or accuracy issues occurred during the test:');
   lines.push('');
-  lines.push('| Q# | Subject | Chapter | Topic | Issue Observed | Category | Recommended Focus Area |');
-  lines.push('|---|---|---|---|---|---|---|');
+  lines.push('| Q# | Subject | Chapter | Topic | Category |');
+  lines.push('|---|---|---|---|---|');
   data.topicsToRevisit.forEach((t) => {
     lines.push(
-      `| ${t.qno} | ${t.subject} | ${t.chapter} | ${t.topic} | ${t.issueObserved} | ${t.category} | ${t.recommendedFocusArea} |`,
+      `| ${t.qno} | ${t.subject} | ${t.chapter} | ${t.topic} | ${t.category} |`,
     );
   });
   lines.push('');

@@ -83,7 +83,7 @@ export function StudentsView() {
   // FBR-03: self-service phone-login accounts ("Prospective leads") are kept
   // in a separate tab from the enrolled roster so they never dilute batch
   // rosters or get mistaken for real students.
-  const [enrollmentTab, setEnrollmentTab] = useState<'enrolled' | 'provisional'>('enrolled');
+  const [enrollmentTab, setEnrollmentTab] = useState<'enrolled' | 'provisional'>('provisional');
   const [convertTarget, setConvertTarget] = useState<Student | null>(null);
   const [convertBatch, setConvertBatch] = useState('');
   const [convertSubmitting, setConvertSubmitting] = useState(false);
@@ -435,20 +435,6 @@ export function StudentsView() {
         <button
           type="button"
           onClick={() => {
-            setEnrollmentTab('enrolled');
-            setPage(1);
-          }}
-          className={`border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${
-            enrollmentTab === 'enrolled'
-              ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
-              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          Enrolled Roster
-        </button>
-        <button
-          type="button"
-          onClick={() => {
             setEnrollmentTab('provisional');
             setPage(1);
           }}
@@ -460,6 +446,20 @@ export function StudentsView() {
           title="Self-service phone-login accounts not yet converted to enrolled students"
         >
           Prospective Leads
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEnrollmentTab('enrolled');
+            setPage(1);
+          }}
+          className={`border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${
+            enrollmentTab === 'enrolled'
+              ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Enrolled Roster
         </button>
       </div>
 

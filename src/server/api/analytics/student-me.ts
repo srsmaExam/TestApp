@@ -18,8 +18,16 @@ export const GET = withApi(async (req) => {
   let targetStudentName = session.fullName || 'Student';
   let isReportUnlocked = false;
 
+  let targetGender: string | null = null;
+
   const url = new URL(req.url);
   const queryStudentId = url.searchParams.get('studentId');
+
+  let isFormFilled = false;
+  let targetBoard: string | null = null;
+  let targetSchool: string | null = null;
+  let targetCity: string | null = null;
+  let targetClassLevel: string | null = null;
 
   if (session.role === 'teacher') {
     if (queryStudentId) {
@@ -28,6 +36,12 @@ export const GET = withApi(async (req) => {
           id: profiles.id,
           fullName: profiles.fullName,
           role: profiles.role,
+          gender: profiles.gender,
+          board: profiles.board,
+          school: profiles.school,
+          city: profiles.city,
+          classLevel: profiles.classLevel,
+          whatsappConsent: profiles.whatsappConsent,
         })
         .from(profiles)
         .where(eq(profiles.id, queryStudentId));
@@ -37,6 +51,12 @@ export const GET = withApi(async (req) => {
       }
       targetUserId = targetStudent.id;
       targetStudentName = targetStudent.fullName;
+      targetGender = targetStudent.gender;
+      isFormFilled = Boolean(targetStudent.whatsappConsent && targetStudent.city);
+      targetBoard = targetStudent.board ?? null;
+      targetSchool = targetStudent.school ?? null;
+      targetCity = targetStudent.city ?? null;
+      targetClassLevel = targetStudent.classLevel ?? 'X';
     }
     isReportUnlocked = true;
   } else if (session.role === 'student') {
@@ -46,12 +66,22 @@ export const GET = withApi(async (req) => {
       .select({
         whatsappConsent: profiles.whatsappConsent,
         city: profiles.city,
+        board: profiles.board,
+        school: profiles.school,
+        classLevel: profiles.classLevel,
         isProvisional: profiles.isProvisional,
+        gender: profiles.gender,
       })
       .from(profiles)
       .where(eq(profiles.id, session.userId));
 
-    isReportUnlocked = Boolean(profile && profile.whatsappConsent && profile.city);
+    isFormFilled = Boolean(profile && profile.whatsappConsent && profile.city);
+    isReportUnlocked = isFormFilled;
+    targetGender = profile?.gender ?? null;
+    targetBoard = profile?.board ?? null;
+    targetSchool = profile?.school ?? null;
+    targetCity = profile?.city ?? null;
+    targetClassLevel = profile?.classLevel ?? 'X';
   } else {
     throw new HttpError(403, 'forbidden', 'Access denied.');
   }
@@ -298,7 +328,16 @@ export const GET = withApi(async (req) => {
   return json({
     studentId: targetUserId,
     studentName: targetStudentName,
+    gender: targetGender,
     isReportUnlocked,
+    studentDetails: {
+      board: targetBoard,
+      school: targetSchool,
+      city: targetCity,
+      classLevel: targetClassLevel,
+      gender: targetGender,
+      isFormFilled,
+    },
     totalAttempts: studentAttempts.length,
     avgScore: Math.round((totalScore / studentAttempts.length) * 10) / 10,
     avgPercentile:
@@ -306,7 +345,7 @@ export const GET = withApi(async (req) => {
     recentTests,
     subjectBreakdown: subjects,
     chapterBreakdown,
-    diagnosticReport,
+    diagnosticReport: isReportUnlocked ? diagnosticReport : null,
     sampleDiagnosticReport: null,
   });
 });

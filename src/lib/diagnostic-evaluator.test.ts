@@ -172,6 +172,17 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.breakdown.science.score).toBe(1);
     expect(result.breakdown.science.totalQuestions).toBe(2);
 
+    // Science Subdivisions (Physics, Chemistry, Biology)
+    expect(result.breakdown.physics.score).toBe(1);
+    expect(result.breakdown.physics.totalQuestions).toBe(1);
+    expect(result.breakdown.physics.percentage).toBe(100);
+    expect(result.breakdown.chemistry.score).toBe(0);
+    expect(result.breakdown.chemistry.totalQuestions).toBe(1);
+    expect(result.breakdown.chemistry.percentage).toBe(0);
+    expect(result.breakdown.biology.score).toBe(0);
+    expect(result.breakdown.biology.totalQuestions).toBe(0);
+    expect(result.breakdown.biology.percentage).toBe(0);
+
     // Difficult questions: Q3(diff), Q4(diff) => 1/2
     expect(result.breakdown.difficult.score).toBe(1);
     expect(result.breakdown.difficult.totalQuestions).toBe(2);
@@ -180,7 +191,17 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.breakdown.easy.score).toBe(2);
     expect(result.breakdown.easy.totalQuestions).toBe(3);
 
-    // Question structure performance:
+    // Question structure performance (Exactly 5 Performance Patterns)
+    expect(result.structures.length).toBe(5);
+    const patternNames = result.structures.map((s) => s.type);
+    expect(patternNames).toEqual([
+      'Direct',
+      'Multi-step',
+      'Diagram-based',
+      'Application-based',
+      'Word Problem',
+    ]);
+
     // Direct: Q1, Q2, Q5 => total 3. Correct: Q1, Q2 => 2/3 (67%)
     const direct = result.structures.find((s) => s.type === 'Direct');
     expect(direct?.correct).toBe(2);
@@ -223,7 +244,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(q5Flag?.issueObserved).toContain('Unattempted');
 
     // Plain text report generation
-    expect(result.plainTextReport).toContain('PAGE 1: SRSMA BOARD READINESS CHALLENGE REPORT');
+    expect(result.plainTextReport).toContain('PAGE 1: BOARD READINESS CHALLENGE REPORT');
     expect(result.plainTextReport).toContain('PAGE 2: PERFORMANCE ANALYSIS & PATTERNS');
     expect(result.plainTextReport).toContain('PAGE 3: WHERE SHOULD YOU IMPROVE?');
     expect(result.plainTextReport).toContain('PAGE 4: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
@@ -262,7 +283,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
     // When no categories are < 75%, priorityGaps is empty and congratulations is displayed
     expect(highResult.priorityGaps.length).toBe(0);
     expect(highResult.plainTextReport).toContain(
-      'Congratulations! Outstanding performance — no weakness areas detected (< 75%)',
+      'Congratulations! Outstanding performance — no weakness areas detected (<= 70%)',
     );
 
     // 2. Conceptually Strong (e.g. Q1, Q3, Q4 correct: 1 + 3 + 3 = 7/9 = 77.8% BRI)
@@ -557,7 +578,262 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(report.priorityGaps.length).toBe(0);
       // Plain text report must congratulate them
       expect(report.plainTextReport).toContain(
-        'Congratulations! Outstanding performance — no weakness areas detected (< 75%)',
+        'Congratulations! Outstanding performance — no weakness areas detected (<= 70%)',
+      );
+    });
+  });
+
+  describe('Difficulty Breakdown & Dynamic 6-Candidate Strengths Engine', () => {
+    const testMeta: QuestionMetadataItem[] = [
+      {
+        qno: 1,
+        subject: 'Mathematics',
+        chapter: 'Real Numbers',
+        topic: 'Euclid Division',
+        difficulty: 'Easy',
+        diagnosticWeight: 1,
+        primarySkill: 'Conceptual Foundation',
+        secondarySkill: 'Interpretation',
+        questionStructure: 'Direct',
+        visualDependency: 'None',
+        expectedTime: '60 sec',
+        answer: 'A',
+      },
+      {
+        qno: 2,
+        subject: 'Mathematics',
+        chapter: 'Polynomials',
+        topic: 'Zeroes',
+        difficulty: 'Medium',
+        diagnosticWeight: 2,
+        primarySkill: 'Concept Application',
+        secondarySkill: null,
+        questionStructure: 'Multi-step',
+        visualDependency: 'None',
+        expectedTime: '60 sec',
+        answer: 'B',
+      },
+      {
+        qno: 3,
+        subject: 'Mathematics',
+        chapter: 'Triangles',
+        topic: 'Similarity',
+        difficulty: 'Hard',
+        diagnosticWeight: 3,
+        primarySkill: 'Problem Solving',
+        secondarySkill: null,
+        questionStructure: 'Word Problem',
+        visualDependency: 'None',
+        expectedTime: '90 sec',
+        answer: 'C',
+      },
+      {
+        qno: 4,
+        subject: 'Science',
+        chapter: 'Light',
+        topic: 'Reflection',
+        difficulty: 'Easy',
+        diagnosticWeight: 1,
+        primarySkill: 'Conceptual Foundation',
+        secondarySkill: 'Visual Interpretation',
+        questionStructure: 'Diagram-based',
+        visualDependency: 'High',
+        expectedTime: '60 sec',
+        answer: 'D',
+      },
+      {
+        qno: 5,
+        subject: 'Physics',
+        chapter: 'Electricity',
+        topic: 'Ohm Law',
+        difficulty: 'Medium',
+        diagnosticWeight: 2,
+        primarySkill: 'Concept Application',
+        secondarySkill: null,
+        questionStructure: 'Multi-step',
+        visualDependency: 'None',
+        expectedTime: '60 sec',
+        answer: 'A',
+      },
+      {
+        qno: 6,
+        subject: 'Chemistry',
+        chapter: 'Acids and Bases',
+        topic: 'pH scale',
+        difficulty: 'Hard',
+        diagnosticWeight: 3,
+        primarySkill: 'Problem Solving',
+        secondarySkill: null,
+        questionStructure: 'Application-based',
+        visualDependency: 'None',
+        expectedTime: '90 sec',
+        answer: 'B',
+      },
+    ];
+
+    it('calculates difficulty breakdown for Mathematics and Science separately', () => {
+      // Maths: Q1 correct (Easy), Q2 correct (Med), Q3 wrong (Hard)
+      // Science: Q4 correct (Easy), Q5 wrong (Med), Q6 correct (Hard)
+      const payload: StudentResponsePayload = {
+        studentName: 'Aarav Patel',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 40 },
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 50 },
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 40 },
+          { qno: 6, attempted: true, selectedOption: 'B', timeTakenSeconds: 50 },
+        ],
+      };
+
+      const result = evaluateDiagnosticReport(testMeta, payload);
+
+      // Maths breakdowns
+      expect(result.subjectDifficultyBreakdowns.mathematics.easy.percentage).toBe(100);
+      expect(result.subjectDifficultyBreakdowns.mathematics.easy.score).toBe(1);
+      expect(result.subjectDifficultyBreakdowns.mathematics.easy.total).toBe(1);
+
+      expect(result.subjectDifficultyBreakdowns.mathematics.medium.percentage).toBe(100);
+      expect(result.subjectDifficultyBreakdowns.mathematics.medium.score).toBe(1);
+      expect(result.subjectDifficultyBreakdowns.mathematics.medium.total).toBe(1);
+
+      expect(result.subjectDifficultyBreakdowns.mathematics.hard.percentage).toBe(0);
+      expect(result.subjectDifficultyBreakdowns.mathematics.hard.score).toBe(0);
+      expect(result.subjectDifficultyBreakdowns.mathematics.hard.total).toBe(1);
+
+      // Science breakdowns
+      expect(result.subjectDifficultyBreakdowns.science.easy.percentage).toBe(100);
+      expect(result.subjectDifficultyBreakdowns.science.medium.percentage).toBe(0);
+      expect(result.subjectDifficultyBreakdowns.science.hard.percentage).toBe(100);
+
+      // Plain text report check
+      expect(result.plainTextReport).toContain('DIFFICULTY LEVEL PERFORMANCE (PERCENTAGE SOLVED)');
+      expect(result.plainTextReport).toContain('Mathematics: Easy: 100%, Medium: 100%, Hard: 0%');
+      expect(result.plainTextReport).toContain('Science: Easy: 100%, Medium: 0%, Hard: 100%');
+    });
+
+    it('assigns YOUR STRENGTHS when >= 3 candidates have score >= 70% and removes marks out of total', () => {
+      // Perfect score across all questions
+      const payload: StudentResponsePayload = {
+        studentName: 'Pooja Nair',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 6, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+        ],
+      };
+
+      const result = evaluateDiagnosticReport(testMeta, payload);
+
+      expect(result.strengthsTitle).toBe('YOUR STRENGTHS');
+      expect(result.strengths.length).toBe(3);
+
+      result.strengths.forEach((s) => {
+        expect(s.percentage).toBeGreaterThanOrEqual(70);
+        expect(s.isEmerging).toBe(false);
+        // "In Your Strengths Section remove marks out of Total. just keep the percentage."
+        expect(s.scoreDetails).toMatch(/^\d+(\.\d+)?%$/);
+        expect(s.scoreDetails).not.toContain('pts');
+        expect(s.scoreDetails).not.toContain('/');
+      });
+
+      // Verify exact explanation texts when >= 70%
+      const clarity = result.strengths.find((s) => s.name === 'CONCEPT CLARITY');
+      if (clarity) {
+        expect(clarity.reason).toBe(
+          'You understand Class X board concepts well and have built a strong base to build upon. Keep deepening your understanding—you’re on the right track!',
+        );
+      }
+    });
+
+    it('assigns YOUR EMERGING STRENGTHS when only 1 or 2 candidates have score >= 70%', () => {
+      // Only Q1 (Conceptual Foundation) and Q4 (Visual/Conceptual) correct, others wrong
+      const payload: StudentResponsePayload = {
+        studentName: 'Rohan Sharma',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 150 },
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 200 },
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 150 },
+          { qno: 6, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 200 },
+        ],
+      };
+
+      const result = evaluateDiagnosticReport(testMeta, payload);
+
+      expect(result.strengthsTitle).toBe('YOUR EMERGING STRENGTHS');
+      expect(result.strengths.length).toBe(3);
+
+      const strongItems = result.strengths.filter((s) => s.percentage >= 70);
+      const emergingItems = result.strengths.filter((s) => s.percentage < 70);
+
+      expect(strongItems.length).toBeGreaterThanOrEqual(1);
+      expect(strongItems.length).toBeLessThanOrEqual(2);
+      expect(emergingItems.length).toBeGreaterThanOrEqual(1);
+
+      strongItems.forEach((s) => {
+        expect(s.isEmerging).toBe(false);
+      });
+
+      emergingItems.forEach((s) => {
+        expect(s.isEmerging).toBe(true);
+      });
+    });
+
+    it('assigns AREAS WITH MOST POTENTIAL when 0 candidates have score >= 70% and uses developing text', () => {
+      // 0 correct responses, severe overtime
+      const payload: StudentResponsePayload = {
+        studentName: 'Kunal Joshi',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 130 },
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 130 },
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 190 },
+          { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 130 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 130 },
+          { qno: 6, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 190 },
+        ],
+      };
+
+      const result = evaluateDiagnosticReport(testMeta, payload);
+
+      expect(result.strengthsTitle).toBe('AREAS WITH MOST POTENTIAL');
+      expect(result.strengths.length).toBe(3);
+
+      result.strengths.forEach((s) => {
+        expect(s.percentage).toBeLessThan(70);
+        expect(s.isEmerging).toBe(true);
+      });
+
+      // Verify developing reason for CONCEPT CLARITY
+      const clarity = result.strengths.find((s) => s.name === 'CONCEPT CLARITY');
+      if (clarity) {
+        expect(clarity.reason).toBe(
+          'This is one of your stronger areas right now. With focused practice, you can build even greater clarity here.',
+        );
+      }
+    });
+
+    it('formats subject comparison insight using "You seem to be doing better in Maths compared to Science"', () => {
+      // Maths 100%, Science 0%
+      const mathsBetterPayload: StudentResponsePayload = {
+        studentName: 'Sanjay Dutt',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 6, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+
+      const result = evaluateDiagnosticReport(testMeta, mathsBetterPayload);
+      expect(result.plainTextReport).toContain(
+        'SUBJECT INSIGHT: You seem to be doing better in Maths compared to Science.',
       );
     });
   });

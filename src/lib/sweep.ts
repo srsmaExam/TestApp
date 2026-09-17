@@ -30,15 +30,24 @@ import { gradeAndCloseAttempt } from './attempts';
 export async function sweepExpiredAttempts(db?: Db): Promise<number> {
   const database = db ?? (await getDb());
 
-  const expired = await database
-    .select({ id: attempts.id })
-    .from(attempts)
-    .where(and(eq(attempts.status, 'in_progress'), lt(attempts.deadlineAt, new Date())));
+  const now = new Date();
+  const graceThreshold = new Date(Date.now() - 120_000); // 2-minute grace period for extension prompt
 
-  if (expired.length === 0) return 0;
+  const expired = await database
+    .select({ id: attempts.id, deadlineAt: attempts.deadlineAt, timeExtensionsCount: attempts.timeExtensionsCount })
+    .from(attempts)
+    .where(and(eq(attempts.status, 'in_progress'), lt(attempts.deadlineAt, now)));
+
+  const eligibleToSweep = expired.filter((a) => {
+    const extCount = a.timeExtensionsCount ?? 0;
+    if (extCount >= 2) return true;
+    return new Date(a.deadlineAt).getTime() <= graceThreshold.getTime();
+  });
+
+  if (eligibleToSweep.length === 0) return 0;
 
   let closed = 0;
-  for (const { id } of expired) {
+  for (const { id } of eligibleToSweep) {
     try {
       await gradeAndCloseAttempt(database, id, 'auto_submitted');
       closed += 1;

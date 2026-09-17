@@ -61,7 +61,16 @@ type ResultData = {
   totalParticipants: number;
   studentId?: string;
   studentName?: string;
+  gender?: 'Male' | 'Female' | string | null;
   isReportUnlocked?: boolean;
+  studentDetails?: {
+    board?: string | null;
+    school?: string | null;
+    city?: string | null;
+    classLevel?: string | null;
+    gender?: string | null;
+    isFormFilled?: boolean;
+  } | null;
   summary: {
     totalQuestions: number;
     correctCount: number;
@@ -134,8 +143,8 @@ export function ResultReviewClient({
           typeof q.answer === 'object' && (q.answer as any)?.key
             ? (q.answer as any).key
             : typeof q.answer === 'object' && (q.answer as any)?.value !== undefined
-            ? String((q.answer as any).value)
-            : String(q.answer || 'A'),
+              ? String((q.answer as any).value)
+              : String(q.answer || 'A'),
         diagnosticWeight: Number(m.diagnosticWeight || 1),
       };
     });
@@ -147,16 +156,17 @@ export function ResultReviewClient({
         q.response && typeof q.response === 'object' && (q.response as any)?.key
           ? (q.response as any).key
           : (q.response as any)?.value !== undefined
-          ? String((q.response as any).value)
-          : null,
+            ? String((q.response as any).value)
+            : null,
       timeTakenSeconds: Math.round((q.timeSpentMs || 0) / 1000),
     }));
 
     return evaluateDiagnosticReport(metadataList, {
       studentName: data?.studentName || 'Student',
+      studentGender: data?.gender || gender || null,
       responses,
     });
-  }, [data]);
+  }, [data, gender]);
 
   const timeManagementMetrics = useMemo(() => {
     if (!data?.questions || data.questions.length === 0) return null;
@@ -430,19 +440,7 @@ export function ResultReviewClient({
         </div>
 
         {/* Hero KPI metrics grid */}
-        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="rounded-lg bg-white/5 p-3 text-center">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Rank</p>
-            <p className="mt-0.5 text-xl font-bold text-white">
-              #{data.rank} <span className="text-xs font-normal text-slate-400">of {data.totalParticipants}</span>
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-white/5 p-3 text-center">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Percentile</p>
-            <p className="mt-0.5 text-xl font-bold text-accent-400">{data.percentile} %ile</p>
-          </div>
-
+        <div className="mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-6 sm:grid-cols-3">
           <div className="rounded-lg bg-white/5 p-3 text-center">
             <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Accuracy</p>
             <p className="tnum mt-0.5 text-xl font-bold text-emerald-400">{data.summary.accuracy}%</p>
@@ -460,26 +458,6 @@ export function ResultReviewClient({
               <span className="text-emerald-400">{data.summary.correctCount}</span>
               <span className="mx-1 text-slate-400">/</span>
               <span className="text-red-400">{data.summary.wrongCount}</span>
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-white/5 p-3 text-center">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Time Management</p>
-            <p className="mt-0.5 text-xl font-bold">
-              <span
-                className={
-                  timeManagementMetrics?.rating === 'Good'
-                    ? 'text-emerald-400'
-                    : timeManagementMetrics?.rating === 'Medium'
-                    ? 'text-amber-400'
-                    : 'text-rose-400'
-                }
-              >
-                {timeManagementMetrics ? `${timeManagementMetrics.finalScorePercent}%` : '—'}
-              </span>
-            </p>
-            <p className="text-xs font-semibold text-slate-300">
-              {timeManagementMetrics ? `${timeManagementMetrics.rating}` : 'N/A'}
             </p>
           </div>
         </div>
@@ -546,15 +524,14 @@ export function ResultReviewClient({
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
-                      className={`h-full ${
-                        s === 'physics'
+                      className={`h-full ${s === 'physics'
                           ? 'bg-brand-600'
                           : s === 'chemistry'
-                          ? 'bg-emerald-600'
-                          : s === 'maths'
-                          ? 'bg-amber-500'
-                          : 'bg-purple-600'
-                      }`}
+                            ? 'bg-emerald-600'
+                            : s === 'maths'
+                              ? 'bg-amber-500'
+                              : 'bg-purple-600'
+                        }`}
                       style={{
                         width: `${Math.max(0, Math.min(100, (stats.marks / Math.max(1, stats.maxMarks)) * 100))}%`,
                       }}
@@ -657,9 +634,8 @@ export function ResultReviewClient({
                 <button
                   key={s}
                   onClick={() => setFilterSubject(s)}
-                  className={`rounded px-2.5 py-1 capitalize transition-colors ${
-                    filterSubject === s ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
+                  className={`rounded px-2.5 py-1 capitalize transition-colors ${filterSubject === s ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
                 >
                   {s}
                 </button>
@@ -681,9 +657,8 @@ export function ResultReviewClient({
                 <button
                   key={st.id}
                   onClick={() => setFilterStatus(st.id)}
-                  className={`rounded px-2.5 py-1 transition-colors ${
-                    filterStatus === st.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
+                  className={`rounded px-2.5 py-1 transition-colors ${filterStatus === st.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
                 >
                   {st.label}
                 </button>
@@ -722,10 +697,10 @@ export function ResultReviewClient({
                             q.subject === 'physics'
                               ? 'brand'
                               : q.subject === 'chemistry'
-                              ? 'green'
-                              : q.subject === 'maths'
-                              ? 'amber'
-                              : 'purple'
+                                ? 'green'
+                                : q.subject === 'maths'
+                                  ? 'amber'
+                                  : 'purple'
                           }
                         >
                           {q.subject.toUpperCase()}
@@ -773,8 +748,8 @@ export function ResultReviewClient({
                               qtm.score === 3
                                 ? 'green'
                                 : qtm.score === 2
-                                ? 'amber'
-                                : 'red'
+                                  ? 'amber'
+                                  : 'red'
                             }
                             className="text-xs font-semibold"
                           >
@@ -908,13 +883,12 @@ export function ResultReviewClient({
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-slate-500 dark:text-slate-400">Your Response:</span>
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-sm font-bold ${
-                                !q.isAttempted
+                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-sm font-bold ${!q.isAttempted
                                   ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                   : q.isCorrect
-                                  ? 'border border-emerald-500 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                                  : 'border border-red-500 bg-red-500/20 text-red-700 dark:text-red-400'
-                              }`}
+                                    ? 'border border-emerald-500 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                                    : 'border border-red-500 bg-red-500/20 text-red-700 dark:text-red-400'
+                                }`}
                             >
                               {q.isAttempted && q.response?.value !== undefined ? String(q.response.value) : 'None (Unattempted)'}
                               {q.isAttempted && (q.isCorrect ? <Check className="size-3.5" /> : <X className="size-3.5" />)}
@@ -927,8 +901,8 @@ export function ResultReviewClient({
                               {q.answer && 'value' in q.answer
                                 ? q.answer.value
                                 : q.answer && 'min' in q.answer
-                                ? `${q.answer.min} to ${q.answer.max}`
-                                : '-'}
+                                  ? `${q.answer.min} to ${q.answer.max}`
+                                  : '-'}
                               <Check className="size-3.5" />
                             </span>
                           </div>
@@ -1151,24 +1125,40 @@ export function ResultReviewClient({
                 <button
                   type="button"
                   onClick={() => setGender('Male')}
-                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
-                    gender === 'Male'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
+                  className={`group relative flex items-center justify-center gap-2.5 rounded-xl border py-2.5 px-4 text-sm font-bold transition-all shadow-xs ${gender === 'Male'
+                      ? 'border-blue-500 bg-blue-50/90 text-blue-800 ring-2 ring-blue-500/30 dark:border-blue-400 dark:bg-blue-950/70 dark:text-blue-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30'
+                    }`}
                 >
-                  Male
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-base dark:bg-blue-900/60 shadow-xs">
+                    👦
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    Male
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <circle cx="10" cy="14" r="5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 5l-5.4 5.4M19 5h-4.5M19 5v4.5" />
+                    </svg>
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setGender('Female')}
-                  className={`flex items-center justify-center rounded-xl border py-2.5 px-4 text-sm font-bold transition-all ${
-                    gender === 'Female'
-                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/30 dark:border-brand-400 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
+                  className={`group relative flex items-center justify-center gap-2.5 rounded-xl border py-2.5 px-4 text-sm font-bold transition-all shadow-xs ${gender === 'Female'
+                      ? 'border-pink-500 bg-pink-50/90 text-pink-800 ring-2 ring-pink-500/30 dark:border-pink-400 dark:bg-pink-950/70 dark:text-pink-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-pink-300 hover:bg-pink-50/40 hover:text-pink-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-pink-700 dark:hover:bg-pink-950/30'
+                    }`}
                 >
-                  Female
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100 text-base dark:bg-pink-900/60 shadow-xs">
+                    👧
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    Female
+                    <svg className="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <circle cx="12" cy="9" r="5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14v7M9.5 18h5" />
+                    </svg>
+                  </span>
                 </button>
               </div>
             </div>
@@ -1259,10 +1249,15 @@ export function ResultReviewClient({
           isOpen={showDiagnosticModal}
           onClose={() => setShowDiagnosticModal(false)}
           size="2xl"
-          title="Class X SRSMA Board Readiness Challenge Report"
+          title="Class X BOARD READINESS CHALLENGE REPORT"
         >
           <div className="max-h-[85vh] overflow-y-auto p-2 sm:p-6">
-            <BoardReadinessReport report={attemptDiagnosticReport} />
+            <BoardReadinessReport
+              report={attemptDiagnosticReport}
+              studentGender={data?.gender || gender}
+              studentDetails={data?.studentDetails}
+              isTeacherView={userRole === 'teacher'}
+            />
           </div>
         </Dialog>
       )}

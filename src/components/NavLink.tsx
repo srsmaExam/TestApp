@@ -29,12 +29,6 @@ export function NavLink({
 
   useEffect(() => {
     if (!lockKey) return;
-    if (typeof window !== 'undefined') {
-      const isSavedUnlocked = localStorage.getItem(`srsma_${lockKey}_unlocked`) === 'true';
-      if (isSavedUnlocked) {
-        setLocked(false);
-      }
-    }
 
     const handleUnlocked = () => {
       setLocked(false);

@@ -59,6 +59,10 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       isProvisional: profiles.isProvisional,
       whatsappConsent: profiles.whatsappConsent,
       city: profiles.city,
+      gender: profiles.gender,
+      board: profiles.board,
+      school: profiles.school,
+      classLevel: profiles.classLevel,
     })
     .from(profiles)
     .where(eq(profiles.id, attempt.studentId));
@@ -201,6 +205,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     attemptId: attempt.id,
     studentId: attempt.studentId,
     studentName: studentProfile?.fullName,
+    gender: studentProfile?.gender ?? null,
     testId: test.id,
     testTitle: test.title,
     attemptNo: attempt.attemptNo,
@@ -222,6 +227,14 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       subjectScores,
     },
     isReportUnlocked: hasUnlockedSolutions,
+    studentDetails: {
+      board: studentProfile?.board ?? null,
+      school: studentProfile?.school ?? null,
+      city: studentProfile?.city ?? null,
+      classLevel: studentProfile?.classLevel ?? 'X',
+      gender: studentProfile?.gender ?? null,
+      isFormFilled: Boolean(studentProfile?.whatsappConsent && studentProfile?.city),
+    },
     questions: reviewItems,
   });
 });

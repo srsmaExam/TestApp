@@ -92,7 +92,7 @@ export async function StudentAboutView() {
           <div className="lg:col-span-7 relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-md group dark:border-slate-800">
             <div className="relative aspect-video w-full overflow-hidden">
               <Image
-                src="/brand/smart_classroom.jpg"
+                src="/brand/smart_classroom.webp"
                 alt="Shri Ram Smart Minds Academy - Air-Conditioned Smart Classroom"
                 fill
                 priority

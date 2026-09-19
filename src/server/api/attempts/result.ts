@@ -121,9 +121,17 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .where(inArray(questions.id, qIds));
 
   const userAnswers = await db
-    .select()
+    .select({
+      questionId: attemptAnswers.questionId,
+      response: attemptAnswers.response,
+      state: attemptAnswers.state,
+      isCorrect: attemptAnswers.isCorrect,
+      marksAwarded: attemptAnswers.marksAwarded,
+      timeSpentMs: attemptAnswers.timeSpentMs,
+    })
     .from(attemptAnswers)
     .where(eq(attemptAnswers.attemptId, attemptId));
+
 
   const qMap = new Map(fullQuestions.map((q) => [q.id, q]));
   const ansMap = new Map(userAnswers.map((a) => [a.questionId, a]));

@@ -1,5 +1,4 @@
 import { getDb, closeDb } from '../src/db/client';
-import { sql } from 'drizzle-orm';
 
 async function main() {
   const db = await getDb();

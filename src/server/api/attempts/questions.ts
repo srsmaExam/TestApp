@@ -14,7 +14,16 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   const { id: attemptId } = await params;
   const db = await getDb();
 
-  const [attempt] = await db.select().from(attempts).where(eq(attempts.id, attemptId));
+  const [attempt] = await db
+    .select({
+      id: attempts.id,
+      testId: attempts.testId,
+      studentId: attempts.studentId,
+      questionOrder: attempts.questionOrder,
+      optionOrders: attempts.optionOrders,
+    })
+    .from(attempts)
+    .where(eq(attempts.id, attemptId));
   if (!attempt) {
     throw new HttpError(404, 'not_found', 'Attempt not found');
   }
@@ -50,9 +59,16 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .where(inArray(questions.id, qIds));
 
   const answers = await db
-    .select()
+    .select({
+      questionId: attemptAnswers.questionId,
+      response: attemptAnswers.response,
+      state: attemptAnswers.state,
+      timeSpentMs: attemptAnswers.timeSpentMs,
+      visitCount: attemptAnswers.visitCount,
+    })
     .from(attemptAnswers)
     .where(eq(attemptAnswers.attemptId, attemptId));
+
 
   const questionsMap = new Map(rawQuestions.map((q) => [q.id, q]));
   const answersMap = new Map(answers.map((a) => [a.questionId, a]));

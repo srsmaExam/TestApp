@@ -236,7 +236,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
        COALESCE(q.topic, '-') as topic,
        q.type,
        q.difficulty,
-       q.body,
+       SUBSTRING(q.body FROM 1 FOR 120) as body,
        q.expected_time_s,
        COUNT(aa.attempt_id)::int as times_served,
        COUNT(aa.attempt_id) FILTER (WHERE aa.response IS NOT NULL)::int as times_attempted,
@@ -248,7 +248,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
        AND NOT EXISTS (SELECT 1 FROM profiles pp WHERE pp.id = a.student_id AND pp.is_provisional = true)
      LEFT JOIN attempt_answers aa ON aa.attempt_id = a.id AND aa.question_id = tq.question_id
      WHERE tq.test_id = $1
-     GROUP BY tq.question_id, tq.position, q.subject, q.chapter, q.topic, q.type, q.difficulty, q.body, q.expected_time_s
+     GROUP BY tq.question_id, tq.position, q.subject, q.chapter, q.topic, q.type, q.difficulty, SUBSTRING(q.body FROM 1 FOR 120), q.expected_time_s
      ORDER BY tq.position ASC`,
     [testId],
   );

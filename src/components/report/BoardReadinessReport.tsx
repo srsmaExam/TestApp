@@ -380,7 +380,7 @@ export function BoardReadinessReport({
   onGoToSolutions,
 }: BoardReadinessReportProps) {
   const isMale = (studentGender || report.studentGender) === 'Male';
-  const avatarSrc = isMale ? '/board-challenge/Male.png' : '/board-challenge/Female.png';
+  const avatarSrc = isMale ? '/board-challenge/Male.webp' : '/board-challenge/Female.webp';
 
   const [activeTab, setActiveTab] = useState<'all' | 'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6'>('all');
   const [copied, setCopied] = useState(false);
@@ -2483,7 +2483,7 @@ export function BoardReadinessReport({
                   <div className="flex flex-col items-center justify-end">
                     <div className="relative h-20 sm:h-22 w-24 flex items-end justify-center mb-1">
                       <img
-                        src="/board-challenge/faculty_amal.png"
+                        src="/board-challenge/faculty_amal.webp"
                         alt="Mr. Amal M Das"
                         className="h-full w-auto object-contain object-bottom drop-shadow-sm"
                       />
@@ -2508,7 +2508,7 @@ export function BoardReadinessReport({
                   <div className="flex flex-col items-center justify-end">
                     <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
                       <img
-                        src="/board-challenge/faculty_brajesh.png"
+                        src="/board-challenge/faculty_brajesh.webp"
                         alt="Mr. Brajesh"
                         className="size-full object-cover object-center"
                       />
@@ -2530,7 +2530,7 @@ export function BoardReadinessReport({
                   <div className="flex flex-col items-center justify-end">
                     <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
                       <img
-                        src="/board-challenge/faculty_ninad.png"
+                        src="/board-challenge/faculty_ninad.webp"
                         alt="Mr. Ninad"
                         className="size-full object-cover object-center"
                       />
@@ -2552,7 +2552,7 @@ export function BoardReadinessReport({
                   <div className="flex flex-col items-center justify-end">
                     <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
                       <img
-                        src="/board-challenge/faculty_thirumala.png"
+                        src="/board-challenge/faculty_thirumala.webp"
                         alt="Mr. Thirumala"
                         className="size-full object-cover object-center"
                       />
@@ -3188,7 +3188,7 @@ export function BoardReadinessReport({
         >
           <div className="max-h-[75vh] overflow-y-auto p-1">
             <img
-              src="/board-challenge/brochure_full_300dpi.png"
+              src="/board-challenge/brochure_full_300dpi.webp"
               alt="SRSMA Board Mastery Course Brochure"
               className="w-full rounded-lg object-contain shadow-md"
             />

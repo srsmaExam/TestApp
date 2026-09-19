@@ -35,7 +35,7 @@ export const metadata = {
   openGraph: {
     title: 'Board Readiness Challenge | Shri Ram Smart Minds Academy',
     description: 'Are you Board Ready? 20 Questions | 20 Minutes in Mathematics & Science for Class 10 Students.',
-    images: [{ url: '/board-challenge/pamphlet_full_hd.png' }],
+    images: [{ url: '/board-challenge/pamphlet_full_hd.webp' }],
   },
 };
 
@@ -51,7 +51,7 @@ export default function BoardChallengePage() {
       {/* Background with Authentic Science Pattern & Navy Gradient */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <Image
-          src="/board-challenge/hero_bg.png"
+          src="/board-challenge/hero_bg.webp"
           alt=""
           fill
           priority
@@ -202,7 +202,7 @@ export default function BoardChallengePage() {
                 <div className="relative z-10 mx-auto flex w-full max-w-[280px] justify-center xs:max-w-[320px] sm:max-w-[380px] md:max-w-none">
                   <div className="relative [mask-image:linear-gradient(to_bottom,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_82%,transparent_100%)]">
                     <Image
-                      src="/board-challenge/girl.png"
+                      src="/board-challenge/girl.webp"
                       alt="Class 10 Student holding Mathematics and Science textbooks for Board Readiness Challenge"
                       width={971}
                       height={1484}

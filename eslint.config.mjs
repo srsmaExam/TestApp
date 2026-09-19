@@ -39,6 +39,13 @@ export default tseslint.config(
     languageOptions: {
       globals: { console: 'readonly', process: 'readonly', __dirname: 'readonly' },
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
   },
 
   {

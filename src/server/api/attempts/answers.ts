@@ -34,11 +34,22 @@ const handler = withApi<Ctx>(async (req, { params }) => {
   const { id: attemptId } = await params;
   const db = await getDb();
 
-  const [attempt] = await db.select().from(attempts).where(eq(attempts.id, attemptId));
+  const [attempt] = await db
+    .select({
+      id: attempts.id,
+      studentId: attempts.studentId,
+      status: attempts.status,
+      deadlineAt: attempts.deadlineAt,
+      timeExtensionsCount: attempts.timeExtensionsCount,
+      questionOrder: attempts.questionOrder,
+    })
+    .from(attempts)
+    .where(eq(attempts.id, attemptId));
   if (!attempt) throw new HttpError(404, 'not_found', 'Attempt not found');
   if (attempt.studentId !== session.userId) {
     throw new HttpError(403, 'forbidden', 'You cannot save answers for another student’s attempt.');
   }
+
 
   // Check status
   if (attempt.status !== 'in_progress') {

@@ -1,0 +1,23 @@
+# Vercel Deployment Ignore File
+# Prevents uploading local database files, offline papers, documents, and heavy scripts
+
+# Local database runtime data (48MB+)
+data/
+LocalPaper/
+
+# Large binary documents at repository root
+*.docx
+*.pdf
+*.xlsx
+
+# Markdown documentation files
+*.md
+!README.md
+
+# Local scripts & developer utilities
+scripts/
+dev_out.log
+
+# Environment and git
+.git
+.env.production.example

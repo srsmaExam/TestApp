@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { desc, eq, sql } from 'drizzle-orm';
-import { PDFDocument } from 'pdf-lib';
 import { apiTeacher } from '@/lib/auth';
 import { HttpError, isUniqueViolation, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
@@ -43,13 +42,15 @@ export const POST = withApi(async (req) => {
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
-  let pdfPages: number | null = null;
+  let pdfPages: number;
   try {
+    const { PDFDocument } = await import('pdf-lib');
     const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
     pdfPages = doc.getPageCount();
   } catch {
     throw new HttpError(422, 'invalid_pdf', 'Could not read this file as a PDF.');
   }
+
 
   const db = await getDb();
 

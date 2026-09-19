@@ -547,7 +547,7 @@ export function PdfCropViewer({
         }
       },
       'image/webp',
-      0.92,
+      0.8,
     );
   };
 

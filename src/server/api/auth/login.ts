@@ -33,7 +33,7 @@ export const POST = withApi(async (req) => {
     }
 
     const { phone, countryCode, fullName, classLevel } = parsed.data;
-    const { fullPhone, cleanDigits } = normalizePhone(countryCode, phone);
+    const { cleanDigits } = normalizePhone(countryCode, phone);
 
     const byPhone = rateLimit(`login:p:${cleanDigits}`, PER_TARGET_LIMIT, PER_TARGET_WINDOW_MS);
     const byClient = rateLimit(`login:c:${ip}`, PER_CLIENT_LIMIT, PER_CLIENT_WINDOW_MS);

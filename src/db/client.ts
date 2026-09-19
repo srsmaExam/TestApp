@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
 import { drizzle as drizzleNodePg } from 'drizzle-orm/node-postgres';
-import { drizzle as drizzlePglite, type PgliteDatabase } from 'drizzle-orm/pglite';
+import type { PgliteDatabase } from 'drizzle-orm/pglite';
 import * as schema from './schema';
 import { MIGRATIONS_DIR, PGDATA_DIR, ensureDataDirs } from '@/lib/paths';
 import { sweepExpiredAttempts } from '@/lib/sweep';
@@ -12,8 +12,8 @@ import { withDbLock } from '@/lib/db-lock';
 const { Pool } = pg;
 
 export type ClientQueryable = {
-  query: <T = any>(text: string, params?: any[]) => Promise<{ rows: T[] }>;
-  exec?: (sql: string) => Promise<any>;
+  query: <T = unknown>(text: string, params?: unknown[]) => Promise<{ rows: T[] }>;
+  exec?: (sql: string) => Promise<unknown>;
 };
 
 export type Db = PgliteDatabase<typeof schema> & {
@@ -84,12 +84,16 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
     return { client: pool, db };
   }
 
-  // Fallback: Local development with embedded PGlite
+  // Fallback: Local development with embedded PGlite (dynamically imported so it is never bundled in production serverless)
   ensureDataDirs();
-  const pgInstance = await PGlite.create(PGDATA_DIR);
+  const { PGlite: PGliteClass } = await import('@electric-sql/pglite');
+  const { drizzle: drizzlePglite } = await import('drizzle-orm/pglite');
+
+  const pgInstance = await PGliteClass.create(PGDATA_DIR);
   await runMigrations(pgInstance);
   const db = drizzlePglite(pgInstance, { schema }) as Db;
   db.$client = pgInstance;
+
 
   await sweepExpiredAttempts(db).catch((err) => console.error('[sweep] initial run failed', err));
 
@@ -180,10 +184,11 @@ export async function closeDb(): Promise<void> {
   if (!globalForDb.__vtpDb) return;
   const { client } = await globalForDb.__vtpDb;
   globalForDb.__vtpDb = undefined;
-  if ('close' in client && typeof (client as any).close === 'function') {
-    await (client as any).close();
-  } else if ('end' in client && typeof (client as any).end === 'function') {
-    await (client as any).end();
+  const candidate = client as { close?: () => Promise<unknown>; end?: () => Promise<unknown> };
+  if (typeof candidate.close === 'function') {
+    await candidate.close();
+  } else if (typeof candidate.end === 'function') {
+    await candidate.end();
   }
   globalForDb.__vtpPgPool = undefined;
 }

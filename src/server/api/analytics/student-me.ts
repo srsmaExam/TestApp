@@ -16,7 +16,7 @@ export const GET = withApi(async (req) => {
 
   let targetUserId = session.userId;
   let targetStudentName = session.fullName || 'Student';
-  let isReportUnlocked = false;
+  let isReportUnlocked: boolean;
 
   let targetGender: string | null = null;
 

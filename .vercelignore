@@ -14,8 +14,7 @@ LocalPaper/
 *.md
 !README.md
 
-# Local scripts & developer utilities
-scripts/
+# Dev logs
 dev_out.log
 
 # Environment and git

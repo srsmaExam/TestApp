@@ -26,8 +26,9 @@ import {
   HelpCircle,
   BarChart3,
   GraduationCap,
+  ArrowRight,
 } from 'lucide-react';
-import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Dialog, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import type {
   DiagnosticEvaluationResult,
   PreparationLevel,
@@ -52,6 +53,8 @@ interface BoardReadinessReportProps {
   studentDetails?: StudentProfileDetails | null;
   onRetakeOrBrowse?: () => void;
   isTeacherView?: boolean;
+  showPrintButton?: boolean;
+  onGoToSolutions?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,9 +126,16 @@ function EcommerceStarRating({
   align = 'end',
 }: {
   rating: number;
-  align?: 'start' | 'end' | 'center';
+  align?: 'start' | 'end' | 'center' | 'responsive';
 }) {
-  const alignClass = align === 'start' ? 'justify-start' : align === 'center' ? 'justify-center' : 'justify-end';
+  const alignClass =
+    align === 'responsive'
+      ? 'justify-start sm:justify-end'
+      : align === 'start'
+        ? 'justify-start'
+        : align === 'center'
+          ? 'justify-center'
+          : 'justify-end';
 
   return (
     <div className={`inline-flex flex-nowrap items-center ${alignClass} gap-1 sm:gap-1.5 shrink-0 whitespace-nowrap`}>
@@ -366,13 +376,16 @@ export function BoardReadinessReport({
   studentDetails,
   onRetakeOrBrowse,
   isTeacherView = false,
+  showPrintButton = isTeacherView,
+  onGoToSolutions,
 }: BoardReadinessReportProps) {
   const isMale = (studentGender || report.studentGender) === 'Male';
   const avatarSrc = isMale ? '/board-challenge/Male.png' : '/board-challenge/Female.png';
 
-  const [activeTab, setActiveTab] = useState<'all' | 'page1' | 'page2' | 'page3' | 'page4'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6'>('all');
   const [copied, setCopied] = useState(false);
   const [showRawTextModal, setShowRawTextModal] = useState(false);
+  const [showBrochureModal, setShowBrochureModal] = useState(false);
   const [revisitFilter, setRevisitFilter] = useState<'all' | RevisitCategory>('all');
   const [auditFilter, setAuditFilter] = useState<'all' | 'incorrect' | 'overtime' | 'revisit'>('all');
 
@@ -387,7 +400,10 @@ export function BoardReadinessReport({
   };
 
   const handlePrint = () => {
-    window.print();
+    setActiveTab('all');
+    setTimeout(() => {
+      window.print();
+    }, 120);
   };
 
   // Category & Prep Level styling helpers
@@ -590,7 +606,7 @@ export function BoardReadinessReport({
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
             >
-              {isTeacherView ? 'All (1–4)' : 'All (1–3)'}
+              {isTeacherView ? 'All (1–6)' : 'All (1–5)'}
             </button>
             <button
               type="button"
@@ -622,17 +638,37 @@ export function BoardReadinessReport({
             >
               P3 • Priorities
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('page4')}
+              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page4'
+                ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+            >
+              P4 • Next Steps
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('page5')}
+              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page5'
+                ? 'bg-brand-600 text-white shadow-xs font-black'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+            >
+              P5 • Support
+            </button>
             {isTeacherView && (
               <button
                 type="button"
-                onClick={() => setActiveTab('page4')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 rounded-lg px-2 py-1 transition ${activeTab === 'page4'
+                onClick={() => setActiveTab('page6')}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 rounded-lg px-2 py-1 transition ${activeTab === 'page6'
                   ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
                   : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
                   }`}
               >
                 <Calculator className="size-3" />
-                P4 (Dev)
+                P6 • Audit
               </button>
             )}
           </div>
@@ -643,10 +679,12 @@ export function BoardReadinessReport({
               {copied ? 'Copied' : 'Copy Text'}
             </Button>
 
-            <Button variant="primary" size="sm" onClick={handlePrint} className="bg-brand-600 hover:bg-brand-500 text-xs shadow-xs font-bold">
-              <Printer className="mr-1.5 size-3.5" />
-              Print / PDF
-            </Button>
+            {showPrintButton && (
+              <Button variant="primary" size="sm" onClick={handlePrint} className="bg-brand-600 hover:bg-brand-500 text-xs shadow-xs font-bold">
+                <Printer className="mr-1.5 size-3.5" />
+                Print / PDF
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -654,39 +692,42 @@ export function BoardReadinessReport({
       {/* =========================================================================
           PAGE 1: BOARD READINESS CHALLENGE REPORT
           ========================================================================= */}
-      {(activeTab === 'all' || activeTab === 'page1') && (
-        <section className="report-page-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900">
-          {/* Header watermark & Brand bar */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-                  <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-                  Shri Ram Smart Minds Academy
-                </span>
-                <span className="rounded bg-brand-50 border border-brand-200/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-brand-700 dark:bg-brand-950/40 dark:border-brand-800 dark:text-brand-300">
-                  Diagnostic Evaluation
-                </span>
-                {studentDetails?.isFormFilled ? (
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    {studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} • {studentDetails.board || 'CBSE'}
-                  </span>
-                ) : isTeacherView ? (
-                  <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                    ⚠️ Unlock Form: Not Filled by Student
-                  </span>
-                ) : null}
-              </div>
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
-                BOARD READINESS CHALLENGE REPORT
-              </h2>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
-                PAGE 1 OF 3
+      <section
+        className={`report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
+          activeTab === 'all' || activeTab === 'page1' ? 'block' : 'hidden print:block'
+        }`}
+      >
+        {/* Header watermark & Brand bar */}
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+                <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
+                Shri Ram Smart Minds Academy
               </span>
+              <span className="rounded bg-brand-50 border border-brand-200/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-brand-700 dark:bg-brand-950/40 dark:border-brand-800 dark:text-brand-300">
+                Diagnostic Evaluation
+              </span>
+              {studentDetails?.isFormFilled ? (
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} • {studentDetails.board || 'CBSE'}
+                </span>
+              ) : isTeacherView ? (
+                <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                  ⚠️ Unlock Form: Not Filled by Student
+                </span>
+              ) : null}
             </div>
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+              BOARD READINESS CHALLENGE REPORT
+            </h2>
           </div>
+          <div className="text-right shrink-0">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+              {isTeacherView ? 'PAGE 1 OF 6' : 'PAGE 1 OF 5'}
+            </span>
+          </div>
+        </div>
 
           {/* Teacher View Notice if student has not filled form */}
           {isTeacherView && !studentDetails?.isFormFilled && (
@@ -706,15 +747,17 @@ export function BoardReadinessReport({
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
               <div className="space-y-3 w-full">
                 {/* Mobile Mascot Avatar in header (< sm) */}
-                <div className="flex items-center gap-3 sm:hidden">
-                  <img
-                    src={avatarSrc}
-                    alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
-                    className="size-14 rounded-full border-2 border-brand-500/30 bg-white object-contain p-0.5 shadow-sm shrink-0 dark:bg-slate-800"
-                  />
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-brand-600 dark:text-brand-400">
-                      SRSMA Academic Mentorship
+                <div className="flex items-center gap-3.5 sm:hidden">
+                  <div className="relative size-24 shrink-0 rounded-2xl border-2 border-brand-500/40 bg-gradient-to-br from-white to-brand-50/50 p-1.5 shadow-md dark:from-slate-800 dark:to-slate-900 dark:border-brand-400/40 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={avatarSrc}
+                      alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
+                      className="size-full object-contain"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="inline-block rounded-md bg-brand-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-700 dark:bg-brand-400/10 dark:text-brand-300">
+                      SRSMA Mentorship
                     </span>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
                       Dear {report.studentName},
@@ -972,7 +1015,7 @@ export function BoardReadinessReport({
                       Rapid Response Alert
                     </span>
                     <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      Response time &lt; 20s
+                      Response time &lt; 8s
                     </span>
                   </div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
@@ -990,7 +1033,7 @@ export function BoardReadinessReport({
                         </span>
                       ))}
                     </span>{' '}
-                    (responses were submitted in less than 20 seconds).
+                    (responses were submitted in less than 8 seconds).
                   </p>
                 </div>
               </div>
@@ -1014,29 +1057,31 @@ export function BoardReadinessReport({
             </div>
           </div>
         </section>
-      )}
 
       {/* =========================================================================
           PAGE 2: YOUR STRENGTHS
           ========================================================================= */}
-      {(activeTab === 'all' || activeTab === 'page2') && (
-        <section className="report-page-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-            <div>
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-                <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-                Shri Ram Smart Minds Academy
-              </span>
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
-                PAGE 2: YOUR STRENGTHS
-              </h2>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
-                PAGE 2 OF 3
-              </span>
-            </div>
+      <section
+        className={`report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
+          activeTab === 'all' || activeTab === 'page2' ? 'block' : 'hidden print:block'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
+              Shri Ram Smart Minds Academy
+            </span>
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+              PAGE 2: YOUR STRENGTHS
+            </h2>
           </div>
+          <div className="text-right shrink-0">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+              {isTeacherView ? 'PAGE 2 OF 6' : 'PAGE 2 OF 5'}
+            </span>
+          </div>
+        </div>
 
           {/* Top 3 Strengths */}
           <div className="mt-6 space-y-3">
@@ -1133,7 +1178,7 @@ export function BoardReadinessReport({
                 <TableHeader>
                   <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
                     <TableHead className="text-xs font-bold uppercase tracking-wider py-3 px-3 sm:px-4 whitespace-nowrap">Performance Pattern</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider py-3 px-3 sm:px-4 whitespace-nowrap">Rating (up to 5 Stars)</TableHead>
+                    <TableHead className="text-left sm:text-right text-xs font-bold uppercase tracking-wider py-3 px-3 sm:px-4 whitespace-nowrap">Rating (up to 5 Stars)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1163,8 +1208,8 @@ export function BoardReadinessReport({
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="py-3 px-3 sm:px-4 text-right whitespace-nowrap shrink-0">
-                            <EcommerceStarRating rating={starRating} />
+                          <TableCell className="py-3 px-3 sm:px-4 text-left sm:text-right whitespace-nowrap shrink-0">
+                            <EcommerceStarRating rating={starRating} align="responsive" />
                           </TableCell>
                         </TableRow>
                       );
@@ -1192,29 +1237,31 @@ export function BoardReadinessReport({
             </div>
           </div>
         </section>
-      )}
 
       {/* =========================================================================
           PAGE 3: WHERE SHOULD YOU IMPROVE?
           ========================================================================= */}
-      {(activeTab === 'all' || activeTab === 'page3') && (
-        <section className="report-page-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-            <div>
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-                <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-                Shri Ram Smart Minds Academy
-              </span>
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
-                PAGE 3 — WHERE SHOULD YOU IMPROVE?
-              </h2>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
-                PAGE 3 OF 3
-              </span>
-            </div>
+      <section
+        className={`report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
+          activeTab === 'all' || activeTab === 'page3' ? 'block' : 'hidden print:block'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
+              Shri Ram Smart Minds Academy
+            </span>
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+              PAGE 3 — WHERE SHOULD YOU IMPROVE?
+            </h2>
           </div>
+          <div className="text-right shrink-0">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+              {isTeacherView ? 'PAGE 3 OF 6' : 'PAGE 3 OF 5'}
+            </span>
+          </div>
+        </div>
 
           {/* Priority Gaps */}
           {(() => {
@@ -1571,13 +1618,1014 @@ export function BoardReadinessReport({
             </div>
           </div>
         </section>
-      )}
 
       {/* =========================================================================
-          PAGE 4: DIAGNOSTIC AUDIT & STEP-BY-STEP CALCULATIONS (DEVELOPMENT ONLY)
+          PAGE 4: YOUR NEXT STEPS (ADAPTED BY PREPARATION LEVEL)
           ========================================================================= */}
-      {isTeacherView && (activeTab === 'all' || activeTab === 'page4') && report.calculationSteps && (
-        <section className="report-page-container relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900">
+      <section
+        className={`report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
+          activeTab === 'all' || activeTab === 'page4' ? 'block' : 'hidden print:block'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
+              Shri Ram Smart Minds Academy
+            </span>
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+              PAGE 4 — YOUR NEXT STEPS
+            </h2>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+              {isTeacherView ? 'PAGE 4 OF 6' : 'PAGE 4 OF 5'}
+            </span>
+          </div>
+        </div>
+
+        {/* Personalized Preparation Level Action Blueprint */}
+        {(() => {
+          const prepNorm = String(report.levelOfPreparation || '').trim().toLowerCase();
+          const isHigh = prepNorm.includes('high achievement') || prepNorm === 'advanced' || (report.briScore ?? 0) >= 80;
+          const isMed = !isHigh && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || (report.briScore ?? 0) >= 60);
+
+          if (isHigh) {
+            return (
+              <div className="mt-6 space-y-4">
+                {/* Hero Header for High Potential */}
+                <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/5 p-4 sm:p-5 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:to-teal-950/20">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs">
+                          🏆 Level of Preparation: High Achievement Potential
+                        </span>
+                        <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                          BRI: {report.briScore}/100
+                        </span>
+                      </div>
+                      <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                        HOW TO MOVE FROM STRONG TO EXCELLENT
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                        Your diagnostic performance confirms strong grasp across standard chapters. To reach the top tier and secure 95%+ in Boards, your strategic focus must now shift towards unfamiliar problem varieties, cross-chapter synthesis, and high execution speed under timed pressure.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5 Action Points */}
+                <div className="space-y-3">
+                  {/* ① Challenge yourself */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xs">
+                        ①
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Challenge yourself
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Do not spend all your practice time on questions you can already solve. Regularly include unfamiliar and higher-order problems.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-100/80 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
+                            ★ High-Impact: Devote 40%+ of study time to unfamiliar &amp; Competency-based problems
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ② Practise mixed problems */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xs">
+                        ②
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Practise mixed problems
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Combine concepts from different chapters so that you practise identifying the method, not just applying a memorised formula.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Multi-Concept Synthesis • Identification over Memorisation
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ③ Analyse mistakes deeply */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xs">
+                        ③
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Analyse mistakes deeply
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          When you make an error, identify exactly where your reasoning broke down and re-solve the problem independently.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                            🔍 Root Cause Pinpointing: Never stop at reading the solution — re-derive independently
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ④ Build examination efficiency */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xs">
+                        ④
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Build examination efficiency
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Continue timed practice so that your accuracy remains high even when working under examination pressure.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            ⚡ Timed Drills: High Pacing Accuracy + Zero Unforced Errors
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ⑤ Use Board preparation strategically */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xs">
+                        ⑤
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Use Board preparation strategically
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Secure all standard Board-level questions first, then use additional time to strengthen case-based, application-based and higher-order questions.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                            🎯 100% Standard Foundation Locked + High-Yield Competency Focus
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (isMed) {
+            return (
+              <div className="mt-6 space-y-4">
+                {/* Hero Header for Conceptually Strong */}
+                <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/5 p-4 sm:p-5 dark:border-blue-800/60 dark:from-blue-950/40 dark:to-indigo-950/20">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-blue-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs">
+                          🎯 Level of Preparation: Conceptually Strong
+                        </span>
+                        <span className="text-xs font-bold text-blue-800 dark:text-blue-300">
+                          BRI: {report.briScore}/100
+                        </span>
+                      </div>
+                      <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                        TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                        You have built solid conceptual understanding across core topics. The next critical leap is turning that understanding into dependable exam-style problem solving, higher accuracy under timer conditions, and mastery of multi-step questions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5 Action Points */}
+                <div className="space-y-3">
+                  {/* ① Move beyond direct questions */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-blue-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-black text-sm shadow-xs">
+                        ①
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Move beyond direct questions
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          For every chapter you study, include application-based and multi-step questions—not only straightforward exercises.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-blue-100/80 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                            Action: Complement textbook drills with scenario-based &amp; application questions
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ② Rework every important mistake */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-blue-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-black text-sm shadow-xs">
+                        ②
+                      </span>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Rework every important mistake
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          After a test, first attempt the incorrect question again without seeing the solution. Then identify whether the issue was:
+                        </p>
+                        <div className="flex flex-wrap gap-2 pt-0.5">
+                          <span className="rounded-md border border-rose-300 bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+                            • Concept
+                          </span>
+                          <span className="rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                            • Application
+                          </span>
+                          <span className="rounded-md border border-purple-300 bg-purple-50 px-2 py-0.5 text-xs font-bold text-purple-800 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+                            • Accuracy
+                          </span>
+                          <span className="rounded-md border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+                            • Interpretation
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ③ Practise consistently */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-blue-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-black text-sm shadow-xs">
+                        ③
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Practise consistently
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          A manageable amount of focused practice every day is more valuable than occasional long study sessions.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Consistency Principle: 5–8 high-quality problems daily builds compounding confidence
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ④ Test yourself every 1–2 weeks */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-blue-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-black text-sm shadow-xs">
+                        ④
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Test yourself every 1–2 weeks
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Use mixed, timed questions to check whether your improvement is carrying across chapters.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Pacing Cadence: 30–45 min bi-weekly mixed chapter assessments
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ⑤ Shift towards Board-style practice */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-blue-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-black text-sm shadow-xs">
+                        ⑤
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Shift towards Board-style practice
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          As the examination approaches, progressively increase your practice of sample papers, case-based questions and mixed-chapter questions.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                            Board Target: Full sample papers, Assertion-Reason, and Case Study formats
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Basic (< 60%)
+          return (
+            <div className="mt-6 space-y-4">
+              {/* Hero Header for Basic */}
+              <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 p-4 sm:p-5 dark:border-amber-800/60 dark:from-amber-950/40 dark:to-orange-950/20">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-amber-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-xs">
+                        ⚡ Level of Preparation: Basic
+                      </span>
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                        BRI: {report.briScore}/100
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                      TURN YOUR GAPS INTO PROGRESS
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                      A lower starting score is not a setback—it is your clearest roadmap to improvement. By addressing fundamental ideas before memorising formulas, you will see rapid gains in speed, understanding, and exam confidence.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5 Action Points */}
+              <div className="space-y-3">
+                {/* ① Strengthen the basics */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                      ①
+                    </span>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Strengthen the basics
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Revisit the concepts behind the questions you could not solve. Make sure you can explain the idea before memorising the method.
+                      </p>
+                      <div className="pt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          Golden Principle: Understand concepts from first principles before memorising steps
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ② Practise a few questions every day */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                      ②
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Practise a few questions every day
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Use a simple progression:
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                        <span className="rounded-lg bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          Basic
+                        </span>
+                        <span className="text-slate-400">→</span>
+                        <span className="rounded-lg bg-blue-100 px-3 py-1 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          Standard
+                        </span>
+                        <span className="text-slate-400">→</span>
+                        <span className="rounded-lg bg-purple-100 px-3 py-1 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          Application
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Focus on quality and consistency rather than solving a very large number of questions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ③ Keep an Error Notebook */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                      ③
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Keep an Error Notebook
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        For every important mistake, record:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                1
+                              </span>
+                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                What did I get wrong?
+                              </span>
+                            </div>
+                            <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                              Identify the exact misstep or incorrect formula.
+                            </span>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                2
+                              </span>
+                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                Why?
+                              </span>
+                            </div>
+                            <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                              Did I misread, rush, or miss the fundamental idea?
+                            </span>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                3
+                              </span>
+                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                What is the correct approach?
+                              </span>
+                            </div>
+                            <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                              Write down the proper reasoning and method.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ④ Test yourself regularly */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                      ④
+                    </span>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Test yourself regularly
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Take a short mixed test every 1–2 weeks and track whether the same mistakes are recurring.
+                      </p>
+                      <div className="pt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          Frequency: 15–20 question short mixed test every 7–14 days
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ⑤ Master your prescribed textbook */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                      ⑤
+                    </span>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Master your prescribed textbook
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Become confident with examples and exercises before moving extensively to additional or advanced material.
+                      </p>
+                      <div className="pt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                          Priority Rule: 100% textbook example &amp; exercise mastery first
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Official Academic Seal & Certification Footer */}
+        <div className="mt-8 border-t border-slate-200/80 dark:border-slate-800 pt-5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400 font-black text-xs border border-brand-200/50">
+              ✓
+            </span>
+            <div>
+              Personalized Growth Blueprint for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X Board Readiness Challenge'}
+            </div>
+          </div>
+          <div className="text-center sm:text-right font-semibold text-slate-600 dark:text-slate-400">
+            Shri Ram Smart Minds Academy • Academic Evaluation Office
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE
+          ========================================================================= */}
+      <section
+        className={`report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
+          activeTab === 'all' || activeTab === 'page5' ? 'block' : 'hidden print:block'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
+              Shri Ram Smart Minds Academy
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                PAGE 5 — NEED STRUCTURED SUPPORT?
+              </h2>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+              {isTeacherView ? 'PAGE 5 OF 6' : 'PAGE 5 OF 5'}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {/* Top Banner: Why This Course? */}
+          <div className="relative overflow-hidden rounded-2xl border border-amber-400/50 bg-slate-950 p-5 text-white shadow-md">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-1.5 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-amber-400 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-slate-950">
+                    Why This Course?
+                  </span>
+                  <span className="text-xs font-bold text-amber-300">
+                    SRSMA Class 10 Board Mastery Course
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Knowing a chapter is not enough. Students must learn to solve unfamiliar, application-based questions.
+                </h3>
+                <p className="text-xs text-amber-200 font-medium italic">
+                  SRSMA Way: From knowing the chapter to confidently solving what comes next.
+                </p>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBrochureModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-black text-slate-950 shadow-sm transition hover:bg-amber-300"
+                >
+                  <FileText className="size-4" />
+                  View Full Brochure Flyer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Two-Column Grid matching brochure layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left Column (5 cols) */}
+            <div className="lg:col-span-5 space-y-3.5">
+              {/* The Class X Gap */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  The Class X Gap
+                </h4>
+                {/* Visual Pipeline */}
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold text-center">
+                  <div className="rounded-lg bg-amber-300/80 text-slate-900 p-1.5 flex items-center justify-center">
+                    School teaches the chapter
+                  </div>
+                  <div className="rounded-lg bg-amber-200/80 text-slate-900 p-1.5 flex items-center justify-center">
+                    Basic examples understood
+                  </div>
+                  <div className="rounded-lg bg-slate-700 text-white p-1.5 flex items-center justify-center">
+                    Routine questions done
+                  </div>
+                  <div className="rounded-lg bg-slate-950 text-amber-300 p-1.5 flex items-center justify-center border border-amber-400">
+                    Unfamiliar feels difficult
+                  </div>
+                </div>
+
+                {/* Quotes */}
+                <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 italic">
+                  <p className="rounded-lg bg-white p-1.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950/60">
+                    “I know the formula… but don’t know when to use it.”
+                  </p>
+                  <p className="rounded-lg bg-white p-1.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950/60">
+                    “I understood the chapter… but can’t solve a new question.”
+                  </p>
+                  <p className="rounded-lg bg-white p-1.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950/60">
+                    “I can score in familiar tests… but lose marks in tougher papers.”
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-950 p-2 text-center text-xs font-black text-amber-400 border border-amber-400/50">
+                  SRSMA BOARD MASTERY COURSE CLOSES THIS GAP!
+                </div>
+              </div>
+
+              {/* Ideal For Students Who */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-950 p-4 text-white space-y-2.5 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="size-1.5 rounded-full bg-amber-400" />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
+                    This Programme Is Ideal For Students Who:
+                  </h4>
+                </div>
+                <ul className="space-y-1 text-xs text-slate-200">
+                  <li className="flex items-center gap-2">
+                    <Check className="size-3.5 text-amber-400 shrink-0" />
+                    <span>Have conceptual gaps</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-3.5 text-amber-400 shrink-0" />
+                    <span>Want to improve Board marks</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-3.5 text-amber-400 shrink-0" />
+                    <span>Find Maths or Science difficult</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-3.5 text-amber-400 shrink-0" />
+                    <span>Want structured preparation outside school</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-3.5 text-amber-400 shrink-0" />
+                    <span>Want stronger fundamentals before Class XI</span>
+                  </li>
+                </ul>
+                <div className="rounded-lg bg-amber-400/20 border border-amber-400/40 p-2 text-[11px] font-bold text-amber-300 text-center">
+                  Especially valuable for students who plan to choose MPC / BiPC after Class X
+                </div>
+              </div>
+
+              {/* The Four Pillars */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  The Four Pillars Of This Course
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                      <Brain className="size-3.5 text-rose-500 shrink-0" />
+                      <span>Concept Clarity</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                      Identify weak fundamentals and rebuild them from the ground up.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                      <BookOpen className="size-3.5 text-blue-500 shrink-0" />
+                      <span>Deep Practice</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                      Move from basic → application → higher-order → Board-level questions.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                      <Target className="size-3.5 text-amber-500 shrink-0" />
+                      <span>Performance Feedback</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                      Tests reveal exactly where the student is losing marks — and what to improve.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                      <Zap className="size-3.5 text-emerald-500 shrink-0" />
+                      <span>Exam Skills</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                      Learn to approach questions, manage time &amp; present answers effectively.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column (7 cols) */}
+            <div className="lg:col-span-7 space-y-3.5">
+              {/* The 100 Hour Roadmap */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      The 100 Hour Roadmap
+                    </h4>
+                    <p className="text-xs font-bold text-brand-600 dark:text-brand-400">
+                      100 hours. 12 weeks. One clear goal.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Phase 1: Understand */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-1.5 dark:border-slate-800 dark:bg-slate-950/60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-blue-600" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        1. UNDERSTAND
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
+                      CLOSE THE GAPS (Only Maths &amp; Science)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-blue-600">01</span>
+                      <span>Strengthen weak fundamentals</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-blue-600">02</span>
+                      <span>Understand concepts from first principles</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-blue-600">03</span>
+                      <span>Learn the why, not just the formula</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-blue-600">04</span>
+                      <span>Connect concepts across chapters</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 sm:col-span-2">
+                      <span className="font-mono font-bold text-blue-600">05</span>
+                      <span>Develop clear methods for solving problems</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phase 2: Master */}
+                <div className="rounded-xl border border-slate-200 bg-slate-950 p-3 space-y-2 text-white dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-amber-400" />
+                      <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                        2. MASTER
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase text-amber-300 tracking-wider">
+                      PRACTISE. APPLY. SOLVE.
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
+                      <div className="font-bold text-amber-300 text-[11px]">1. BASIC</div>
+                      <div className="text-[10px] text-slate-300">Build confidence with Concept-First questions</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
+                      <div className="font-bold text-amber-300 text-[11px]">2. APPLICATION</div>
+                      <div className="text-[10px] text-slate-300">Apply ideas to unfamiliar, Exam-Style problems</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
+                      <div className="font-bold text-amber-300 text-[11px]">3. HIGHER-ORDER</div>
+                      <div className="text-[10px] text-slate-300">Develop thinking needed for Competency based questions</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
+                      <div className="font-bold text-amber-300 text-[11px]">4. BOARD PATTERN</div>
+                      <div className="text-[10px] text-slate-300">Practise the PYQs that matter the most in Boards</div>
+                    </div>
+                  </div>
+                  <div className="text-center text-[10px] text-amber-200/90 font-semibold pt-0.5">
+                    • Build Confidence • Apply Concepts • Master Board Patterns
+                  </div>
+                </div>
+
+                {/* Phase 3: Perform */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-1.5 dark:border-slate-800 dark:bg-slate-950/60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-emerald-600" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        3. PERFORM
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">
+                      TEST. ANALYSE. IMPROVE.
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-emerald-600/10 border border-emerald-500/20 p-1.5 flex items-center justify-between text-xs">
+                    <span className="font-black text-emerald-900 dark:text-emerald-200">
+                      6 FULL-LENGTH MOCK TESTS
+                    </span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-300 text-[11px]">
+                      3 MATHS + 3 SCIENCE
+                    </span>
+                  </div>
+                  {/* Flow */}
+                  <div className="flex flex-wrap items-center justify-center gap-1 text-[10px] font-black text-slate-700 dark:text-slate-300">
+                    <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800">ATTEMPT</span>
+                    <span>→</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800">ANALYSE</span>
+                    <span>→</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800">IDENTIFY MISTAKES</span>
+                    <span>→</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800">CORRECT</span>
+                    <span>→</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white">IMPROVE</span>
+                  </div>
+                  <div className="text-center text-[10px] text-slate-500 dark:text-slate-400">
+                    • Speed • Accuracy • Time Management • Answer Presentation • Exam Strategy
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-400 p-2 text-center text-xs font-black text-slate-950 shadow-xs">
+                  NOT 100 HOURS OF LECTURES. IT’S 100 HOURS OF GUIDED PREPARATION!
+                </div>
+              </div>
+
+              {/* Star Faculty Guiding Your Child */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#0e3b43] dark:text-amber-300">
+                    NOT 100 HOURS OF LECTURES. IT&apos;S 100 HOURS OF GUIDED PREPARATION!
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#0e3b43] dark:text-white mt-0.5">
+                    STAR FACULTY GUIDING YOUR CHILD
+                  </h4>
+                  <div className="mt-1 h-0.5 w-full bg-[#0e3b43]/30 dark:bg-slate-700" />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 items-end text-center pt-1">
+                  {/* Amal M Das - Custom Cutout (NOT in circular ring, matching brochure faculty_strip.png) */}
+                  <div className="flex flex-col items-center justify-end">
+                    <div className="relative h-20 sm:h-22 w-24 flex items-end justify-center mb-1">
+                      <img
+                        src="/board-challenge/faculty_amal.png"
+                        alt="Mr. Amal M Das"
+                        className="h-full w-auto object-contain object-bottom drop-shadow-sm"
+                      />
+                    </div>
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                      MR. AMAL M DAS
+                    </span>
+                    <div className="mt-1 flex flex-col space-y-0.5">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                        B.Tech, IIT KGP
+                      </span>
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                        Program Coordinator
+                      </span>
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                        Maths HOD
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Brajesh - Circular Portrait with Yellow Ring */}
+                  <div className="flex flex-col items-center justify-end">
+                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                      <img
+                        src="/board-challenge/faculty_brajesh.png"
+                        alt="Mr. Brajesh"
+                        className="size-full object-cover object-center"
+                      />
+                    </div>
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                      MR. BRAJESH
+                    </span>
+                    <div className="mt-1 flex flex-col space-y-0.5">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                        B.Tech, IIT Madras
+                      </span>
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                        Physics HOD
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Ninad - Circular Portrait with Yellow Ring */}
+                  <div className="flex flex-col items-center justify-end">
+                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                      <img
+                        src="/board-challenge/faculty_ninad.png"
+                        alt="Mr. Ninad"
+                        className="size-full object-cover object-center"
+                      />
+                    </div>
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                      MR. NINAD
+                    </span>
+                    <div className="mt-1 flex flex-col space-y-0.5">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                        B.Tech, IIT Madras
+                      </span>
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                        Chemistry HOD
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Thirumala - Circular Portrait with Yellow Ring */}
+                  <div className="flex flex-col items-center justify-end">
+                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                      <img
+                        src="/board-challenge/faculty_thirumala.png"
+                        alt="Mr. Thirumala"
+                        className="size-full object-cover object-center"
+                      />
+                    </div>
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                      MR. THIRUMALA
+                    </span>
+                    <div className="mt-1 flex flex-col space-y-0.5">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                        M.Tech, NIT Warangal
+                      </span>
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                        Maths Faculty
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Official Academic Seal & Certification Footer */}
+        <div className="mt-8 border-t border-slate-200/80 dark:border-slate-800 pt-5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400 font-black text-xs border border-brand-200/50">
+              ✓
+            </span>
+            <div>
+              Academic Mentorship Pathway for <strong className="text-slate-800 dark:text-slate-200">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X Board Readiness Challenge'}
+            </div>
+          </div>
+          <div className="text-center sm:text-right font-semibold text-slate-600 dark:text-slate-400">
+            Shri Ram Smart Minds Academy • Academic Mentorship Cell
+          </div>
+        </div>
+
+        {/* Action Button after Page 5: Go to Solutions Tab */}
+        {onGoToSolutions && (
+          <div className="no-print mt-8 rounded-2xl border-2 border-brand-500/30 bg-gradient-to-r from-brand-50/90 via-indigo-50/50 to-teal-50/60 p-4 sm:p-5 dark:border-brand-500/40 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/40 dark:to-slate-900 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center sm:text-left">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 dark:bg-brand-950 px-2.5 py-0.5 text-xs font-bold text-brand-700 dark:text-brand-300">
+                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                Diagnostic Report Review Complete
+              </div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                Ready to review question derivations and faculty solutions?
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Jump directly to the Solutions tab to view question-by-question analysis, answer keys, and timing audit.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={onGoToSolutions}
+              className="shrink-0 w-full sm:w-auto rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-black px-5 py-2.5 shadow-md transition flex items-center justify-center gap-2 text-xs sm:text-sm"
+            >
+              <span>Go to Solutions Tab</span>
+              <ArrowRight className="size-4" />
+            </Button>
+          </div>
+        )}
+      </section>
+
+      {/* =========================================================================
+          PAGE 6: DIAGNOSTIC AUDIT & STEP-BY-STEP CALCULATIONS (DEVELOPMENT ONLY)
+          ========================================================================= */}
+      {isTeacherView && report.calculationSteps && (
+        <section
+          className={`report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 ${
+            activeTab === 'all' || activeTab === 'page6' ? 'block' : 'hidden print:block'
+          }`}
+        >
           {/* Header watermark & Brand bar */}
           <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60">
             <div>
@@ -1586,18 +2634,18 @@ export function BoardReadinessReport({
                   Diagnostic Audit Engine
                 </span>
                 <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                  Development Mode
+                  Teacher View
                 </span>
               </div>
               <h2 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl dark:text-white">
-                PAGE 4 — DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
+                PAGE 6 — DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
               </h2>
             </div>
             <div className="text-right">
               <span className="inline-block rounded-full bg-amber-500/15 px-3 py-1 text-xs font-black text-amber-800 dark:text-amber-300 border border-amber-500/30">
-                PAGE 4 (DEV AUDIT)
+                PAGE 6 OF 6
               </span>
-              <p className="mt-1 text-[11px] text-slate-400">Internal Verification Artifact</p>
+              <p className="mt-1 text-[11px] text-slate-400">Faculty Audit Ledger</p>
             </div>
           </div>
 
@@ -1880,11 +2928,11 @@ export function BoardReadinessReport({
                     </div>
                     {report.calculationSteps.timeManagement.guessworkQuestions.length > 0 ? (
                       <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
-                        ⚠️ Guesswork: Q{report.calculationSteps.timeManagement.guessworkQuestions.join(', Q')} (&lt;20s)
+                        ⚠️ Guesswork: Q{report.calculationSteps.timeManagement.guessworkQuestions.join(', Q')} (&lt;8s)
                       </p>
                     ) : (
                       <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                        ✓ No guesswork flags (&lt;20s)
+                        ✓ No guesswork flags (&lt;8s)
                       </p>
                     )}
                   </div>
@@ -2015,7 +3063,7 @@ export function BoardReadinessReport({
                             )}
                             {item.isGuesswork && (
                               <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[9px] font-black text-amber-950 dark:bg-amber-900/60 dark:text-amber-200">
-                                ⚡ &lt;20s Guesswork
+                                ⚡ &lt;10s Guesswork
                               </span>
                             )}
                           </div>
@@ -2121,6 +3169,31 @@ export function BoardReadinessReport({
             </div>
           </div>
         </section>
+      )}
+
+      {/* Full Brochure Lightbox Modal */}
+      {showBrochureModal && (
+        <Dialog
+          isOpen={showBrochureModal}
+          onClose={() => setShowBrochureModal(false)}
+          size="2xl"
+          title="SRSMA Class 10 Board Mastery Course Brochure"
+          footer={
+            <div className="flex w-full items-center justify-end">
+              <Button variant="secondary" size="sm" onClick={() => setShowBrochureModal(false)}>
+                Close
+              </Button>
+            </div>
+          }
+        >
+          <div className="max-h-[75vh] overflow-y-auto p-1">
+            <img
+              src="/board-challenge/brochure_full_300dpi.png"
+              alt="SRSMA Board Mastery Course Brochure"
+              className="w-full rounded-lg object-contain shadow-md"
+            />
+          </div>
+        </Dialog>
       )}
     </div>
   );

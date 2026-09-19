@@ -174,7 +174,38 @@ html.dark .q-render :is(th) {
 
   @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 5mm;
+  }
+
+  /* Named pages for paged media engines supporting variable page sizing */
+  @page page-1 {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  @page page-2 {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  @page page-3 {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  @page page-4 {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+
+  .report-page-1 {
+    page: page-1;
+  }
+  .report-page-2 {
+    page: page-2;
+  }
+  .report-page-3 {
+    page: page-3;
+  }
+  .report-page-4 {
+    page: page-4;
   }
 
   /* Dark mode print retention */
@@ -188,13 +219,9 @@ html.dark .q-render :is(th) {
   }
 
   html.dark .report-page-container {
-    page-break-after: always !important;
-    break-after: page !important;
-    min-height: 96vh;
-    padding: 10mm !important;
     box-shadow: none !important;
     border: 1px solid #1e293b !important;
-    border-radius: 12px !important;
+    border-radius: 8px !important;
     background-color: #0f172a !important;
     color: #f1f5f9 !important;
   }
@@ -206,20 +233,95 @@ html.dark .q-render :is(th) {
   }
 
   html:not(.dark) .report-page-container {
-    page-break-after: always !important;
-    break-after: page !important;
-    min-height: 96vh;
-    padding: 10mm !important;
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important;
+    border-radius: 8px !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
 
+  /* Strict discrete paging: exactly 3 pages (Student) or 4 pages (Teacher) */
+  .report-page-container {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 5mm 0 !important;
+    padding: 6mm 8mm !important;
+  }
+
+  .report-page-container:last-of-type,
   .report-page-container:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Compact spacing in print so content never overflows onto unwanted extra sheets */
+  .report-page-container .mt-8 {
+    margin-top: 8px !important;
+  }
+  .report-page-container .mt-6 {
+    margin-top: 6px !important;
+  }
+  .report-page-container .mt-5 {
+    margin-top: 5px !important;
+  }
+  .report-page-container .mt-4 {
+    margin-top: 4px !important;
+  }
+  .report-page-container .mt-3 {
+    margin-top: 3px !important;
+  }
+  .report-page-container .space-y-6 > * + * {
+    margin-top: 6px !important;
+  }
+  .report-page-container .space-y-4 > * + * {
+    margin-top: 5px !important;
+  }
+  .report-page-container .space-y-3 > * + * {
+    margin-top: 4px !important;
+  }
+  .report-page-container .space-y-2\.5 > * + * {
+    margin-top: 3px !important;
+  }
+  .report-page-container .space-y-2 > * + * {
+    margin-top: 2px !important;
+  }
+
+  .report-page-container .p-8,
+  .report-page-container .sm\:p-8,
+  .report-page-container .p-7,
+  .report-page-container .sm\:p-7,
+  .report-page-container .p-6,
+  .report-page-container .sm\:p-6 {
+    padding: 8px 12px !important;
+  }
+  .report-page-container .p-5,
+  .report-page-container .sm\:p-5 {
+    padding: 6px 10px !important;
+  }
+  .report-page-container .p-4,
+  .report-page-container .sm\:p-4 {
+    padding: 5px 8px !important;
+  }
+
+  /* Table padding in print */
+  .report-page-container table th,
+  .report-page-container table td {
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+  }
+
+  /* Show full academic tables in print, hide mobile cards */
+  .report-page-container .md\:hidden {
+    display: none !important;
+  }
+  .report-page-container .hidden.md\:block {
+    display: block !important;
   }
 
   /* Modal Dialog clean unconstrained print expansion */

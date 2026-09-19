@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   RotateCw,
   Lock,
   FileText,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import {
   Alert,
@@ -69,6 +72,8 @@ export function StudentAnalyticsClient({
   studentId?: string;
   isTeacherView?: boolean;
 }) {
+  const searchParams = useSearchParams();
+  const paramAttemptId = searchParams.get('attemptId');
   const [data, setData] = useState<StudentAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -491,12 +496,41 @@ export function StudentAnalyticsClient({
 
       {/* Board Readiness Report View */}
       {activeReport ? (
-        <BoardReadinessReport
-          report={activeReport}
-          studentGender={data.gender || gender}
-          studentDetails={data.studentDetails}
-          isTeacherView={isTeacherView}
-        />
+        <>
+          <BoardReadinessReport
+            report={activeReport}
+            studentGender={data.gender || gender}
+            studentDetails={data.studentDetails}
+            isTeacherView={isTeacherView}
+          />
+
+          {/* Direct to Solutions CTA at the end of the reports tab */}
+          {(paramAttemptId || data.recentTests?.[0]?.attemptId) && (
+            <div className="no-print mt-8 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50/90 via-indigo-50/70 to-blue-50/90 p-5 sm:p-7 shadow-sm dark:border-brand-800/60 dark:bg-gradient-to-r dark:from-slate-900/90 dark:via-brand-950/40 dark:to-slate-900/90">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-bold text-brand-800 dark:bg-brand-900/60 dark:text-brand-300">
+                    <Sparkles className="size-3.5" />
+                    <span>Question-by-Question Solutions</span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    Ready to Review Your Worked Solutions?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                    Check detailed faculty step-by-step derivations, question breakdowns, and pacing recommendations.
+                  </p>
+                </div>
+                <Link
+                  href={`/student/attempts/${paramAttemptId || data.recentTests?.[0]?.attemptId}/result`}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-brand-800 transition dark:bg-brand-600 dark:hover:bg-brand-500 shrink-0"
+                >
+                  <span>Proceed to Solutions</span>
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
           <EmptyState

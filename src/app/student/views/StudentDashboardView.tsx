@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles } from 'lucide-react';
+import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles, BookOpen, ArrowRight } from 'lucide-react';
 import { getDb } from '@/db/client';
 import { attempts, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
@@ -232,13 +232,24 @@ export async function StudentDashboardView() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {a.resultsAvailable ? (
-                          <Link
-                            href={`/student/attempts/${a.id}/result`}
-                            className={buttonClass('secondary', 'sm')}
-                          >
-                            <Eye className="mr-1 size-3" />
-                            Solutions
-                          </Link>
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/student/attempts/${a.id}/result?tab=solutions`}
+                              className={buttonClass('secondary', 'sm')}
+                              title="View Question-by-Question Solutions"
+                            >
+                              <Eye className="mr-1 size-3" />
+                              Solutions
+                            </Link>
+                            <Link
+                              href={`/student/attempts/${a.id}/result?tab=report`}
+                              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-brand-500 transition"
+                              title="View 5-Page Board Readiness Diagnostic Report"
+                            >
+                              <Award className="size-3" />
+                              <span>5-Page Report</span>
+                            </Link>
+                          </div>
                         ) : (
                           <span className="text-[11px] text-slate-400 italic dark:text-slate-500">Results Pending</span>
                         )}
@@ -251,6 +262,36 @@ export async function StudentDashboardView() {
           </Card>
         </div>
       )}
+
+        {/* Section: About Shri Ram Smart Minds Academy */}
+        <div className="rounded-2xl border border-amber-300/60 bg-gradient-to-r from-amber-500/10 via-white to-blue-900/10 p-5 sm:p-7 dark:border-amber-400/30 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                  <Sparkles className="size-3" />
+                  <span>Founded by Top IIT Alumni</span>
+                </span>
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  Top 99.48%ile in JEE Main · 10/16 Qualifiers
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                About Shri Ram Smart Minds Academy (SRSMA)
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Top coaching with personal care, not heavy stress. Small batch sizes (25 to 30 students), air-conditioned smart classrooms, and daily attention to every child at our Hyderabad campus.
+              </p>
+            </div>
+            <Link
+              href="/student/about"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 transition shrink-0"
+            >
+              <span>Explore SRSMA</span>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
       </div>
     </StudentChrome>
   );

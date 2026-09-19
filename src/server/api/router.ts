@@ -75,6 +75,7 @@ import * as testsAttempts from './tests/attempts';
 import * as testsClone from './tests/clone';
 import * as testsPublish from './tests/publish';
 import * as testsQuestions from './tests/questions';
+import * as testsMetadata from './tests/metadata';
 import * as testsReleaseResults from './tests/release-results';
 
 // 8. Attempt Session Handlers
@@ -195,6 +196,7 @@ export function matchRoute(slug: string[]): RouteMatch | null {
       if (s2 === 'clone') return { handler: testsClone, params: { id: s1 }, pattern: '/api/tests/[id]/clone' };
       if (s2 === 'publish') return { handler: testsPublish, params: { id: s1 }, pattern: '/api/tests/[id]/publish' };
       if (s2 === 'questions') return { handler: testsQuestions, params: { id: s1 }, pattern: '/api/tests/[id]/questions' };
+      if (s2 === 'metadata') return { handler: testsMetadata, params: { id: s1 }, pattern: '/api/tests/[id]/metadata' };
       if (s2 === 'release-results') return { handler: testsReleaseResults, params: { id: s1 }, pattern: '/api/tests/[id]/release-results' };
     }
     // /api/attempts/[id]/*
@@ -299,6 +301,7 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/tests/[id]/clone', verbs: ['POST'] },
   { pattern: '/api/tests/[id]/publish', verbs: ['DELETE', 'POST'] },
   { pattern: '/api/tests/[id]/questions', verbs: ['PUT'] },
+  { pattern: '/api/tests/[id]/metadata', verbs: ['PUT'] },
   { pattern: '/api/tests/[id]/release-results', verbs: ['POST'] },
   { pattern: '/api/attempts/[id]', verbs: ['GET'] },
   { pattern: '/api/attempts/[id]/answers', verbs: ['PATCH', 'POST'] },

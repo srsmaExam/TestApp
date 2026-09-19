@@ -2,7 +2,22 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, Sparkles, FileText, CheckCircle2, ArrowRight, Check, X, Lock, Award, AlertTriangle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  Clock,
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  ArrowRight,
+  Check,
+  X,
+  Lock,
+  Award,
+  AlertTriangle,
+  Calculator,
+  Atom,
+  BookOpen,
+} from 'lucide-react';
 import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Label } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
 import { QuestionBody } from '@/components/Katex';
@@ -71,6 +86,14 @@ type ResultData = {
     gender?: string | null;
     isFormFilled?: boolean;
   } | null;
+  allAttempts?: Array<{
+    id: string;
+    attemptNo: number;
+    status: string;
+    submittedAt: string | null;
+    totalMarks: number;
+    maxMarks: number;
+  }>;
   summary: {
     totalQuestions: number;
     correctCount: number;
@@ -94,10 +117,43 @@ export function ResultReviewClient({
   userRole: 'student' | 'teacher';
   backUrl?: string;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<ResultData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [awaitingRelease, setAwaitingRelease] = useState(false);
+
+  // Tab View state: 'solutions' or 'report'
+  const initialTab = searchParams?.get('tab') === 'report' ? 'report' : 'solutions';
+  const [activeViewTab, setActiveViewTab] = useState<'solutions' | 'report'>(initialTab);
+
+  useEffect(() => {
+    const tabParam = searchParams?.get('tab');
+    if (tabParam === 'report') setActiveViewTab('report');
+    else if (tabParam === 'solutions') setActiveViewTab('solutions');
+  }, [searchParams]);
+
+  const handleTabChange = (tab: 'solutions' | 'report') => {
+    setActiveViewTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const handleSwitchAttempt = (targetAttemptId: string) => {
+    if (targetAttemptId === attemptId) return;
+    if (userRole === 'teacher') {
+      const base = data?.studentId
+        ? `/teacher/students/${data.studentId}/attempts/${targetAttemptId}`
+        : `/teacher/attempts/${targetAttemptId}/result`;
+      router.push(`${base}?tab=${activeViewTab}`);
+    } else {
+      router.push(`/student/attempts/${targetAttemptId}/result?tab=${activeViewTab}`);
+    }
+  };
 
   // Filters
   const [filterSubject, setFilterSubject] = useState<string>('all');
@@ -115,7 +171,6 @@ export function ResultReviewClient({
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
-  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
 
   const attemptDiagnosticReport = useMemo(() => {
     if (!data?.questions || data.questions.length === 0) return null;
@@ -178,6 +233,70 @@ export function ResultReviewClient({
         expectedUpperBoundS: getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS),
       })),
     );
+  }, [data]);
+
+  // Beginning Score Snapshot metrics: Maths & Science calculation
+  const mathsStats = useMemo(() => {
+    if (!data?.summary?.subjectScores) return { marks: 0, maxMarks: 0, total: 0, correct: 0 };
+    const scores = data.summary.subjectScores;
+    let marks = 0;
+    let maxMarks = 0;
+    let total = 0;
+    let correct = 0;
+    for (const [key, val] of Object.entries(scores)) {
+      const lower = key.toLowerCase();
+      if (lower === 'maths' || lower === 'mathematics') {
+        marks += val.marks;
+        maxMarks += val.maxMarks;
+        total += val.total;
+        correct += val.correct;
+      }
+    }
+    return { marks, maxMarks, total, correct };
+  }, [data]);
+
+  const scienceStats = useMemo(() => {
+    if (!data?.summary?.subjectScores) return { marks: 0, maxMarks: 0, total: 0, correct: 0 };
+    const scores = data.summary.subjectScores;
+    let marks = 0;
+    let maxMarks = 0;
+    let total = 0;
+    let correct = 0;
+    for (const [key, val] of Object.entries(scores)) {
+      const lower = key.toLowerCase();
+      if (['physics', 'chemistry', 'biology', 'science'].includes(lower)) {
+        marks += val.marks;
+        maxMarks += val.maxMarks;
+        total += val.total;
+        correct += val.correct;
+      }
+    }
+    return { marks, maxMarks, total, correct };
+  }, [data]);
+
+  // Pre-fill student details if already available on profile
+  useEffect(() => {
+    if (data?.studentDetails) {
+      if (data.studentDetails.city && !city) setCity(data.studentDetails.city);
+      if (data.studentDetails.school && !school) setSchool(data.studentDetails.school);
+      if (data.studentDetails.gender && !gender) {
+        if (data.studentDetails.gender === 'Male' || data.studentDetails.gender === 'Female') {
+          setGender(data.studentDetails.gender);
+        }
+      }
+      if (data.studentDetails.board) {
+        if (['State Board', 'CBSE Board', 'ICSE Board'].includes(data.studentDetails.board)) {
+          setBoard(data.studentDetails.board);
+        } else {
+          setBoard('Other');
+          setOtherBoard(data.studentDetails.board);
+        }
+      }
+    } else if (data?.gender && !gender) {
+      if (data.gender === 'Male' || data.gender === 'Female') {
+        setGender(data.gender);
+      }
+    }
   }, [data]);
 
   useEffect(() => {
@@ -283,6 +402,9 @@ export function ResultReviewClient({
           setData(freshData);
         }
       }
+
+      // Direct student to reports Tab immediately after form submission
+      router.push(`/student/analytics?attemptId=${attemptId}`);
     } catch (err: any) {
       setReportError(err.message || 'Could not unlock solutions and report.');
     } finally {
@@ -332,7 +454,7 @@ export function ResultReviewClient({
       if (filterStatus === 'good_time' && (!q.isAttempted || qtm.rating !== 'Good')) return false;
       if (filterStatus === 'medium_time' && (!q.isAttempted || qtm.rating !== 'Medium')) return false;
       if (filterStatus === 'poor_time' && (!q.isAttempted || qtm.rating !== 'Poor')) return false;
-      if (filterStatus === 'guesswork' && (!q.isAttempted || timeTakenSec >= 20)) return false;
+      if (filterStatus === 'guesswork' && (!q.isAttempted || timeTakenSec >= 8)) return false;
 
       return true;
     });
@@ -377,6 +499,302 @@ export function ResultReviewClient({
     );
   }
 
+  // Dedicated Post-Test Report & Solution Unlocking View
+  if (!reportSubmitted && userRole === 'student') {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 pb-16">
+        {/* Top return link */}
+        <div className="flex items-center justify-between">
+          <Link
+            href="/student"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition"
+          >
+            ← Return to My Tests
+          </Link>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-400/10 dark:text-amber-300 border border-amber-500/20">
+            <Lock className="size-3.5" />
+            Report &amp; Solutions Unlocking Form
+          </span>
+        </div>
+
+        {/* 1. Beginning Score Snapshot */}
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-brand-950 to-slate-900 p-6 sm:p-8 text-white shadow-xl border border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <span className="inline-flex items-center rounded-full bg-brand-500/20 px-3 py-1 text-xs font-bold text-accent-300 border border-brand-500/30">
+                <Sparkles className="mr-1.5 size-3.5" />
+                Assessment Completed Successfully
+              </span>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">
+                {data.testTitle}
+              </h1>
+              <p className="mt-1 text-xs text-slate-300">
+                Submitted on {new Date(data.submittedAt).toLocaleDateString()} at{' '}
+                {new Date(data.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">Candidate</span>
+              <span className="text-base font-bold text-slate-100">{data.studentName || 'Student'}</span>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                Your Instant Score Summary
+              </h2>
+              <span className="text-[11px] text-amber-300 font-semibold">
+                🔒 Full Solutions &amp; Analysis Locked Below
+              </span>
+            </div>
+
+            {/* 3 Score Cards: Total Marks, Maths Marks, Science Marks */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
+              {/* Total Marks */}
+              <div className="rounded-xl bg-white/10 p-2.5 sm:p-4 border border-white/10 backdrop-blur-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-1.5 sm:p-3 opacity-15 group-hover:opacity-25 transition">
+                  <Award className="size-6 sm:size-10 text-white" />
+                </div>
+                <p className="text-[10px] sm:text-xs uppercase font-bold text-accent-300 tracking-wider truncate">Total Marks</p>
+                <div className="mt-1 sm:mt-1.5 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-4xl font-black text-white">{data.totalMarks}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-300">/ {data.maxMarks}</span>
+                </div>
+                <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-slate-300">
+                  <span className="font-semibold text-emerald-400">
+                    {data.maxMarks > 0 ? Math.round((data.totalMarks / data.maxMarks) * 100) : 0}%
+                  </span>
+                  <span className="hidden xs:inline truncate">overall score</span>
+                </div>
+              </div>
+
+              {/* Maths Marks */}
+              <div className="rounded-xl bg-white/10 p-2.5 sm:p-4 border border-white/10 backdrop-blur-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-1.5 sm:p-3 opacity-15 group-hover:opacity-25 transition">
+                  <Calculator className="size-6 sm:size-10 text-blue-300" />
+                </div>
+                <p className="text-[10px] sm:text-xs uppercase font-bold text-blue-300 tracking-wider truncate">Maths</p>
+                <div className="mt-1 sm:mt-1.5 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-4xl font-black text-white">{mathsStats.marks}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-300">/ {mathsStats.maxMarks}</span>
+                </div>
+                <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-slate-300">
+                  <span className="font-semibold text-blue-300">
+                    {mathsStats.correct}/{mathsStats.total}
+                  </span>
+                  <span className="hidden xs:inline truncate">correct</span>
+                </div>
+              </div>
+
+              {/* Science Marks */}
+              <div className="rounded-xl bg-white/10 p-2.5 sm:p-4 border border-white/10 backdrop-blur-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-1.5 sm:p-3 opacity-15 group-hover:opacity-25 transition">
+                  <Atom className="size-6 sm:size-10 text-emerald-300" />
+                </div>
+                <p className="text-[10px] sm:text-xs uppercase font-bold text-emerald-300 tracking-wider truncate">Science</p>
+                <div className="mt-1 sm:mt-1.5 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-4xl font-black text-white">{scienceStats.marks}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-slate-300">/ {scienceStats.maxMarks}</span>
+                </div>
+                <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-slate-300">
+                  <span className="font-semibold text-emerald-300">
+                    {scienceStats.correct}/{scienceStats.total}
+                  </span>
+                  <span className="hidden xs:inline truncate">correct</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Unlocking Form Card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-6 space-y-2 border-b border-slate-100 pb-5 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex size-8 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
+                <Lock className="size-4" />
+              </span>
+              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                Unlock Step-by-Step Solutions &amp; Detailed Analysis
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Provide your details below to instantly unlock step-by-step solutions, time management analytics, and your official 5-Page Board Readiness Diagnostic Report.
+            </p>
+
+            {/* Perks grid */}
+            <div className="mt-3 grid grid-cols-2 gap-2 pt-1">
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 p-2 text-[11px] sm:text-xs font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">Question Derivations</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 p-2 text-[11px] sm:text-xs font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">5-Page Board Report</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 p-2 text-[11px] sm:text-xs font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">Pacing & Guesswork Audit</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 p-2 text-[11px] sm:text-xs font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">Scorecard to WhatsApp</span>
+              </div>
+            </div>
+          </div>
+
+          <form id="report-unlock-page-form" onSubmit={handleReportSubmit} className="space-y-5">
+            {reportError && (
+              <Alert tone="red" className="text-sm">
+                {reportError}
+              </Alert>
+            )}
+
+            {/* Gender Field */}
+            <div>
+              <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Gender <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-3.5">
+                <button
+                  type="button"
+                  onClick={() => setGender('Male')}
+                  className={`group relative flex items-center justify-center gap-2.5 rounded-xl border py-3 px-4 text-sm font-bold transition-all shadow-xs ${
+                    gender === 'Male'
+                      ? 'border-blue-500 bg-blue-50/90 text-blue-800 ring-2 ring-blue-500/30 dark:border-blue-400 dark:bg-blue-950/70 dark:text-blue-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-base dark:bg-blue-900/60">
+                    👦
+                  </span>
+                  <span>Male</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('Female')}
+                  className={`group relative flex items-center justify-center gap-2.5 rounded-xl border py-3 px-4 text-sm font-bold transition-all shadow-xs ${
+                    gender === 'Female'
+                      ? 'border-pink-500 bg-pink-50/90 text-pink-800 ring-2 ring-pink-500/30 dark:border-pink-400 dark:bg-pink-950/70 dark:text-pink-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-pink-300 hover:bg-pink-50/40 hover:text-pink-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100 text-base dark:bg-pink-900/60">
+                    👧
+                  </span>
+                  <span>Female</span>
+                </button>
+              </div>
+            </div>
+
+            {/* School Name */}
+            <div>
+              <Label htmlFor="page-school-input" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                School Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="page-school-input"
+                required
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                placeholder="e.g. Delhi Public School"
+                className="text-sm py-2.5"
+              />
+            </div>
+
+            {/* City */}
+            <div>
+              <Label htmlFor="page-city-input" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                City <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="page-city-input"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Hyderabad"
+                className="text-sm py-2.5"
+              />
+            </div>
+
+            {/* Board */}
+            <div>
+              <Label htmlFor="page-board-select" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Your Board <span className="text-red-500">*</span>
+              </Label>
+              <select
+                id="page-board-select"
+                value={board}
+                onChange={(e) => setBoard(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="State Board">State Board</option>
+                <option value="CBSE Board">CBSE Board</option>
+                <option value="ICSE Board">ICSE Board</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {board === 'Other' && (
+              <div>
+                <Label htmlFor="page-other-board-input" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Specify Your Board <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="page-other-board-input"
+                  required
+                  value={otherBoard}
+                  onChange={(e) => setOtherBoard(e.target.value)}
+                  placeholder="e.g. Cambridge, IB, etc."
+                  className="text-sm py-2.5"
+                />
+              </div>
+            )}
+
+            {/* WhatsApp Consent */}
+            <div className="flex items-start gap-3 rounded-xl border border-amber-300/80 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+              <input
+                id="page-whatsapp-consent"
+                type="checkbox"
+                required
+                checked={whatsappConsent}
+                onChange={(e) => setWhatsappConsent(e.target.checked)}
+                className="mt-1 size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 cursor-pointer"
+              />
+              <Label htmlFor="page-whatsapp-consent" className="cursor-pointer text-xs font-medium leading-relaxed text-slate-800 dark:text-slate-200">
+                <strong className="text-red-500 mr-1">*</strong>
+                I give permission to Shri Ram Smart Minds Academy to contact me on my WhatsApp number for sending the detailed report.
+              </Label>
+            </div>
+
+            {/* Submit CTA */}
+            <div className="pt-2">
+              <Button
+                type="submit"
+                disabled={submittingReport}
+                className="w-full py-3.5 text-base font-bold bg-brand-700 hover:bg-brand-800 text-white shadow-lg transition flex items-center justify-center gap-2 rounded-xl dark:bg-brand-600 dark:hover:bg-brand-500 cursor-pointer"
+              >
+                {submittingReport ? (
+                  <>
+                    <Spinner className="size-5 text-white mr-1.5" />
+                    Unlocking Solutions &amp; Report…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-5" />
+                    Unlock Solutions &amp; Comprehensive Report
+                    <ArrowRight className="size-5 ml-1" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Navigation breadcrumb */}
@@ -415,6 +833,57 @@ export function ResultReviewClient({
           >
             ← Back to tests
           </Link>
+        </div>
+      )}
+
+      {/* Test Attempt Switcher (Test-level attempt history) */}
+      {data.allAttempts && data.allAttempts.length > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-3 sm:p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400">
+              <Clock className="size-4" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Attempt History ({data.allAttempts.length} total)
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Switch between attempts to compare test scores, solutions, and reports:
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {data.allAttempts.map((att) => {
+              const isCurrent = att.id === attemptId;
+              return (
+                <button
+                  key={att.id}
+                  type="button"
+                  onClick={() => handleSwitchAttempt(att.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                    isCurrent
+                      ? 'bg-brand-600 text-white shadow-xs font-black ring-2 ring-brand-500/30'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                  }`}
+                  title={
+                    att.submittedAt
+                      ? `Attempt #${att.attemptNo} submitted ${new Date(att.submittedAt).toLocaleDateString()}`
+                      : `Attempt #${att.attemptNo}`
+                  }
+                >
+                  <span>Attempt #{att.attemptNo}</span>
+                  <span className="opacity-80 text-[11px]">
+                    ({att.totalMarks}/{att.maxMarks}M)
+                  </span>
+                  {isCurrent && (
+                    <span className="ml-0.5 rounded-md bg-white/20 px-1 py-0.2 text-[9px] uppercase tracking-wider font-extrabold">
+                      Viewing
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -463,7 +932,92 @@ export function ResultReviewClient({
         </div>
       </div>
 
-      {/* Front Page Guesswork Alert Banner */}
+      {/* Primary Tab Navigation: Solutions vs 5-Page Board Report */}
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => handleTabChange('solutions')}
+            className={`flex items-center gap-2 border-b-2 px-5 py-3.5 text-sm font-bold transition-colors ${
+              activeViewTab === 'solutions'
+                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <BookOpen className="size-4" />
+            Solutions &amp; Review
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange('report')}
+            className={`flex items-center gap-2 border-b-2 px-5 py-3.5 text-sm font-bold transition-colors ${
+              activeViewTab === 'report'
+                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <Award className="size-4" />
+            5-Page Board Report
+          </button>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2">
+          {activeViewTab === 'solutions' ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleTabChange('report')}
+              className="text-xs font-bold"
+            >
+              <Award className="mr-1.5 size-3.5 text-brand-600" />
+              View 5-Page Board Report
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => handleTabChange('solutions')}
+              className="text-xs font-bold"
+            >
+              <BookOpen className="mr-1.5 size-3.5 text-brand-600" />
+              View Solutions
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Tab 1: 5-Page Board Report Tab View */}
+      {activeViewTab === 'report' && (
+        <div className="space-y-6">
+          {attemptDiagnosticReport ? (
+            <BoardReadinessReport
+              report={attemptDiagnosticReport}
+              studentGender={data?.gender || gender}
+              studentDetails={data?.studentDetails}
+              isTeacherView={userRole === 'teacher'}
+              onGoToSolutions={() => {
+                handleTabChange('solutions');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <Spinner className="size-8 text-brand-600 mb-3" />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                Generating Board Readiness Diagnostic Report…
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Solutions & Review Tab View */}
+      {activeViewTab === 'solutions' && (
+        <div className="space-y-6">
+          {/* Front Page Guesswork Alert Banner */}
       {timeManagementMetrics && timeManagementMetrics.guessworkQuestions.length > 0 && (
         <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-amber-50/40 to-yellow-50/60 p-4 sm:p-5 shadow-xs dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-slate-900/95 dark:via-amber-950/20 dark:to-slate-900/95 dark:shadow-[0_0_20px_-3px_rgba(245,158,11,0.12)]">
           <div className="flex items-start gap-3.5">
@@ -476,7 +1030,7 @@ export function ResultReviewClient({
                   Rapid Response Alert
                 </span>
                 <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  Attempt Time &lt; 20s
+                  Attempt Time &lt; 8s
                 </span>
               </div>
               <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
@@ -494,7 +1048,7 @@ export function ResultReviewClient({
                     </span>
                   ))}
                 </span>{' '}
-                (responses submitted in less than 20 seconds).
+                (responses submitted in less than 8 seconds).
               </p>
             </div>
           </div>
@@ -553,83 +1107,78 @@ export function ResultReviewClient({
           })}
       </div>
 
-      {/* Multiple Prompts - Hero Prompt Banner / Celebration Banner */}
-      {!reportSubmitted ? (
-        <div className="relative overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-orange-500/15 p-6 shadow-sm dark:border-amber-500/40 dark:bg-gradient-to-r dark:from-amber-950/50 dark:via-brand-950/50 dark:to-orange-950/40">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-400/20 dark:text-amber-300">
-                  <Lock className="size-3" />
-                  Solutions &amp; Reports Locked
-                </span>
-              </div>
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-                Unlock Complete Step-by-Step Solutions &amp; Detailed Diagnostic Report
-              </h2>
-              <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-300">
-                Get instantaneous access to step-by-step faculty solutions for every question and receive your comprehensive performance diagnostics sent to your WhatsApp.
+      {/* Toast Notification when unlocked in this session */}
+      {submittedSuccess && (
+        <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/15 p-4 sm:p-5 dark:border-emerald-500/30 dark:bg-emerald-950/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-emerald-600 text-white shrink-0 shadow-xs">
+              <CheckCircle2 className="size-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-emerald-900 dark:text-emerald-200">
+                🎉 Solutions &amp; Analysis Report Successfully Unlocked!
+              </h3>
+              <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
+                All step-by-step faculty derivations are now revealed below, and your personalized diagnostic report has been generated.
               </p>
             </div>
-
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
-              onClick={() => setShowReportModal(true)}
-              className="shrink-0 rounded-xl bg-amber-500 px-5 py-3 font-bold text-slate-950 shadow-md transition hover:bg-amber-400 hover:shadow-amber-500/20 dark:bg-amber-400 dark:hover:bg-amber-300"
+              size="sm"
+              onClick={() => handleTabChange('report')}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
             >
-              <FileText className="mr-2 size-4" />
-              Access Solutions &amp; Report
-              <ArrowRight className="ml-1.5 size-4" />
+              <Award className="mr-1.5 size-4" />
+              View 5-Page Board Report
             </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-6 shadow-sm dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
-          <div className="flex items-center gap-3.5">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
-              <CheckCircle2 className="size-7" />
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
-                  <Sparkles className="size-3" />
-                  Solutions &amp; Report Unlocked
-                </span>
-              </div>
-              <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                Detailed Report Unlocked &amp; Solutions Available!
-              </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                Review step-by-step solutions below. Your complete personalized diagnostic report is ready to view and has also been sent to your WhatsApp.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowDiagnosticModal(true)}
-              className="shrink-0 rounded-xl border-emerald-500/40 bg-white px-4 py-2.5 font-bold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+              size="sm"
+              onClick={() => setSubmittedSuccess(false)}
             >
-              <Award className="mr-1.5 size-4 text-emerald-600 dark:text-emerald-400" />
-              View 3-Page Board Report
+              Dismiss
             </Button>
-            <Link
-              href={
-                userRole === 'teacher' && data.studentId
-                  ? `/teacher/students/${data.studentId}?tab=analytics`
-                  : '/student/analytics'
-              }
-              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-emerald-500 transition"
-            >
-              <FileText className="size-4" />
-              {userRole === 'teacher' ? 'Student Analytics & History' : 'Detailed Analytics & History'}
-              <ArrowRight className="size-4" />
-            </Link>
           </div>
         </div>
       )}
+
+      {/* Hero Unlocked Celebration Banner */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-6 shadow-sm dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
+        <div className="flex items-center gap-3.5">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
+            <CheckCircle2 className="size-7" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
+                <Sparkles className="size-3" />
+                Solutions &amp; Report Unlocked
+              </span>
+            </div>
+            <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+              Detailed Report &amp; Step-by-Step Solutions Available!
+            </h2>
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Review worked faculty derivations for all questions below. Your complete personalized diagnostic report is ready to view.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => handleTabChange('report')}
+            className="shrink-0 rounded-xl border-emerald-500/40 bg-white px-4 py-2.5 font-bold text-emerald-800 shadow-sm hover:bg-emerald-50 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+          >
+            <Award className="mr-1.5 size-4 text-emerald-600 dark:text-emerald-400" />
+            View 5-Page Board Report
+          </Button>
+        </div>
+      </div>
 
       {/* 3. Detailed Question Solutions Section */}
       <div className="space-y-4">
@@ -662,7 +1211,7 @@ export function ResultReviewClient({
                 { id: 'good_time', label: 'Good Time' },
                 { id: 'medium_time', label: 'Medium Time' },
                 { id: 'poor_time', label: 'Poor Time (>2x ETS)' },
-                { id: 'guesswork', label: 'Guesswork (<20s)' },
+                { id: 'guesswork', label: 'Guesswork (<8s)' },
               ].map((st) => (
                 <button
                   key={st.id}
@@ -682,7 +1231,7 @@ export function ResultReviewClient({
             const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
             const ets = getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS);
             const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets);
-            const isGuesswork = q.isAttempted && timeTakenSec < 20;
+            const isGuesswork = q.isAttempted && timeTakenSec < 8;
             const isEveryThird =
               (idx + 1) % 3 === 0 || (filteredQuestions.length < 3 && idx === filteredQuestions.length - 1);
 
@@ -770,7 +1319,7 @@ export function ResultReviewClient({
                         {/* Guesswork flag */}
                         {isGuesswork && (
                           <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-100 px-2 py-0.5 text-xs font-extrabold text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/80 dark:text-amber-200">
-                            ⚡ Possible Guesswork (&lt;20s)
+                            ⚡ Possible Guesswork (&lt;8s)
                           </span>
                         )}
                       </div>
@@ -950,67 +1499,39 @@ export function ResultReviewClient({
 
                 {/* Interstitial banner after every 3 questions */}
                 {isEveryThird && (
-                  !reportSubmitted ? (
-                    <div className="relative overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-orange-500/15 p-5 sm:p-6 shadow-md dark:border-amber-500/40 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-brand-950/40 dark:to-orange-950/30">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-400/20 dark:text-amber-300">
-                              <Lock className="size-3" />
-                              Solutions &amp; Reports Locked
-                            </span>
-                          </div>
-                          <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                            Unlock Complete Step-by-Step Solutions &amp; Detailed Diagnostic Report
-                          </h3>
-                          <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-300">
-                            Want to see verified faculty derivations for each question and get your chapter-wise diagnostic report on WhatsApp?
-                          </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-5 sm:p-6 shadow-md dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
+                        <CheckCircle2 className="size-6" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
+                            <Sparkles className="size-3" />
+                            Diagnostic Report Unlocked
+                          </span>
                         </div>
-
-                        <Button
-                          type="button"
-                          onClick={() => setShowReportModal(true)}
-                          className="shrink-0 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 px-5 py-2.5 font-bold text-slate-950 shadow-md transition hover:bg-amber-400 hover:to-amber-300 hover:shadow-amber-500/20 text-xs sm:text-sm"
-                        >
-                          <FileText className="mr-1.5 size-4" />
-                          Reveal Solutions &amp; Report
-                          <ArrowRight className="ml-1.5 size-4" />
-                        </Button>
+                        <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                          Personalized Diagnostic Report Ready
+                        </h3>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">
+                          Deep dive into your chapter-wise mastery, time distribution, and accuracy trends.
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-brand-500/10 p-5 sm:p-6 shadow-md dark:border-emerald-500/30 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-brand-950/30">
-                      <div className="flex items-center gap-3.5">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md">
-                          <CheckCircle2 className="size-6" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-300">
-                              <Sparkles className="size-3" />
-                              Diagnostic Report Unlocked
-                            </span>
-                          </div>
-                          <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                            Personalized Diagnostic Report Ready
-                          </h3>
-                          <p className="text-xs text-slate-600 dark:text-slate-300">
-                            Deep dive into your chapter-wise mastery, time distribution, and accuracy trends.
-                          </p>
-                        </div>
-                      </div>
 
-                      <Link
-                        href="/student/analytics"
-                        className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:from-emerald-500 hover:to-teal-500 transition"
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleTabChange('report')}
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
                       >
-                        <FileText className="size-4" />
-                        View Diagnostic Report
-                        <ArrowRight className="size-4" />
-                      </Link>
+                        <Award className="mr-1.5 size-4" />
+                        View 5-Page Board Report
+                      </Button>
                     </div>
-                  )
+                  </div>
                 )}
               </div>
             );
@@ -1022,32 +1543,6 @@ export function ResultReviewClient({
             </div>
           )}
         </div>
-
-        {/* Sticky bottom quick-unlock bar when scrolling */}
-        {!reportSubmitted && (
-          <div className="sticky bottom-4 z-20 mx-auto max-w-2xl rounded-2xl border border-amber-400/80 bg-slate-950/95 p-4 text-white shadow-2xl backdrop-blur-md dark:border-amber-500/50">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 text-center sm:text-left">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/20 text-amber-400">
-                  <Lock className="size-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Full Solutions &amp; Detailed Report Locked</p>
-                  <p className="text-[11px] text-slate-400">Enter your details to reveal all question solutions and unlock report.</p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setShowReportModal(true)}
-                className="shrink-0 rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950 hover:bg-amber-300"
-              >
-                <FileText className="mr-1.5 size-4" />
-                Unlock Solutions Now
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Detailed Report Request & Solution Unlock Modal */}
@@ -1252,24 +1747,7 @@ export function ResultReviewClient({
           </form>
         )}
       </Dialog>
-
-      {/* 3-Page Diagnostic Report Modal */}
-      {attemptDiagnosticReport && (
-        <Dialog
-          isOpen={showDiagnosticModal}
-          onClose={() => setShowDiagnosticModal(false)}
-          size="2xl"
-          title="Class X BOARD READINESS CHALLENGE REPORT"
-        >
-          <div className="max-h-[85vh] overflow-y-auto p-2 sm:p-6">
-            <BoardReadinessReport
-              report={attemptDiagnosticReport}
-              studentGender={data?.gender || gender}
-              studentDetails={data?.studentDetails}
-              isTeacherView={userRole === 'teacher'}
-            />
-          </div>
-        </Dialog>
+        </div>
       )}
     </div>
   );

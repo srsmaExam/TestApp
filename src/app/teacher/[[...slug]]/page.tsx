@@ -37,6 +37,7 @@ export async function generateMetadata({
   if (slug[0] === 'tests') {
     if (slug.length === 2 && slug[1] === 'new') return { title: 'Create New Test | SRSMA' };
     if (slug.length === 3 && slug[2] === 'analytics') return { title: 'Test Report | SRSMA' };
+    if (slug.length === 3 && slug[2] === 'metadata') return { title: 'Edit Question Metadata | SRSMA' };
     if (slug.length === 2) return { title: 'Test Builder | SRSMA' };
     return { title: 'Tests | SRSMA' };
   }
@@ -88,6 +89,7 @@ export default async function TeacherPageDispatcher({
     if (slug.length === 1) return <TeacherTestsView />;
     if (slug.length === 2 && slug[1] === 'new') return <TeacherCreateTestView />;
     if (slug.length === 3 && slug[2] === 'analytics') return <TeacherTestAnalyticsView testId={slug[1]} />;
+    if (slug.length === 3 && slug[2] === 'metadata') return <TeacherTestBuilderView testId={slug[1]} initialTab="metadata" />;
     if (slug.length === 2) return <TeacherTestBuilderView testId={slug[1]} />;
   }
 

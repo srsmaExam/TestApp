@@ -4,7 +4,13 @@ import { getDb } from '@/db/client';
 import { papers, questions, testQuestions, tests } from '@/db/schema';
 import { TestBuilderClient } from '../tests/[id]/TestBuilderClient';
 
-export async function TeacherTestBuilderView({ testId }: { testId: string }) {
+export async function TeacherTestBuilderView({
+  testId,
+  initialTab,
+}: {
+  testId: string;
+  initialTab?: 'questions' | 'picker' | 'settings' | 'metadata';
+}) {
   const db = await getDb();
 
   const [test] = await db.select().from(tests).where(eq(tests.id, testId));
@@ -45,6 +51,10 @@ export async function TeacherTestBuilderView({ testId }: { testId: string }) {
       expectedTimeS: questions.expectedTimeS,
       chapter: questions.chapter,
       topic: questions.topic,
+      metadata: questions.metadata,
+      answer: questions.answer,
+      solution: questions.solution,
+      updatedAt: questions.updatedAt,
     })
     .from(testQuestions)
     .innerJoin(questions, eq(questions.id, testQuestions.questionId))
@@ -71,6 +81,9 @@ export async function TeacherTestBuilderView({ testId }: { testId: string }) {
       expectedTimeS: questions.expectedTimeS,
       chapter: questions.chapter,
       topic: questions.topic,
+      metadata: questions.metadata,
+      answer: questions.answer,
+      solution: questions.solution,
     })
     .from(questions)
     .leftJoin(papers, eq(questions.paperId, papers.id))
@@ -79,9 +92,10 @@ export async function TeacherTestBuilderView({ testId }: { testId: string }) {
   return (
     <TestBuilderClient
       initialTest={test}
-      initialAssignedQuestions={assigned}
-      allBankQuestions={allBankQuestions}
+      initialAssignedQuestions={assigned as any}
+      allBankQuestions={allBankQuestions as any}
       papers={allPapers}
+      initialTab={initialTab}
     />
   );
 }

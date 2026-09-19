@@ -247,8 +247,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.plainTextReport).toContain('PAGE 1: BOARD READINESS CHALLENGE REPORT');
     expect(result.plainTextReport).toContain('PAGE 2: YOUR STRENGTHS');
     expect(result.plainTextReport).toContain('PAGE 3: WHERE SHOULD YOU IMPROVE?');
-    expect(result.plainTextReport).toContain('PAGE 4: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
+    expect(result.plainTextReport).toContain('PAGE 4: YOUR NEXT STEPS');
+    expect(result.plainTextReport).toContain('PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE');
+    expect(result.plainTextReport).toContain('PAGE 6: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
     expect(result.plainTextReport).toContain('Dear Aarav Sharma,');
+    expect(result.plainTextReport).toContain('TURN YOUR GAPS INTO PROGRESS');
+    expect(result.plainTextReport).toContain('Strengthen the basics');
 
     // Page 4: Calculation steps audit verification
     expect(result.calculationSteps).toBeDefined();
@@ -387,12 +391,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(classifyTimeManagementRating(100)).toBe('Good');
     });
 
-    it('calculates final time management score = (score / (3 * attempted)) * 100 and flags guesswork <20s', () => {
+    it('calculates final time management score = (score / (3 * attempted)) * 100 and flags guesswork <8s', () => {
       const testQuestions = [
-        { qno: 1, attempted: true, timeTakenSeconds: 15, expectedUpperBoundS: 60 }, // <20s Guesswork! time < 1.5*ETS -> score 3
+        { qno: 1, attempted: true, timeTakenSeconds: 6, expectedUpperBoundS: 60 }, // <8s Guesswork! time < 1.5*ETS -> score 3
         { qno: 2, attempted: true, timeTakenSeconds: 100, expectedUpperBoundS: 60 }, // 1.5x-2x ETS -> score 2
         { qno: 3, attempted: true, timeTakenSeconds: 150, expectedUpperBoundS: 60 }, // >2x ETS -> score 1
-        { qno: 4, attempted: false, timeTakenSeconds: 10, expectedUpperBoundS: 60 }, // Unattempted -> excluded from score & attempted count
+        { qno: 4, attempted: false, timeTakenSeconds: 5, expectedUpperBoundS: 60 }, // Unattempted -> excluded from score & attempted count
       ];
 
       const tm = evaluateTimeManagement(testQuestions);
@@ -407,9 +411,9 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(tm.finalScorePercent).toBe(67);
       expect(tm.rating).toBe('Good');
 
-      // Guesswork detection: only attempted questions with < 20s
-      // Q1 is attempted and 15s (<20s) -> Flagged
-      // Q4 is 10s but NOT attempted -> Not guesswork answering
+      // Guesswork detection: only attempted questions with < 8s
+      // Q1 is attempted and 6s (<8s) -> Flagged
+      // Q4 is 5s but NOT attempted -> Not guesswork answering
       expect(tm.guessworkQuestions).toEqual([1]);
     });
 
@@ -417,7 +421,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
       const payload: StudentResponsePayload = {
         studentName: 'Test Student',
         responses: [
-          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 12 }, // < 20s (guesswork flagged!), ETS 60 -> score 3
+          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 6 }, // < 8s (guesswork flagged!), ETS 60 -> score 3
           { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 }, // < 1.5x ETS (45) -> score 3
           { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 250 }, // > 2x ETS (120 * 2 = 240) -> score 1
           { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 250 }, // > 2x ETS (120 * 2 = 240) -> score 1

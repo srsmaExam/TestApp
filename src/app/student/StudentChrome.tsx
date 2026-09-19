@@ -48,6 +48,7 @@ export async function StudentChrome({
       isLocked: !isReportUnlocked,
       lockKey: 'report',
     },
+    { href: '/student/about', label: 'About SRSMA' },
   ];
 
   return (

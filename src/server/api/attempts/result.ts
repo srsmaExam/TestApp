@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { apiSession } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
@@ -52,6 +52,25 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     .select({ count: sql<number>`cast(count(distinct ${attempts.studentId}) as int)` })
     .from(attempts)
     .where(and(eq(attempts.testId, attempt.testId), sql`status <> 'in_progress'`));
+
+  const allAttempts = await db
+    .select({
+      id: attempts.id,
+      attemptNo: attempts.attemptNo,
+      status: attempts.status,
+      submittedAt: attempts.submittedAt,
+      totalMarks: attempts.totalMarks,
+      maxMarks: attempts.maxMarks,
+    })
+    .from(attempts)
+    .where(
+      and(
+        eq(attempts.testId, attempt.testId),
+        eq(attempts.studentId, attempt.studentId),
+        sql`status <> 'in_progress'`,
+      ),
+    )
+    .orderBy(asc(attempts.attemptNo));
 
   const [studentProfile] = await db
     .select({
@@ -235,6 +254,14 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
       gender: studentProfile?.gender ?? null,
       isFormFilled: Boolean(studentProfile?.whatsappConsent && studentProfile?.city),
     },
+    allAttempts: allAttempts.map((a) => ({
+      id: a.id,
+      attemptNo: a.attemptNo,
+      status: a.status,
+      submittedAt: a.submittedAt,
+      totalMarks: a.totalMarks !== null ? Number(a.totalMarks) : 0,
+      maxMarks: a.maxMarks !== null ? Number(a.maxMarks) : 0,
+    })),
     questions: reviewItems,
   });
 });

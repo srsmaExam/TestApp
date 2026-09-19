@@ -4,6 +4,7 @@ import { StudentAnalyticsView } from '../views/StudentAnalyticsView';
 import { StudentTestInstructionView } from '../views/StudentTestInstructionView';
 import { StudentTestRunnerView } from '../views/StudentTestRunnerView';
 import { StudentAttemptResultView } from '../views/StudentAttemptResultView';
+import { StudentAboutView } from '../views/StudentAboutView';
 
 export async function generateMetadata({
   params,
@@ -12,6 +13,7 @@ export async function generateMetadata({
 }) {
   const { slug } = await params;
   if (!slug || slug.length === 0) return { title: 'My Tests | SRSMA' };
+  if (slug[0] === 'about') return { title: 'About SRSMA | Shri Ram Smart Minds Academy' };
   if (slug[0] === 'analytics') return { title: 'Personal Report | SRSMA' };
   if (slug[0] === 'tests') return { title: 'Test Instructions | SRSMA' };
   if (slug[0] === 'attempts' && slug[2] === 'result') return { title: 'Scorecard & Solutions | SRSMA' };
@@ -49,6 +51,11 @@ export default async function StudentPageDispatcher({
   // 5. /student/attempts/[id]/result
   if (slug.length === 3 && slug[0] === 'attempts' && slug[2] === 'result') {
     return <StudentAttemptResultView attemptId={slug[1]} />;
+  }
+
+  // 6. /student/about
+  if (slug.length === 1 && slug[0] === 'about') {
+    return <StudentAboutView />;
   }
 
   notFound();

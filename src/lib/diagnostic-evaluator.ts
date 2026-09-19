@@ -389,7 +389,7 @@ export function evaluateTimeManagement(
   const items: QuestionTimeEvaluation[] = [];
 
   for (const q of questions) {
-    const isGuesswork = q.attempted && q.timeTakenSeconds < 20;
+    const isGuesswork = q.attempted && q.timeTakenSeconds < 8;
     if (isGuesswork) {
       guessworkQuestions.push(q.qno);
     }
@@ -1587,7 +1587,7 @@ function generateReportPlainTextFormat(data: {
   if (data.timeManagement && data.timeManagement.guessworkQuestions.length > 0) {
     lines.push('');
     lines.push(
-      `⚠️ GUESSWORK OBSERVATION: There is possibility of guesswork being done in answering Q${data.timeManagement.guessworkQuestions.join(', Q')} (response submitted in under 20s).`,
+      `⚠️ GUESSWORK OBSERVATION: There is possibility of guesswork being done in answering Q${data.timeManagement.guessworkQuestions.join(', Q')} (response submitted in under 8s).`,
     );
   }
 
@@ -1652,13 +1652,120 @@ function generateReportPlainTextFormat(data: {
   lines.push('*Topic observations are based only on the questions tested.*');
   lines.push('');
 
-  // PAGE 4 (DEVELOPMENT ONLY: DETAILED CALCULATION STEPS & AUDIT)
-  const cs = data.calculationSteps;
+  // PAGE 4: YOUR NEXT STEPS
   lines.push('================================================================================');
-  lines.push('PAGE 4: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
+  lines.push('PAGE 4: YOUR NEXT STEPS');
   lines.push('================================================================================');
   lines.push('');
-  lines.push('PAGE 4 — DIAGNOSTIC AUDIT & CALCULATION STEPS');
+  lines.push('PAGE 4 — YOUR NEXT STEPS');
+  lines.push('');
+  const prepNorm = String(data.levelOfPreparation || '').trim().toLowerCase();
+  const isHighPrep = prepNorm.includes('high achievement') || prepNorm === 'advanced' || data.briScore >= 80;
+  const isConceptuallyStrong = !isHighPrep && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || data.briScore >= 60);
+
+  if (isHighPrep) {
+    lines.push('HOW TO MOVE FROM STRONG TO EXCELLENT');
+    lines.push('① Challenge yourself');
+    lines.push('Do not spend all your practice time on questions you can already solve. Regularly include unfamiliar and higher-order problems.');
+    lines.push('② Practise mixed problems');
+    lines.push('Combine concepts from different chapters so that you practise identifying the method, not just applying a memorised formula.');
+    lines.push('③ Analyse mistakes deeply');
+    lines.push('When you make an error, identify exactly where your reasoning broke down and re-solve the problem independently.');
+    lines.push('④ Build examination efficiency');
+    lines.push('Continue timed practice so that your accuracy remains high even when working under examination pressure.');
+    lines.push('⑤ Use Board preparation strategically');
+    lines.push('Secure all standard Board-level questions first, then use additional time to strengthen case-based, application-based and higher-order questions.');
+  } else if (isConceptuallyStrong) {
+    lines.push('TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION');
+    lines.push('① Move beyond direct questions');
+    lines.push('For every chapter you study, include application-based and multi-step questions—not only straightforward exercises.');
+    lines.push('② Rework every important mistake');
+    lines.push('After a test, first attempt the incorrect question again without seeing the solution. Then identify whether the issue was:');
+    lines.push('Concept • Application • Accuracy • Interpretation');
+    lines.push('③ Practise consistently');
+    lines.push('A manageable amount of focused practice every day is more valuable than occasional long study sessions.');
+    lines.push('④ Test yourself every 1–2 weeks');
+    lines.push('Use mixed, timed questions to check whether your improvement is carrying across chapters.');
+    lines.push('⑤ Shift towards Board-style practice');
+    lines.push('As the examination approaches, progressively increase your practice of sample papers, case-based questions and mixed-chapter questions.');
+  } else {
+    lines.push('TURN YOUR GAPS INTO PROGRESS');
+    lines.push('① Strengthen the basics');
+    lines.push('Revisit the concepts behind the questions you could not solve. Make sure you can explain the idea before memorising the method.');
+    lines.push('② Practise a few questions every day');
+    lines.push('Use a simple progression:');
+    lines.push('Basic → Standard → Application');
+    lines.push('Focus on quality and consistency rather than solving a very large number of questions.');
+    lines.push('③ Keep an Error Notebook');
+    lines.push('For every important mistake, record:');
+    lines.push('What did I get wrong? → Why? → What is the correct approach?');
+    lines.push('④ Test yourself regularly');
+    lines.push('Take a short mixed test every 1–2 weeks and track whether the same mistakes are recurring.');
+    lines.push('⑤ Master your prescribed textbook');
+    lines.push('Become confident with examples and exercises before moving extensively to additional or advanced material.');
+  }
+  lines.push('');
+
+  // PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE
+  lines.push('================================================================================');
+  lines.push('PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE');
+  lines.push('================================================================================');
+  lines.push('');
+  lines.push('PAGE 5 — NEED STRUCTURED SUPPORT?');
+  lines.push('SRSMA BOARD MASTERY COURSE');
+  lines.push('');
+  lines.push('WHY THIS COURSE?');
+  lines.push('Knowing a chapter is not enough. Students must learn to solve unfamiliar, application-based questions.');
+  lines.push('SRSMA Way: From knowing the chapter to confidently solving what comes next.');
+  lines.push('');
+  lines.push('THE CLASS X GAP');
+  lines.push('School teaches the chapter → Basic examples are understood → Routine questions get done → Unfamiliar questions feel difficult');
+  lines.push('• "I know the formula... but don\'t know when to use it."');
+  lines.push('• "I understood the chapter... but can\'t solve a new question."');
+  lines.push('• "I can score in familiar tests... but lose marks in tougher papers."');
+  lines.push('SRSMA BOARD MASTERY COURSE CLOSES THIS GAP!');
+  lines.push('');
+  lines.push('THIS PROGRAMME IS IDEAL FOR STUDENTS WHO:');
+  lines.push('✓ Have conceptual gaps');
+  lines.push('✓ Want to improve Board marks');
+  lines.push('✓ Find Maths or Science difficult');
+  lines.push('✓ Want structured preparation outside school');
+  lines.push('✓ Want stronger fundamentals before Class XI');
+  lines.push('(Especially valuable for students who plan to choose MPC / BiPC after Class X)');
+  lines.push('');
+  lines.push('THE FOUR PILLARS OF THIS COURSE:');
+  lines.push('1. Concept Clarity: Identify weak fundamentals and rebuild them from the ground up.');
+  lines.push('2. Deep Practice: Move from basic → application → higher-order → Board-level questions.');
+  lines.push('3. Performance Feedback: Tests reveal exactly where the student is losing marks — and what to improve.');
+  lines.push('4. Exam Skills: Learn to approach questions, manage time & present answers effectively.');
+  lines.push('');
+  lines.push('THE 100 HOUR ROADMAP (100 hours. 12 weeks. One clear goal.):');
+  lines.push('1. UNDERSTAND (Close the gaps — Maths & Science):');
+  lines.push('   01. Strengthen weak fundamentals | 02. Understand concepts from first principles');
+  lines.push('   03. Learn the why, not just the formula | 04. Connect concepts across chapters');
+  lines.push('   05. Develop clear methods for solving problems');
+  lines.push('2. MASTER (Practise. Apply. Solve.):');
+  lines.push('   1. Basic: Concept-First questions | 2. Application: Exam-Style problems');
+  lines.push('   3. Higher-Order: Competency questions | 4. Board Pattern: High-impact PYQs');
+  lines.push('3. PERFORM (Test. Analyse. Improve.):');
+  lines.push('   6 Full-Length Mock Tests (3 Maths + 3 Science)');
+  lines.push('   Attempt → Analyse → Identify Mistakes → Correct → Improve');
+  lines.push('NOT 100 HOURS OF LECTURES. IT\'S 100 HOURS OF GUIDED PREPARATION!');
+  lines.push('');
+  lines.push('STAR FACULTY GUIDING YOUR CHILD:');
+  lines.push('• Mr. Amal M Das (B.Tech, IIT KGP | Program Coordinator & Maths HOD)');
+  lines.push('• Mr. Brajesh (B.Tech, IIT Madras | Physics HOD)');
+  lines.push('• Mr. Ninad (B.Tech, IIT Madras | Chemistry HOD)');
+  lines.push('• Mr. Thirumala (M.Tech, NIT Warangal | Maths Faculty)');
+  lines.push('');
+
+  // PAGE 6 (DEVELOPMENT ONLY: DETAILED CALCULATION STEPS & AUDIT)
+  const cs = data.calculationSteps;
+  lines.push('================================================================================');
+  lines.push('PAGE 6: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
+  lines.push('================================================================================');
+  lines.push('');
+  lines.push('PAGE 6 — DIAGNOSTIC AUDIT & CALCULATION STEPS');
   lines.push('DEVELOPMENT & AUDIT MODE: VERIFICATION TRACE FOR EVALUATION LOGIC');
   lines.push('');
   lines.push('--------------------------------------------------------------------------------');
@@ -1719,9 +1826,9 @@ function generateReportPlainTextFormat(data: {
     lines.push(`• Rating Thresholds: Score <= 33% (Poor) | 33% - 66% (Medium) | >= 66% (Good)`);
     lines.push(`• Final Rating: ${cs.timeManagement.ratingResult}`);
     if (cs.timeManagement.guessworkQuestions.length > 0) {
-      lines.push(`• Guesswork Flag (<20s): [Q${cs.timeManagement.guessworkQuestions.join(', Q')}]`);
+      lines.push(`• Guesswork Flag (<8s): [Q${cs.timeManagement.guessworkQuestions.join(', Q')}]`);
     } else {
-      lines.push(`• Guesswork Flag (<20s): None detected`);
+      lines.push(`• Guesswork Flag (<8s): None detected`);
     }
     lines.push('');
   }

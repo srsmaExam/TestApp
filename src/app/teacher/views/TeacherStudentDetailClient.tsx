@@ -78,7 +78,7 @@ type AllStudentOption = {
 
 export function TeacherStudentDetailClient({
   studentId,
-  initialTab = 'analytics',
+  initialTab = 'responses',
 }: {
   studentId: string;
   initialTab?: 'analytics' | 'responses';
@@ -451,14 +451,24 @@ export function TeacherStudentDetailClient({
                         </TableCell>
                         <TableCell className="text-right">
                           {isCompleted ? (
-                            <Link
-                              href={`/teacher/students/${studentId}/attempts/${a.attemptId}`}
-                              className={buttonClass('primary', 'sm')}
-                              title="Review full student responses, solutions, and diagnostics"
-                            >
-                              <Eye className="size-3.5" />
-                              <span>View Response &amp; Solutions</span>
-                            </Link>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Link
+                                href={`/teacher/students/${studentId}/attempts/${a.attemptId}?tab=solutions`}
+                                className={buttonClass('secondary', 'sm')}
+                                title="Review question responses and faculty solutions"
+                              >
+                                <Eye className="size-3.5" />
+                                <span>Solutions</span>
+                              </Link>
+                              <Link
+                                href={`/teacher/students/${studentId}/attempts/${a.attemptId}?tab=report`}
+                                className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-brand-500 transition"
+                                title="View 5-Page Board Readiness Diagnostic Report"
+                              >
+                                <Award className="size-3.5" />
+                                <span>5-Page Report</span>
+                              </Link>
+                            </div>
                           ) : (
                             <span className="text-xs italic text-slate-400">
                               Not submitted

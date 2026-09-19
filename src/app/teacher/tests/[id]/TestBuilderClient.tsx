@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDown,
   ArrowUp,
   BarChart3,
+  BookOpen,
   Check,
   Copy,
   ExternalLink,
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui';
 import { QuestionBody } from '@/components/Katex';
 import { fromLocalInputValue, toLocalInputValue } from '@/lib/datetime';
+import { TestMetadataTable } from './TestMetadataTable';
 
 type AssignedQuestion = {
   testId: string;
@@ -64,6 +66,10 @@ type AssignedQuestion = {
   expectedTimeS: number | null;
   chapter: string | null;
   topic: string | null;
+  metadata?: any;
+  answer?: any;
+  solution?: string | null;
+  updatedAt?: any;
 };
 
 type BankQuestion = {
@@ -83,6 +89,9 @@ type BankQuestion = {
   expectedTimeS: number | null;
   chapter: string | null;
   topic: string | null;
+  metadata?: any;
+  answer?: any;
+  solution?: string | null;
 };
 
 export function TestBuilderClient({
@@ -90,17 +99,30 @@ export function TestBuilderClient({
   initialAssignedQuestions,
   allBankQuestions,
   papers = [],
+  initialTab,
 }: {
   initialTest: any;
   initialAssignedQuestions: AssignedQuestion[];
   allBankQuestions: BankQuestion[];
   papers?: Array<{ id: string; title: string; code: string; examYear?: number | null }>;
+  initialTab?: 'questions' | 'picker' | 'settings' | 'metadata';
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryTab = searchParams?.get('tab');
+  const defaultTab =
+    initialTab ??
+    (queryTab === 'metadata'
+      ? 'metadata'
+      : queryTab === 'picker'
+      ? 'picker'
+      : queryTab === 'settings'
+      ? 'settings'
+      : 'questions');
   const { toast } = useToast();
   const [test, setTest] = useState(initialTest);
   const [assigned, setAssigned] = useState<AssignedQuestion[]>(initialAssignedQuestions);
-  const [activeTab, setActiveTab] = useState<'questions' | 'picker' | 'settings'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'picker' | 'settings' | 'metadata'>(defaultTab);
 
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -445,6 +467,9 @@ export function TestBuilderClient({
       expectedTimeS: q.expectedTimeS,
       chapter: q.chapter,
       topic: q.topic,
+      metadata: q.metadata,
+      answer: q.answer,
+      solution: q.solution,
     };
     updateAssigned([...assigned, newAssigned]);
   };
@@ -665,10 +690,10 @@ export function TestBuilderClient({
               setPreviewOpen(true);
             }}
             disabled={assigned.length === 0}
-            title="Preview test questions in student exam mode"
+            title="Preview test questions and full solutions"
           >
             <Eye className="mr-1 size-3.5" />
-            Preview
+            Test Preview
           </Button>
 
           <div className="mx-1 hidden h-4 w-px bg-slate-200 sm:block dark:bg-slate-800" />
@@ -764,6 +789,18 @@ export function TestBuilderClient({
         >
           <Plus className="size-4" />
           Add from Bank ({filteredBank.length} available)
+        </button>
+
+        <button
+          onClick={() => setActiveTab('metadata')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === 'metadata'
+              ? 'border-brand-700 text-brand-700 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <SlidersHorizontal className="size-4" />
+          Edit Metadata ({assigned.length})
         </button>
 
         <button
@@ -1369,6 +1406,31 @@ export function TestBuilderClient({
         </form>
       )}
 
+      {/* Tab 4: Question Metadata & Profiling Table */}
+      {activeTab === 'metadata' && (
+        <TestMetadataTable
+          testId={test.id}
+          testTitle={test.title}
+          initialQuestions={assigned as any}
+          onQuestionsUpdated={(updated) => {
+            setAssigned((prev) =>
+              prev.map((q) => {
+                const match = updated.find((u) => u.questionId === q.questionId);
+                if (!match) return q;
+                return {
+                  ...q,
+                  chapter: match.chapter ?? q.chapter,
+                  topic: match.topic ?? q.topic,
+                  difficulty: match.difficulty ?? q.difficulty,
+                  expectedTimeS: match.expectedTimeS ?? q.expectedTimeS,
+                  metadata: match.metadata ?? q.metadata,
+                };
+              }),
+            );
+          }}
+        />
+      )}
+
       {/* Student View Preview Modal */}
       {previewOpen && assigned[previewIndex] && (
         <Dialog
@@ -1378,7 +1440,7 @@ export function TestBuilderClient({
           title={
             <div className="flex items-center justify-between gap-4">
               <span>
-                Student Preview: Question {previewIndex + 1} of {assigned.length}
+                Test Preview: Question {previewIndex + 1} of {assigned.length}
               </span>
               <span className="font-mono text-xs font-normal text-slate-500">
                 {assigned[previewIndex].subject.toUpperCase()} · {assigned[previewIndex].type.toUpperCase()}
@@ -1473,46 +1535,119 @@ export function TestBuilderClient({
             {/* Options / Answer Area */}
             {assigned[previewIndex].type === 'mcq' ? (
               <div className="space-y-2">
-                <Label>Answer Options (Select One):</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Answer Options:</Label>
+                  {assigned[previewIndex].answer && 'key' in assigned[previewIndex].answer && (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      <Check className="size-3.5 text-emerald-600" /> Correct Key: Option {assigned[previewIndex].answer.key}
+                    </span>
+                  )}
+                </div>
                 <div className="grid gap-2">
-                  {(assigned[previewIndex].options ?? []).map((opt: any) => (
-                    <div
-                      key={opt.key}
-                      className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900"
-                    >
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-slate-50 text-xs font-bold dark:border-slate-700 dark:bg-slate-800">
-                        {opt.key}
-                      </span>
-                      <div className="flex-1">
-                        <QuestionBody
-                          body={opt.body}
-                          renderImage={(imgId) => (
-                            <img
-                              src={`/api/files/images/${assigned[previewIndex].questionId}/${imgId}`}
-                              alt="Option figure"
-                              className="my-1 max-h-32 object-contain"
-                            />
-                          )}
-                        />
+                  {(assigned[previewIndex].options ?? []).map((opt: any) => {
+                    const isCorrect =
+                      assigned[previewIndex].answer &&
+                      'key' in assigned[previewIndex].answer &&
+                      assigned[previewIndex].answer.key === opt.key;
+                    return (
+                      <div
+                        key={opt.key}
+                        className={`flex items-start gap-3 rounded-lg border p-3 text-sm transition-all ${
+                          isCorrect
+                            ? 'border-emerald-500 bg-emerald-50/60 shadow-2xs dark:border-emerald-600/80 dark:bg-emerald-950/30'
+                            : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
+                        }`}
+                      >
+                        <span
+                          className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                            isCorrect
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'border border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                          }`}
+                        >
+                          {opt.key}
+                        </span>
+                        <div className="flex-1">
+                          <QuestionBody
+                            body={opt.body}
+                            renderImage={(imgId) => (
+                              <img
+                                src={`/api/files/images/${assigned[previewIndex].questionId}/${imgId}`}
+                                alt="Option figure"
+                                className="my-1 max-h-32 object-contain"
+                              />
+                            )}
+                          />
+                        </div>
+                        {isCorrect && (
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shrink-0">
+                            <Check className="size-3" /> Correct
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label>Numerical Value Entry (Student Input):</Label>
-                <input
-                  type="text"
-                  disabled
-                  placeholder="e.g. 42 or 3.14"
-                  className="h-10 w-48 rounded-md border border-slate-300 bg-slate-50 px-3 text-center font-mono font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-950"
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="text"
+                    disabled
+                    placeholder="e.g. 42 or 3.14"
+                    className="h-10 w-48 rounded-md border border-slate-300 bg-slate-50 px-3 text-center font-mono font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                  <div className="rounded-lg border border-emerald-300 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                    <span className="font-bold">Correct Numerical Answer:</span>{' '}
+                    <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 ml-1">
+                      {typeof assigned[previewIndex].answer === 'object' && assigned[previewIndex].answer?.value !== undefined
+                        ? assigned[previewIndex].answer.value
+                        : JSON.stringify(assigned[previewIndex].answer ?? '—')}
+                    </span>
+                  </div>
+                </div>
                 <p className="text-xs text-slate-400">
-                  Accepts integer or decimal input.
+                  Accepts integer or decimal input within configured precision.
                 </p>
               </div>
             )}
+
+            {/* Solution & Explanation */}
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 text-xs dark:border-indigo-900/60 dark:bg-indigo-950/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-1.5 font-bold text-indigo-950 dark:text-indigo-200 text-sm">
+                  <BookOpen className="size-4 text-indigo-600 dark:text-indigo-400" />
+                  Solution &amp; Explanation:
+                </span>
+                {assigned[previewIndex].solution && (
+                  <span className="rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800 dark:bg-indigo-900/70 dark:text-indigo-300">
+                    Detailed Solution
+                  </span>
+                )}
+              </div>
+              {assigned[previewIndex].solution ? (
+                <div className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm">
+                  <QuestionBody
+                    body={assigned[previewIndex].solution}
+                    renderImage={(imgId) => (
+                      <div className="my-2 overflow-hidden rounded-md border border-indigo-200 bg-white p-1 dark:border-indigo-900 dark:bg-slate-900">
+                        <img
+                          src={`/api/files/images/${assigned[previewIndex].questionId}/${imgId}`}
+                          alt="Solution figure"
+                          className="max-h-64 object-contain"
+                        />
+                      </div>
+                    )}
+                  />
+                </div>
+              ) : (
+                <p className="italic text-slate-500 dark:text-slate-400">
+                  No solution provided for this question.
+                </p>
+              )}
+            </div>
           </div>
         </Dialog>
       )}

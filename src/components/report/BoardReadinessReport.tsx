@@ -2552,13 +2552,13 @@ export function BoardReadinessReport({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 items-end text-center pt-1">
-                  {/* Amal M Das - Custom Cutout (NOT in circular ring, matching brochure faculty_strip.png) */}
+                  {/* Amal M Das - Circular Portrait with Yellow Ring */}
                   <div className="flex flex-col items-center justify-end">
-                    <div className="relative h-20 sm:h-22 w-24 flex items-end justify-center mb-1">
+                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
                       <img
                         src="/board-challenge/faculty_amal.webp"
                         alt="Mr. Amal M Das"
-                        className="h-full w-auto object-contain object-bottom drop-shadow-sm"
+                        className="size-full object-cover object-center"
                       />
                     </div>
                     <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">

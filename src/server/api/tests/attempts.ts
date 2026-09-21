@@ -109,7 +109,7 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     }
   }
 
-  let questionOrder: string[] = [];
+  const questionOrder: string[] = [];
   for (const subj of ORDERED_SUBJECTS) {
     const ids = subjectBuckets[subj];
     if (ids.length > 0) {

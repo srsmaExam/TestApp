@@ -29,7 +29,7 @@ export async function StudentAboutView() {
 
   return (
     <StudentChrome session={session}>
-      <div className="space-y-8 pb-16">
+      <div className="space-y-8 pb-16 min-w-0 max-w-full overflow-hidden">
         {/* 1. Hero Section */}
         <section className="relative overflow-hidden rounded-3xl border border-amber-300/40 bg-gradient-to-br from-slate-900 via-brand-950 to-slate-900 p-6 sm:p-10 text-white shadow-xl">
           <div className="absolute -right-16 -top-16 size-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />

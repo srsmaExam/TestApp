@@ -635,13 +635,13 @@ export function BoardReadinessReport({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 max-w-full">
           {/* Tab buttons */}
-          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-1 overflow-x-auto max-w-full no-scrollbar rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setActiveTab('all')}
-              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'all'
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'all'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -651,7 +651,7 @@ export function BoardReadinessReport({
             <button
               type="button"
               onClick={() => setActiveTab('page1')}
-              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page1'
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page1'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -661,7 +661,7 @@ export function BoardReadinessReport({
             <button
               type="button"
               onClick={() => setActiveTab('page2')}
-              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page2'
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page2'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -671,7 +671,7 @@ export function BoardReadinessReport({
             <button
               type="button"
               onClick={() => setActiveTab('page3')}
-              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page3'
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page3'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -681,7 +681,7 @@ export function BoardReadinessReport({
             <button
               type="button"
               onClick={() => setActiveTab('page4')}
-              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page4'
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page4'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -691,7 +691,7 @@ export function BoardReadinessReport({
             <button
               type="button"
               onClick={() => setActiveTab('page5')}
-              className={`flex-1 sm:flex-initial rounded-lg px-2.5 py-1 transition text-center ${activeTab === 'page5'
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page5'
                 ? 'bg-brand-600 text-white shadow-xs font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -702,7 +702,7 @@ export function BoardReadinessReport({
               <button
                 type="button"
                 onClick={() => setActiveTab('page6')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 rounded-lg px-2 py-1 transition ${activeTab === 'page6'
+                className={`shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 transition ${activeTab === 'page6'
                   ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
                   : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
                   }`}
@@ -713,7 +713,7 @@ export function BoardReadinessReport({
             )}
           </div>
 
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-end shrink-0">
             <Button variant="secondary" size="sm" onClick={handleCopyText} title="Copy exact plaintext report" className="text-xs">
               {copied ? <Check className="mr-1.5 size-3.5 text-emerald-600" /> : <Copy className="mr-1.5 size-3.5" />}
               {copied ? 'Copied' : 'Copy Text'}
@@ -738,8 +738,8 @@ export function BoardReadinessReport({
         }`}
       >
         {/* Header watermark & Brand bar */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
                 <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
@@ -758,7 +758,7 @@ export function BoardReadinessReport({
                 </span>
               ) : null}
             </div>
-            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
               BOARD READINESS CHALLENGE REPORT
             </h2>
           </div>
@@ -788,18 +788,18 @@ export function BoardReadinessReport({
               <div className="space-y-3 w-full">
                 {/* Mobile Mascot Avatar in header (< sm) */}
                 <div className="flex items-center gap-3.5 sm:hidden">
-                  <div className="relative size-24 shrink-0 rounded-2xl border-2 border-brand-500/40 bg-gradient-to-br from-white to-brand-50/50 p-1.5 shadow-md dark:from-slate-800 dark:to-slate-900 dark:border-brand-400/40 flex items-center justify-center overflow-hidden">
+                  <div className="relative size-20 shrink-0 rounded-2xl border-2 border-brand-500/40 bg-gradient-to-br from-white to-brand-50/50 p-1.5 shadow-md dark:from-slate-800 dark:to-slate-900 dark:border-brand-400/40 flex items-center justify-center overflow-hidden">
                     <img
                       src={avatarSrc}
                       alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
                       className="size-full object-contain"
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0 flex-1">
                     <span className="inline-block rounded-md bg-brand-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-700 dark:bg-brand-400/10 dark:text-brand-300">
                       SRSMA Mentorship
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
                       Dear {report.studentName},
                     </h3>
                   </div>
@@ -1100,13 +1100,13 @@ export function BoardReadinessReport({
           activeTab === 'all' || activeTab === 'page2' ? 'block' : 'hidden print:block'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+          <div className="min-w-0 flex-1">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
               <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
               Shri Ram Smart Minds Academy
             </span>
-            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
               PAGE 2: YOUR STRENGTHS
             </h2>
           </div>
@@ -1295,13 +1295,13 @@ export function BoardReadinessReport({
           activeTab === 'all' || activeTab === 'page3' ? 'block' : 'hidden print:block'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+          <div className="min-w-0 flex-1">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
               <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
               Shri Ram Smart Minds Academy
             </span>
-            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
               PAGE 3 — WHERE SHOULD YOU IMPROVE?
             </h2>
           </div>
@@ -1680,13 +1680,13 @@ export function BoardReadinessReport({
           activeTab === 'all' || activeTab === 'page4' ? 'block' : 'hidden print:block'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+          <div className="min-w-0 flex-1">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
               <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
               Shri Ram Smart Minds Academy
             </span>
-            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
               PAGE 4 — RECOMMENDATIONS
             </h2>
           </div>
@@ -2212,14 +2212,14 @@ export function BoardReadinessReport({
           activeTab === 'all' || activeTab === 'page5' ? 'block' : 'hidden print:block'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+          <div className="min-w-0 flex-1">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
               <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
               Shri Ram Smart Minds Academy
             </span>
             <div className="flex items-center gap-2 mt-1">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white break-words">
                 PAGE 5 — NEED STRUCTURED SUPPORT?
               </h2>
             </div>
@@ -2700,8 +2700,8 @@ export function BoardReadinessReport({
           }`}
         >
           {/* Header watermark & Brand bar */}
-          <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60">
-            <div>
+          <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60 gap-2">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-extrabold uppercase tracking-widest text-amber-700 dark:text-amber-400">
                   Diagnostic Audit Engine
@@ -2710,15 +2710,15 @@ export function BoardReadinessReport({
                   Teacher View
                 </span>
               </div>
-              <h2 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl dark:text-white">
+              <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
                 PAGE 6 — DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
               </h2>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <span className="inline-block rounded-full bg-amber-500/15 px-3 py-1 text-xs font-black text-amber-800 dark:text-amber-300 border border-amber-500/30">
                 PAGE 6 OF 6
               </span>
-              <p className="mt-1 text-[11px] text-slate-400">Faculty Audit Ledger</p>
+              <p className="mt-1 text-[11px] text-slate-400 hidden sm:block">Faculty Audit Ledger</p>
             </div>
           </div>
 

@@ -46,6 +46,8 @@
 html,
 body {
   height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* The AppShell header height, in one place. Full-height panes (exam runner,
@@ -92,9 +94,31 @@ html.dark body {
   color: var(--color-ink, #f1f5f9);
 }
 
-/* KaTeX inherits a slightly-too-large size against 14px UI text. */
+/* KaTeX inherits a slightly-too-large size against 14px UI text.
+   Ensure math formulas stay strictly contained within their parent container on mobile. */
 .katex {
   font-size: 1.06em;
+  max-width: 100%;
+}
+
+.katex .katex-mathml {
+  position: absolute !important;
+  clip: rect(1px, 1px, 1px, 1px) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  height: 1px !important;
+  width: 1px !important;
+  overflow: hidden !important;
+  max-width: 1px !important;
+}
+
+.katex-html {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  vertical-align: middle;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 html.dark .katex {
@@ -107,6 +131,8 @@ html.dark .katex {
   font-size: 1rem;
   line-height: 1.65;
   max-width: 70ch;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 @media (min-width: 768px) {
   .q-render {
@@ -137,9 +163,20 @@ html.dark .q-render :is(th) {
   color: #f8fafc;
 }
 .q-render .katex-display {
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0.15rem 0;
+  padding: 0.25rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch-friendly hidden scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Focus ring that is visible on both the light page and the dark header. */

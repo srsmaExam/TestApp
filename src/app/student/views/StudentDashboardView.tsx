@@ -90,16 +90,16 @@ export async function StudentDashboardView() {
 
   return (
     <StudentChrome session={session}>
-      <div className="space-y-8">
+      <div className="space-y-8 min-w-0 max-w-full">
       {/* Welcome Banner */}
       <div className="rounded-xl bg-gradient-to-r from-brand-900 to-brand-700 p-6 text-white shadow-sm dark:from-brand-950 dark:to-brand-800">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+          <div className="min-w-0">
             <span className="inline-flex items-center rounded-full bg-brand-800/80 px-2.5 py-0.5 text-xs font-semibold text-accent-400 dark:bg-brand-900/90">
               <Sparkles className="mr-1 size-3" />
               Board Readiness Challenge Preparation
             </span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
+            <h1 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-white truncate sm:text-wrap">
               Welcome back, {session.fullName}!
             </h1>
             <p className="mt-0.5 text-xs text-brand-100 dark:text-brand-200">

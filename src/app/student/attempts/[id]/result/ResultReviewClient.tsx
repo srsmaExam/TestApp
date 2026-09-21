@@ -937,12 +937,12 @@ export function ResultReviewClient({
       </div>
 
       {/* Primary Tab Navigation: Solutions vs 5-Page Board Report */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 gap-2 min-w-0 max-w-full">
+        <div className="flex gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
             onClick={() => handleTabChange('solutions')}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3.5 text-sm font-bold transition-colors ${
+            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border-b-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-colors ${
               activeViewTab === 'solutions'
                 ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -955,7 +955,7 @@ export function ResultReviewClient({
           <button
             type="button"
             onClick={() => handleTabChange('report')}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3.5 text-sm font-bold transition-colors ${
+            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border-b-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-colors ${
               activeViewTab === 'report'
                 ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -1199,14 +1199,14 @@ export function ResultReviewClient({
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Question-by-Question Solutions</h2>
 
           {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-w-full">
             {/* Subject Filters */}
-            <div className="flex rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+            <div className="flex items-center overflow-x-auto no-scrollbar max-w-full rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
               {(['all', 'maths', 'physics', 'chemistry', 'biology'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setFilterSubject(s)}
-                  className={`rounded px-2.5 py-1 capitalize transition-colors ${filterSubject === s ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
+                  className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 capitalize transition-colors ${filterSubject === s ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                 >
                   {s}
@@ -1215,7 +1215,7 @@ export function ResultReviewClient({
             </div>
 
             {/* Status Filters */}
-            <div className="flex flex-wrap rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+            <div className="flex items-center overflow-x-auto sm:flex-wrap no-scrollbar max-w-full rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
               {[
                 { id: 'all', label: 'All' },
                 { id: 'correct', label: 'Correct' },
@@ -1229,7 +1229,7 @@ export function ResultReviewClient({
                 <button
                   key={st.id}
                   onClick={() => setFilterStatus(st.id)}
-                  className={`rounded px-2.5 py-1 transition-colors ${filterStatus === st.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
+                  className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 transition-colors ${filterStatus === st.id ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100' : 'hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                 >
                   {st.label}
@@ -1419,13 +1419,13 @@ export function ResultReviewClient({
                                 ) : null}
 
                                 {/* Left & Middle: Letter Circle + Content */}
-                                <div className="flex flex-1 items-center gap-3 pr-2">
+                                <div className="flex flex-1 items-center gap-3 pr-2 min-w-0">
                                   <span
                                     className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleClass}`}
                                   >
                                     {opt.key}
                                   </span>
-                                  <div className="flex-1 text-sm font-medium leading-relaxed">
+                                  <div className="flex-1 min-w-0 text-sm font-medium leading-relaxed">
                                     <QuestionBody
                                       body={opt.body}
                                       renderImage={(imgId) => (
@@ -1489,7 +1489,7 @@ export function ResultReviewClient({
                     {/* Worked Solution (Visible once unlocked) */}
                     {reportSubmitted && (
                       q.solution ? (
-                        <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-xs text-slate-800 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-slate-200">
+                        <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-xs text-slate-800 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-slate-200 overflow-x-auto max-w-full">
                           <div className="mb-2 flex items-center gap-1.5 font-bold text-brand-900 dark:text-brand-300">
                             <Sparkles className="size-4 text-accent-500" />
                             Step-by-Step Solution:

@@ -34,7 +34,16 @@ export function KatexSpan({ tex, display = false }: { tex: string; display?: boo
       </span>
     );
   }
-  return <span dangerouslySetInnerHTML={{ __html: result.html }} />;
+
+  return (
+    <span
+      className={cn(
+        'max-w-full align-middle [scrollbar-width:thin]',
+        display ? 'block my-2 overflow-x-auto' : 'inline-block overflow-x-auto',
+      )}
+      dangerouslySetInnerHTML={{ __html: result.html }}
+    />
+  );
 }
 
 export type ImageResolver = (placeholderId: string) => React.ReactNode;
@@ -126,7 +135,7 @@ export function QuestionBody({
   const segments = useMemo(() => parseBody(body), [body]);
 
   return (
-    <div className={`q-render whitespace-pre-wrap break-words ${className ?? ''}`}>
+    <div className={`q-render whitespace-pre-wrap break-words min-w-0 max-w-full overflow-hidden ${className ?? ''}`}>
       {segments.map((seg, i) => {
         if (seg.kind === 'math') return <KatexSpan key={i} tex={seg.tex} display={seg.display} />;
         if (seg.kind === 'image') return <span key={i}>{renderImage(seg.placeholderId)}</span>;

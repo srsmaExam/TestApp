@@ -5,8 +5,11 @@ import {
   classifyPreparationLevel,
   classifyPriority,
   parseExpectedTimeUpperBound,
+  parseExpectedTimeBenchmark,
+  parseExpectedTimeRange,
   getQuestionETS,
   evaluateQuestionTimeManagement,
+  classifyTimeManagementBand,
   classifyTimeManagementRating,
   evaluateTimeManagement,
   type QuestionMetadataItem,
@@ -117,11 +120,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
   });
 
   it('correctly classifies priority levels', () => {
-    expect(classifyPriority(30)).toBe('High Priority');
-    expect(classifyPriority(39)).toBe('High Priority');
-    expect(classifyPriority(40)).toBe('Medium Priority');
-    expect(classifyPriority(55)).toBe('Medium Priority');
-    expect(classifyPriority(60)).toBe('Low Priority');
+    expect(classifyPriority(20)).toBe('High Priority');
+    expect(classifyPriority(24.9)).toBe('High Priority');
+    expect(classifyPriority(25)).toBe('Medium Priority');
+    expect(classifyPriority(35)).toBe('Medium Priority');
+    expect(classifyPriority(36)).toBe('Low Priority');
+    expect(classifyPriority(49.9)).toBe('Low Priority');
   });
 
   it('parses expected time upper bound correctly', () => {
@@ -217,10 +221,10 @@ describe('SRSMA Diagnostic Evaluator', () => {
     result.strengths.forEach((s) => {
       expect(chapterNames).not.toContain(s.name);
     });
-    // Weakness categories (Priority Gaps) must only include categories where score is < 75%
+    // Weakness categories (Priority Gaps) must only include categories where score is < 50%
     result.priorityGaps.forEach((g) => {
       expect(chapterNames).not.toContain(g.name);
-      expect(g.scorePercent).toBeLessThan(75);
+      expect(g.scorePercent).toBeLessThan(50);
     });
     expect(result.priorityGaps.length).toBeLessThanOrEqual(4);
 
@@ -247,7 +251,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.plainTextReport).toContain('PAGE 1: BOARD READINESS CHALLENGE REPORT');
     expect(result.plainTextReport).toContain('PAGE 2: YOUR STRENGTHS');
     expect(result.plainTextReport).toContain('PAGE 3: WHERE SHOULD YOU IMPROVE?');
-    expect(result.plainTextReport).toContain('PAGE 4: YOUR NEXT STEPS');
+    expect(result.plainTextReport).toContain('PAGE 4: RECOMMENDATIONS');
     expect(result.plainTextReport).toContain('PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE');
     expect(result.plainTextReport).toContain('PAGE 6: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
     expect(result.plainTextReport).toContain('Dear Aarav Sharma,');
@@ -284,10 +288,10 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(highResult.keyInsight).toBe(
       'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
     );
-    // When no categories are < 75%, priorityGaps is empty and congratulations is displayed
+    // When no categories are < 50%, priorityGaps is empty and congratulations is displayed
     expect(highResult.priorityGaps.length).toBe(0);
     expect(highResult.plainTextReport).toContain(
-      'Congratulations! Outstanding performance — no weakness areas detected (<= 70%)',
+      'Congratulations! Outstanding performance — no weakness areas detected (< 50%)',
     );
 
     // 2. Conceptually Strong (e.g. Q1, Q3, Q4 correct: 1 + 3 + 3 = 7/9 = 77.8% BRI)
@@ -310,13 +314,14 @@ describe('SRSMA Diagnostic Evaluator', () => {
     );
   });
 
-  it('flags rapid guesswork in topics to revisit even if answer is correct or wrong', () => {
+  it('flags rapid guesswork in topics to revisit only if strictly less than 8 seconds', () => {
     const rapidPayload: StudentResponsePayload = {
       studentName: 'Aarav Rapid',
       responses: [
-        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 8 }, // Very fast correct -> Rapid Guesswork
-        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 10 }, // Very fast incorrect -> Rapid Guesswork
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 5 }, // < 8s correct -> Rapid Guesswork
+        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 7 }, // < 8s incorrect -> Rapid Guesswork
         { qno: 3, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted -> Unattempted
+        { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 12 }, // >= 8s incorrect -> NOT Rapid Guesswork (Normal pacing gap)
       ],
     };
 
@@ -324,108 +329,140 @@ describe('SRSMA Diagnostic Evaluator', () => {
     const q1 = res.topicsToRevisit.find((t) => t.qno === 1);
     const q2 = res.topicsToRevisit.find((t) => t.qno === 2);
     const q3 = res.topicsToRevisit.find((t) => t.qno === 3);
+    const q4 = res.topicsToRevisit.find((t) => t.qno === 4);
 
     expect(q1?.category).toBe('Rapid Guesswork');
     expect(q1?.issueObserved).toContain('guesswork');
     expect(q2?.category).toBe('Rapid Guesswork');
     expect(q2?.issueObserved).toContain('guesswork');
     expect(q3?.category).toBe('Unattempted');
+    expect(q4?.category).not.toBe('Rapid Guesswork');
   });
 
-  describe('Time Management & Guesswork Scoring Engine', () => {
-    it('correctly resolves question ETS upper bound', () => {
-      expect(getQuestionETS('45,60', null)).toBe(60);
-      expect(getQuestionETS('30–45 sec', 60)).toBe(45);
+  describe('Time Management & Guesswork Scoring Engine (TMS)', () => {
+    it('correctly resolves question ETS benchmark as mean of lowerbound and upperbound', () => {
+      // Mean of 45 and 60 is 52.5
+      expect(parseExpectedTimeBenchmark('45,60')).toBe(52.5);
+      expect(getQuestionETS('45,60', null)).toBe(52.5);
+
+      // Mean of 30 and 45 is 37.5
+      expect(parseExpectedTimeBenchmark('30–45 sec')).toBe(37.5);
+      expect(getQuestionETS('30–45 sec', 60)).toBe(37.5);
+
+      // Range object
+      const range = parseExpectedTimeRange('90–120 sec');
+      expect(range.lowerBound).toBe(90);
+      expect(range.upperBound).toBe(120);
+      expect(range.mean).toBe(105);
+
+      // Single values
+      expect(getQuestionETS(90, null)).toBe(90);
       expect(getQuestionETS(null, 120)).toBe(120);
       expect(getQuestionETS(undefined, undefined)).toBe(60);
-      expect(getQuestionETS(90, null)).toBe(90);
+
+      // Upper bound extraction is still preserved
+      expect(parseExpectedTimeUpperBound('45,60')).toBe(60);
+      expect(parseExpectedTimeUpperBound('30–45 sec')).toBe(45);
     });
 
-    it('correctly scores per-question time management based on ETS multipliers', () => {
-      const ets = 60; // 1.5x = 90s, 2x = 120s
+    it('correctly scores all 6 piecewise behavioral categories based on time ratio and correctness', () => {
+      const ets = 50; // benchmark time = 50s
 
-      // < 1.5x ETS -> Good time management (score = 3)
-      expect(evaluateQuestionTimeManagement(30, ets)).toEqual({
-        score: 3,
-        label: 'Good time management',
-        rating: 'Good',
-      });
-      expect(evaluateQuestionTimeManagement(89, ets)).toEqual({
-        score: 3,
-        label: 'Good time management',
-        rating: 'Good',
+      // 1. Unattempted: Qi = 0.0
+      expect(evaluateQuestionTimeManagement(0, ets, false, false)).toMatchObject({
+        category: 'UNATTEMPTED',
+        qi: 0.0,
       });
 
-      // 1.5x to 2x ETS -> Medium time management (score = 2)
-      expect(evaluateQuestionTimeManagement(90, ets)).toEqual({
-        score: 2,
-        label: 'Medium time management',
-        rating: 'Medium',
-      });
-      expect(evaluateQuestionTimeManagement(120, ets)).toEqual({
-        score: 2,
-        label: 'Medium time management',
-        rating: 'Medium',
-      });
+      // 2. Correct, ratio <= 1.0 -> EFFICIENT_MASTERY (Qi = 1.0)
+      const efficient = evaluateQuestionTimeManagement(40, ets, true, true); // r = 40/50 = 0.80 <= 1.0
+      expect(efficient.category).toBe('EFFICIENT_MASTERY');
+      expect(efficient.qi).toBe(1.0);
+      expect(efficient.rating).toBe('Optimal');
 
-      // > 2x ETS -> Poor time management (score = 1)
-      expect(evaluateQuestionTimeManagement(121, ets)).toEqual({
-        score: 1,
-        label: 'Poor time management',
-        rating: 'Poor',
-      });
-      expect(evaluateQuestionTimeManagement(200, ets)).toEqual({
-        score: 1,
-        label: 'Poor time management',
-        rating: 'Poor',
-      });
+      // 3. Correct, ratio > 1.0 -> OVER_INVESTED_SUCCESS (Qi = max(0.25, 1.0 / ratio))
+      const overInvested = evaluateQuestionTimeManagement(100, ets, true, true); // r = 100/50 = 2.0
+      expect(overInvested.category).toBe('OVER_INVESTED_SUCCESS');
+      expect(overInvested.qi).toBe(0.5); // 1.0 / 2.0 = 0.50
+
+      // Over-invested with extreme time caps at 0.25
+      const extremeOver = evaluateQuestionTimeManagement(500, ets, true, true); // r = 10.0
+      expect(extremeOver.category).toBe('OVER_INVESTED_SUCCESS');
+      expect(extremeOver.qi).toBe(0.25);
+
+      // 4. Incorrect, ratio < 0.70 -> CARELESS_RUSHING (Qi = 0.50 * (ratio / 0.70))
+      const careless = evaluateQuestionTimeManagement(17.5, ets, false, true); // r = 17.5/50 = 0.35
+      expect(careless.category).toBe('CARELESS_RUSHING');
+      expect(careless.qi).toBe(0.25); // 0.50 * (0.35 / 0.70) = 0.25
+      expect(careless.rating).toBe('Needs Intervention');
+
+      // 5. Incorrect, 0.70 <= ratio <= 1.30 -> DISCIPLINED_ATTEMPT (Qi = 0.50)
+      const disciplined = evaluateQuestionTimeManagement(50, ets, false, true); // r = 1.0
+      expect(disciplined.category).toBe('DISCIPLINED_ATTEMPT');
+      expect(disciplined.qi).toBe(0.50);
+      expect(disciplined.rating).toBe('Moderate');
+
+      // 6. Incorrect, ratio > 1.30 -> TIME_TRAP (Qi = max(0.0, 0.50 - 0.50 * (ratio - 1.30)))
+      const trap = evaluateQuestionTimeManagement(85, ets, false, true); // r = 85/50 = 1.70. Qi = 0.50 - 0.50*(1.70-1.30) = 0.50 - 0.20 = 0.30
+      expect(trap.category).toBe('TIME_TRAP');
+      expect(trap.qi).toBe(0.30);
+
+      // Severe time trap reaches 0.0
+      const deepTrap = evaluateQuestionTimeManagement(150, ets, false, true); // r = 3.0. Qi = max(0, 0.50 - 0.50*(1.70)) = 0.0
+      expect(deepTrap.category).toBe('TIME_TRAP');
+      expect(deepTrap.qi).toBe(0.0);
     });
 
-    it('classifies overall time management rating thresholds (<=33% Poor, 33-66% Medium, >=66% Good)', () => {
-      expect(classifyTimeManagementRating(25)).toBe('Poor');
-      expect(classifyTimeManagementRating(33)).toBe('Poor');
-      expect(classifyTimeManagementRating(34)).toBe('Medium');
-      expect(classifyTimeManagementRating(50)).toBe('Medium');
-      expect(classifyTimeManagementRating(65)).toBe('Medium');
-      expect(classifyTimeManagementRating(66)).toBe('Good');
-      expect(classifyTimeManagementRating(100)).toBe('Good');
+    it('classifies TMS bands (>=85% Optimal, 70-84.99% Good, 50-69.99% Moderate, <50% Needs Intervention)', () => {
+      expect(classifyTimeManagementBand(92.5)).toBe('Optimal');
+      expect(classifyTimeManagementBand(85.0)).toBe('Optimal');
+      expect(classifyTimeManagementBand(84.99)).toBe('Good');
+      expect(classifyTimeManagementBand(70.0)).toBe('Good');
+      expect(classifyTimeManagementBand(69.99)).toBe('Moderate');
+      expect(classifyTimeManagementBand(50.0)).toBe('Moderate');
+      expect(classifyTimeManagementBand(49.99)).toBe('Needs Intervention');
+      expect(classifyTimeManagementBand(20)).toBe('Needs Intervention');
     });
 
-    it('calculates final time management score = (score / (3 * attempted)) * 100 and flags guesswork <8s', () => {
+    it('calculates final TMS (%) = (1 / N * Σ Qi) * 100 and reconciles unattempted missing items', () => {
+      // 4 questions provided for a 4-question test
       const testQuestions = [
-        { qno: 1, attempted: true, timeTakenSeconds: 6, expectedUpperBoundS: 60 }, // <8s Guesswork! time < 1.5*ETS -> score 3
-        { qno: 2, attempted: true, timeTakenSeconds: 100, expectedUpperBoundS: 60 }, // 1.5x-2x ETS -> score 2
-        { qno: 3, attempted: true, timeTakenSeconds: 150, expectedUpperBoundS: 60 }, // >2x ETS -> score 1
-        { qno: 4, attempted: false, timeTakenSeconds: 5, expectedUpperBoundS: 60 }, // Unattempted -> excluded from score & attempted count
+        { qno: 1, attempted: true, timeTakenSeconds: 6, benchmarkTimeS: 50, isCorrect: true }, // <8s Guesswork! r = 6/50 = 0.12 <= 1.0 -> Qi = 1.0 (EFFICIENT_MASTERY)
+        { qno: 2, attempted: true, timeTakenSeconds: 100, benchmarkTimeS: 50, isCorrect: true }, // r = 2.0 -> Qi = 0.50 (OVER_INVESTED_SUCCESS)
+        { qno: 3, attempted: true, timeTakenSeconds: 50, benchmarkTimeS: 50, isCorrect: false }, // r = 1.0 -> Qi = 0.50 (DISCIPLINED_ATTEMPT)
+        { qno: 4, attempted: false, timeTakenSeconds: 0, benchmarkTimeS: 50, isCorrect: false }, // Unattempted -> Qi = 0.0
       ];
 
-      const tm = evaluateTimeManagement(testQuestions);
+      const tm = evaluateTimeManagement(testQuestions, 4);
 
-      // Attempted count = 3 (Q1, Q2, Q3)
+      // Attempted count = 3
       expect(tm.attemptedCount).toBe(3);
-      // Total score = 3 (Q1) + 2 (Q2) + 1 (Q3) = 6
-      expect(tm.totalScore).toBe(6);
-      // Max possible score = 3 * 3 = 9
-      expect(tm.maxPossibleScore).toBe(9);
-      // Final percentage = (6 / 9) * 100 = 66.666... rounded to 67%
-      expect(tm.finalScorePercent).toBe(67);
-      expect(tm.rating).toBe('Good');
+      // Total Qi = 1.0 + 0.50 + 0.50 + 0.0 = 2.0
+      expect(tm.totalScore).toBe(2.0);
+      expect(tm.maxPossibleScore).toBe(4);
+      // TMS (%) = (2.0 / 4) * 100 = 50%
+      expect(tm.finalScorePercent).toBe(50);
+      expect(tm.rating).toBe('Moderate');
 
-      // Guesswork detection: only attempted questions with < 8s
-      // Q1 is attempted and 6s (<8s) -> Flagged
-      // Q4 is 5s but NOT attempted -> Not guesswork answering
+      // Behavioral category breakdown
+      expect(tm.categoryCounts.EFFICIENT_MASTERY).toBe(1);
+      expect(tm.categoryCounts.OVER_INVESTED_SUCCESS).toBe(1);
+      expect(tm.categoryCounts.DISCIPLINED_ATTEMPT).toBe(1);
+      expect(tm.categoryCounts.UNATTEMPTED).toBe(1);
+
+      // Guesswork detection: only attempted with <8s
       expect(tm.guessworkQuestions).toEqual([1]);
     });
 
-    it('integrates time management and guesswork seamlessly into evaluateDiagnosticReport', () => {
+    it('integrates TMS scoring engine seamlessly into evaluateDiagnosticReport', () => {
       const payload: StudentResponsePayload = {
         studentName: 'Test Student',
         responses: [
-          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 6 }, // < 8s (guesswork flagged!), ETS 60 -> score 3
-          { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 }, // < 1.5x ETS (45) -> score 3
-          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 250 }, // > 2x ETS (120 * 2 = 240) -> score 1
-          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 250 }, // > 2x ETS (120 * 2 = 240) -> score 1
-          { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 5 }, // unattempted
+          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 6 }, // Correct (Ans B). ETS mean: 52.5. r = 6/52.5 = 0.11 -> Qi = 1.0. Guesswork!
+          { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 }, // Correct (Ans C). ETS mean: 37.5. r = 40/37.5 = 1.07 -> Qi = 1.0/1.07 = 0.9346
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 250 }, // Correct (Ans C). ETS mean: 105. r = 250/105 = 2.38 -> Qi = 1.0/2.38 = 0.4202
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 250 }, // Correct (Ans D). ETS mean: 105. r = 250/105 = 2.38 -> Qi = 1.0/2.38 = 0.4202
+          { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 5 }, // Unattempted -> Qi = 0.0
         ],
       };
 
@@ -433,58 +470,60 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
       expect(report.timeManagement).toBeDefined();
       expect(report.timeManagement.attemptedCount).toBe(4);
-      // Scores: Q1 (3) + Q2 (3) + Q3 (1) + Q4 (1) = 8
-      // Max: 4 * 3 = 12
-      // Pct: (8 / 12) * 100 = 67%
-      expect(report.timeManagement.totalScore).toBe(8);
-      expect(report.timeManagement.maxPossibleScore).toBe(12);
-      expect(report.timeManagement.finalScorePercent).toBe(67);
-      expect(report.timeManagement.rating).toBe('Good');
+      expect(report.timeManagement.totalQuestions).toBe(5);
+
+      // Sum of Qi = 1.0 + 0.9346 + 0.4202 + 0.4202 + 0 = 2.775 -> TMS (%) = (2.775 / 5) * 100 = 55.5% -> 56% (Moderate)
+      expect(report.timeManagement.finalScorePercent).toBe(56);
+      expect(report.timeManagement.rating).toBe('Moderate');
       expect(report.timeManagement.guessworkQuestions).toEqual([1]);
 
+      // Category counts
+      expect(report.timeManagement.categoryCounts.EFFICIENT_MASTERY).toBe(1);
+      expect(report.timeManagement.categoryCounts.OVER_INVESTED_SUCCESS).toBe(3);
+      expect(report.timeManagement.categoryCounts.UNATTEMPTED).toBe(1);
+
       // Report plain text should mention time management & guesswork
-      expect(report.plainTextReport).toContain('TIME MANAGEMENT SCORE: 67%');
+      expect(report.plainTextReport).toContain('TIME MANAGEMENT SCORE: 56%');
       expect(report.plainTextReport).toContain('⚠️ GUESSWORK OBSERVATION');
       expect(report.plainTextReport).toContain('Q1');
 
       // Calculation steps audit should contain time management
       expect(report.calculationSteps.timeManagement).toBeDefined();
-      expect(report.calculationSteps.timeManagement?.finalScorePercent).toBe(67);
-      expect(report.calculationSteps.timeManagement?.ratingResult).toBe('Good');
+      expect(report.calculationSteps.timeManagement?.finalScorePercent).toBe(56);
+      expect(report.calculationSteps.timeManagement?.ratingResult).toBe('Moderate');
     });
   });
 
-  describe('Weakness Category (< 75% score) and Congratulations Logic', () => {
-    it('only displays categories where score is less than 75%', () => {
-      // Create student payload where some categories score < 75% and some >= 75%
+  describe('Weakness Category (< 50% score) and Congratulations Logic', () => {
+    it('only displays categories where score is less than 50%', () => {
+      // Create student payload where some categories score < 50% and some >= 50%
       const payload: StudentResponsePayload = {
         studentName: 'Ananya Sharma',
         responses: [
-          { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Q1 correct (Direct Recall: 100%)
-          { qno: 2, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Q2 wrong (Diagram-based: 0%)
-          { qno: 3, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Q3 wrong (Multi-step: 0%)
-          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Q4 correct (Application-based: 100%)
-          { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }, // Q5 correct (Diagram-based: 1/2 = 50%)
+          { qno: 1, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 }, // Q1 wrong
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 }, // Q2 wrong (Application: 0%)
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 }, // Q3 wrong
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 }, // Q4 correct
+          { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }, // Q5 correct (Conceptual: 100%)
         ],
       };
 
       const report = evaluateDiagnosticReport(sampleMetadata, payload);
 
-      // Every category in priorityGaps MUST be < 75%
+      // Every category in priorityGaps MUST be < 50%
       expect(report.priorityGaps.length).toBeGreaterThan(0);
       report.priorityGaps.forEach((gap) => {
-        expect(gap.scorePercent).toBeLessThan(75);
+        expect(gap.scorePercent).toBeLessThan(50);
       });
 
       // Categories that scored 100% must NOT be in priority gaps
       const gapNames = report.priorityGaps.map((g) => g.name);
-      expect(gapNames).not.toContain('Direct Recall Questions');
-      expect(gapNames).not.toContain('Application-based Questions');
+      expect(gapNames).not.toContain('Conceptual Gap');
     });
 
-    it('displays only the available categories if there are fewer than 4 with score < 75%', () => {
+    it('displays only the available categories if there are fewer than 4 with score < 50%', () => {
       // 4 questions where Easy is 3/4 = 75%, Direct is 3/4 = 75%, Calculation is 3/3 = 100%,
-      // and only Visual Interpretation is 0/1 = 0% (< 75%).
+      // and only Visual Interpretation is 0/1 = 0% (< 50%).
       const customMeta: QuestionMetadataItem[] = [
         {
           qno: 1,
@@ -556,14 +595,17 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
       const report = evaluateDiagnosticReport(customMeta, payload);
 
-      // Exactly 1 category ('Question Interpretation Skill') has score < 75%
+      // Exactly 1 category ('Interpretation Gap') has score < 50%
       expect(report.priorityGaps.length).toBe(1);
-      expect(report.priorityGaps[0].name).toBe('Question Interpretation Skill');
+      expect(report.priorityGaps[0].name).toBe('Interpretation Gap');
       expect(report.priorityGaps[0].scorePercent).toBe(0);
       expect(report.priorityGaps[0].priority).toBe('High Priority');
+      expect(report.priorityGaps[0].message).toBe(
+        'Practise reading diagrams and data carefully, identifying the relevant information and using it correctly to reach the answer.',
+      );
     });
 
-    it('congratulates student when there are no categories with score < 75%', () => {
+    it('congratulates student when there are no categories with score < 50%', () => {
       // 100% correct answers
       const perfectPayload: StudentResponsePayload = {
         studentName: 'Neha Verma',
@@ -582,7 +624,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(report.priorityGaps.length).toBe(0);
       // Plain text report must congratulate them
       expect(report.plainTextReport).toContain(
-        'Congratulations! Outstanding performance — no weakness areas detected (<= 70%)',
+        'Congratulations! Outstanding performance — no weakness areas detected (< 50%)',
       );
     });
   });
@@ -754,12 +796,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
     });
 
     it('assigns YOUR EMERGING STRENGTHS when only 1 or 2 candidates have score >= 70%', () => {
-      // Only Q1 (Conceptual Foundation) and Q4 (Visual/Conceptual) correct, others wrong
+      // Q1, Q4 correct (100%), Q2 correct (50% concept application), others wrong
       const payload: StudentResponsePayload = {
         studentName: 'Rohan Sharma',
         responses: [
           { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
-          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 150 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
           { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 200 },
           { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 30 },
           { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 150 },
@@ -789,8 +831,42 @@ describe('SRSMA Diagnostic Evaluator', () => {
     });
 
     it('assigns AREAS WITH MOST POTENTIAL when 0 candidates have score >= 70% and uses developing text', () => {
-      // 0 correct responses, severe overtime
+      // 50% scores across categories (0 candidates >= 70%, candidates >= 50%)
       const payload: StudentResponsePayload = {
+        studentName: 'Kunal Joshi',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 120 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 120 },
+          { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 180 },
+          { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 50 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 50 },
+          { qno: 6, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 70 },
+        ],
+      };
+
+      const result = evaluateDiagnosticReport(testMeta, payload);
+
+      expect(result.strengthsTitle).toBe('AREAS WITH MOST POTENTIAL');
+      expect(result.strengths.length).toBe(3);
+
+      result.strengths.forEach((s) => {
+        expect(s.percentage).toBeLessThan(70);
+        expect(s.percentage).toBeGreaterThanOrEqual(50);
+        expect(s.isEmerging).toBe(true);
+        expect(s.tag).toBe('Areas with Most Potential');
+      });
+
+      // Verify developing reason for CONCEPT CLARITY
+      const clarity = result.strengths.find((s) => s.name === 'CONCEPT CLARITY');
+      if (clarity) {
+        expect(clarity.reason).toBe(
+          'This is one of your stronger areas right now. With focused practice, you can build even greater clarity here.',
+        );
+      }
+    });
+
+    it('returns empty strengths array when all categories score < 50%', () => {
+      const allWrongPayload: StudentResponsePayload = {
         studentName: 'Kunal Joshi',
         responses: [
           { qno: 1, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 130 },
@@ -802,23 +878,9 @@ describe('SRSMA Diagnostic Evaluator', () => {
         ],
       };
 
-      const result = evaluateDiagnosticReport(testMeta, payload);
-
+      const result = evaluateDiagnosticReport(testMeta, allWrongPayload);
       expect(result.strengthsTitle).toBe('AREAS WITH MOST POTENTIAL');
-      expect(result.strengths.length).toBe(3);
-
-      result.strengths.forEach((s) => {
-        expect(s.percentage).toBeLessThan(70);
-        expect(s.isEmerging).toBe(true);
-      });
-
-      // Verify developing reason for CONCEPT CLARITY
-      const clarity = result.strengths.find((s) => s.name === 'CONCEPT CLARITY');
-      if (clarity) {
-        expect(clarity.reason).toBe(
-          'This is one of your stronger areas right now. With focused practice, you can build even greater clarity here.',
-        );
-      }
+      expect(result.strengths.length).toBe(0);
     });
 
     it('formats subject comparison insight using "You seem to be doing better in Maths compared to Science"', () => {
@@ -841,4 +903,636 @@ describe('SRSMA Diagnostic Evaluator', () => {
       );
     });
   });
+
+  describe('9-Label Weakness Evaluation Engine', () => {
+    it('evaluates Conceptual Gap when Conceptual Foundation score <= 70%', () => {
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Science',
+          chapter: 'Life Processes',
+          topic: 'Nutrition',
+          difficulty: 'Easy',
+          primarySkill: 'Conceptual Foundation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Science',
+          chapter: 'Life Processes',
+          topic: 'Respiration',
+          difficulty: 'Easy',
+          primarySkill: 'Conceptual Foundation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'B',
+          diagnosticWeight: 2,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Aarav',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const gap = report.priorityGaps.find((g) => g.name === 'Conceptual Gap');
+      expect(gap).toBeDefined();
+      expect(gap?.scorePercent).toBe(33);
+      expect(gap?.priority).toBe('Medium Priority');
+      expect(gap?.message).toBe(
+        'You need to strengthen some fundamental concepts before moving confidently to more advanced questions.',
+      );
+    });
+
+    it('evaluates Application Gap when Application skill score < 50%', () => {
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Science',
+          chapter: 'Light',
+          topic: 'Lenses',
+          difficulty: 'Medium',
+          primarySkill: 'Application',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'C',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Science',
+          chapter: 'Light',
+          topic: 'Mirrors',
+          difficulty: 'Medium',
+          primarySkill: 'Concept Application',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'D',
+          diagnosticWeight: 2,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Diya',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const gap = report.priorityGaps.find((g) => g.name === 'Application Gap');
+      expect(gap).toBeDefined();
+      expect(gap?.scorePercent).toBe(33);
+      expect(gap?.priority).toBe('Medium Priority');
+      expect(gap?.message).toBe(
+        'Your basic understanding is developing, but you need more practice using concepts in unfamiliar and application-based situations.',
+      );
+    });
+
+    it('evaluates Problem-Solving Gap when Problem Solving < 60% or Multi-step triggers gap', () => {
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Maths',
+          chapter: 'Triangles',
+          topic: 'Pythagoras',
+          difficulty: 'Medium',
+          primarySkill: 'Problem Solving',
+          questionStructure: 'Multi-step',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Rohan',
+        responses: [{ qno: 1, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 50 }],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const gap = report.priorityGaps.find((g) => g.name === 'Problem-Solving Gap');
+      expect(gap).toBeDefined();
+      expect(gap?.scorePercent).toBe(0);
+      expect(gap?.message).toBe(
+        'You need more practice breaking complex problems into manageable steps and connecting ideas systematically.',
+      );
+    });
+
+    it('evaluates Accuracy Risk when accuracy < 50% despite conceptual competence >= 50%', () => {
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'Euclid',
+          difficulty: 'Easy',
+          primarySkill: 'Conceptual Foundation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'HCF',
+          difficulty: 'Easy',
+          primarySkill: 'Conceptual Foundation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 3,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'LCM',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'C',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 4,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'Primes',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'D',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 5,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'Primes 2',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Priya',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const gap = report.priorityGaps.find((g) => g.name === 'Accuracy Risk');
+      expect(gap).toBeDefined();
+      expect(gap?.scorePercent).toBe(40);
+      expect(gap?.priority).toBe('Low Priority');
+      expect(gap?.message).toBe(
+        'You appear to understand several of the concepts tested, but avoidable errors may be costing you marks. Focus on careful calculation, reading and checking.',
+      );
+    });
+
+    it('evaluates Difficulty Readiness Gap when Easy >= 70% and Medium/Difficult drops by >= 20/30 pts', () => {
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Maths',
+          chapter: 'Trigonometry',
+          topic: 'Identities',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Maths',
+          chapter: 'Trigonometry',
+          topic: 'Heights',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 3,
+          subject: 'Maths',
+          chapter: 'Trigonometry',
+          topic: 'Proofs',
+          difficulty: 'Medium',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '90s',
+          answer: 'C',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 4,
+          subject: 'Maths',
+          chapter: 'Trigonometry',
+          topic: 'Advanced',
+          difficulty: 'Medium',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '90s',
+          answer: 'D',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Sameer',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const gap = report.priorityGaps.find((g) => g.name === 'Difficulty Readiness Gap');
+      expect(gap).toBeDefined();
+      expect(gap?.message).toBe(
+        'Your foundation is developing well, but you need to gradually build confidence with more challenging questions.',
+      );
+    });
+
+    it('evaluates Multi-Step Question Gap, Application-Based Question Gap, and Direct-Question Dependency', () => {
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Science',
+          chapter: 'Electricity',
+          topic: 'Ohms Law',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Science',
+          chapter: 'Electricity',
+          topic: 'Resistance',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 3,
+          subject: 'Science',
+          chapter: 'Electricity',
+          topic: 'Circuit',
+          difficulty: 'Medium',
+          primarySkill: 'Calculation',
+          questionStructure: 'Multi-step',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'C',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 4,
+          subject: 'Science',
+          chapter: 'Electricity',
+          topic: 'Power',
+          difficulty: 'Medium',
+          primarySkill: 'Calculation',
+          questionStructure: 'Multi-step',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'D',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 5,
+          subject: 'Science',
+          chapter: 'Electricity',
+          topic: 'Heating Effect',
+          difficulty: 'Medium',
+          primarySkill: 'Calculation',
+          questionStructure: 'Application-based',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 6,
+          subject: 'Science',
+          chapter: 'Electricity',
+          topic: 'Household Wiring',
+          difficulty: 'Medium',
+          primarySkill: 'Calculation',
+          questionStructure: 'Application-based',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+      ];
+
+      const payload: StudentResponsePayload = {
+        studentName: 'Kavya',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 },
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+          { qno: 6, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+
+      const report = evaluateDiagnosticReport(meta, payload);
+      const valid9Labels = [
+        'Conceptual Gap',
+        'Application Gap',
+        'Problem-Solving Gap',
+        'Interpretation Gap',
+        'Accuracy Risk',
+        'Difficulty Readiness Gap',
+        'Multi-Step Question Gap',
+        'Application-Based Question Gap',
+        'Direct-Question Dependency',
+      ];
+      report.priorityGaps.forEach((g) => {
+        expect(valid9Labels).toContain(g.name);
+        expect(g.message).toBeDefined();
+        expect(g.scorePercent).toBeLessThan(50);
+      });
+
+      const multiStepGap = report.priorityGaps.find((g) => g.name === 'Multi-Step Question Gap');
+      expect(multiStepGap?.message).toBe(
+        'You are comfortable with direct questions, but questions requiring several connected steps are currently more challenging.',
+      );
+
+      const appGap = report.priorityGaps.find((g) => g.name === 'Application-Based Question Gap');
+      if (appGap) {
+        expect(appGap.message).toBe(
+          'You handle direct questions well. Your next step is to practise applying the same concepts in unfamiliar situations.',
+        );
+      }
+
+      const depGap = report.priorityGaps.find((g) => g.name === 'Direct-Question Dependency');
+      if (depGap) {
+        expect(depGap.message).toBe(
+          'You are comfortable with familiar question formats. Your next step is to become equally confident with application-based and multi-step questions.',
+        );
+      }
+    });
+
+    it('never highlights both Problem-Solving Gap and Multi-Step Question Gap together', () => {
+      // Create a test where both would trigger:
+      // Problem Solving primary skill (0%) AND Multi-step structure (0%) with Direct (100%)
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Maths',
+          chapter: 'Real Numbers',
+          topic: 'Euclid',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Maths',
+          chapter: 'Triangles',
+          topic: 'Proof',
+          difficulty: 'Medium',
+          primarySkill: 'Problem Solving',
+          questionStructure: 'Multi-step',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Anil',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const names = report.priorityGaps.map((g) => g.name);
+
+      // Must have Problem-Solving Gap (from First 6)
+      expect(names).toContain('Problem-Solving Gap');
+      // Must NOT have Multi-Step Question Gap simultaneously
+      expect(names).not.toContain('Multi-Step Question Gap');
+    });
+
+    it('never highlights both Application Gap and Application-Based Question Gap together', () => {
+      // Primary Skill = Application AND Question Structure = Application-based
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Science',
+          chapter: 'Chemical Reactions',
+          topic: 'Balancing',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Science',
+          chapter: 'Chemical Reactions',
+          topic: 'Corrosion',
+          difficulty: 'Medium',
+          primarySkill: 'Application',
+          questionStructure: 'Application-based',
+          visualDependency: 'None',
+          expectedTime: '120s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Sunita',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 30 },
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+      const names = report.priorityGaps.map((g) => g.name);
+
+      // Application Gap is in First 6, so it takes precedence over Application-Based Question Gap
+      expect(names).toContain('Application Gap');
+      expect(names).not.toContain('Application-Based Question Gap');
+    });
+
+    it('falls back to question taking more time than expected when 0 gaps found from 9 labels', () => {
+      // Student answers 100% correctly, but Q2 takes 150s (expected 60s)
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Science',
+          chapter: 'Life Processes',
+          topic: 'Respiration',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+        {
+          qno: 2,
+          subject: 'Science',
+          chapter: 'Life Processes',
+          topic: 'Circulation',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'B',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Tarun',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 40 }, // Normal
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 150 }, // Overtime (> 60s)
+        ],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+
+      // Should have exactly 1 gap from the overtime fallback
+      expect(report.priorityGaps.length).toBe(1);
+      expect(report.priorityGaps[0].name).toBe('Pacing / Time Management');
+      expect(report.priorityGaps[0].message).toContain('took more time than expected');
+      expect(report.priorityGaps[0].scorePercent).toBeLessThan(50);
+    });
+
+    it('congratulates student when 0 gaps found and no question took more time than expected', () => {
+      // 100% correct, all within time limits
+      const meta: QuestionMetadataItem[] = [
+        {
+          qno: 1,
+          subject: 'Maths',
+          chapter: 'Statistics',
+          topic: 'Mean',
+          difficulty: 'Easy',
+          primarySkill: 'Calculation',
+          questionStructure: 'Direct',
+          visualDependency: 'None',
+          expectedTime: '60s',
+          answer: 'A',
+          diagnosticWeight: 1,
+        },
+      ];
+      const payload: StudentResponsePayload = {
+        studentName: 'Meera',
+        responses: [{ qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }],
+      };
+      const report = evaluateDiagnosticReport(meta, payload);
+
+      expect(report.priorityGaps.length).toBe(0);
+      expect(report.plainTextReport).toContain(
+        'Congratulations! Outstanding performance — no weakness areas detected',
+      );
+    });
+
+    it('populates full calculationSteps audit fields including allWeaknessEvaluations, scienceDisciplineBreakdowns, and subjectDifficultyMatrix', () => {
+      const payload: StudentResponsePayload = {
+        studentName: 'Aarav Sharma',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 40 },
+          { qno: 3, attempted: true, selectedOption: 'A', timeTakenSeconds: 100 },
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 130 },
+          { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 0 },
+        ],
+      };
+      const result = evaluateDiagnosticReport(sampleMetadata, payload);
+
+      expect(result.calculationSteps.allWeaknessEvaluations).toBeDefined();
+      expect(result.calculationSteps.allWeaknessEvaluations?.length).toBeGreaterThanOrEqual(9);
+
+      // Verify each weakness evaluation item has valid scores, formulas, threshold conditions, and statuses
+      result.calculationSteps.allWeaknessEvaluations?.forEach((w) => {
+        expect(w.id).toBeDefined();
+        expect(w.name).toBeDefined();
+        expect(typeof w.evaluatedScore).toBe('number');
+        expect(w.formula).toBeDefined();
+        expect(w.thresholdCondition).toBeDefined();
+        expect(typeof w.isTriggered).toBe('boolean');
+        expect(w.priority).toBeDefined();
+        expect(w.status).toBeDefined();
+        expect(w.triggerReason).toBeDefined();
+      });
+
+      // Verify science discipline breakdowns (Physics, Chemistry, Biology)
+      expect(result.calculationSteps.scienceDisciplineBreakdowns).toBeDefined();
+      expect(result.calculationSteps.scienceDisciplineBreakdowns?.length).toBe(3);
+      const disciplines = result.calculationSteps.scienceDisciplineBreakdowns?.map((d) => d.discipline);
+      expect(disciplines).toEqual(['Physics', 'Chemistry', 'Biology']);
+
+      // Verify subject difficulty matrix (Maths & Science x Easy, Medium, Difficult)
+      expect(result.calculationSteps.subjectDifficultyMatrix).toBeDefined();
+      expect(result.calculationSteps.subjectDifficultyMatrix?.length).toBe(6);
+      const mathEasy = result.calculationSteps.subjectDifficultyMatrix?.find(
+        (m) => m.subject === 'Mathematics' && m.difficulty === 'Easy',
+      );
+      expect(mathEasy).toBeDefined();
+      expect(typeof mathEasy?.percentage).toBe('number');
+
+      // Verify strengths ranking includes tag
+      expect(result.calculationSteps.strengthsRanking.length).toBeGreaterThan(0);
+      expect(result.calculationSteps.strengthsRanking[0].tag).toBeDefined();
+    });
+  });
 });
+

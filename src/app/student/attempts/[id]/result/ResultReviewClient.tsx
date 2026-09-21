@@ -22,6 +22,7 @@ import { Alert, Badge, buttonClass, Card, CardBody, Spinner, Button, Input, Labe
 import { Dialog } from '@/components/Dialog';
 import { QuestionBody } from '@/components/Katex';
 import { BoardReadinessReport } from '@/components/report/BoardReadinessReport';
+import { DiagnosticFeedbackWidget } from '@/components/report/DiagnosticFeedbackWidget';
 import {
   evaluateDiagnosticReport,
   getQuestionETS,
@@ -231,7 +232,10 @@ export function ResultReviewClient({
         attempted: Boolean(q.isAttempted),
         timeTakenSeconds: Math.round((q.timeSpentMs ?? 0) / 1000),
         expectedUpperBoundS: getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS),
+        benchmarkTimeS: getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS),
+        isCorrect: q.isCorrect,
       })),
+      data.questions.length,
     );
   }, [data]);
 
@@ -448,12 +452,12 @@ export function ResultReviewClient({
 
       const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
       const ets = getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS);
-      const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets);
+      const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets, q.isCorrect, Boolean(q.isAttempted));
 
       if (filterStatus === 'overtime' && timeTakenSec <= 1.5 * ets) return false;
-      if (filterStatus === 'good_time' && (!q.isAttempted || qtm.rating !== 'Good')) return false;
-      if (filterStatus === 'medium_time' && (!q.isAttempted || qtm.rating !== 'Medium')) return false;
-      if (filterStatus === 'poor_time' && (!q.isAttempted || qtm.rating !== 'Poor')) return false;
+      if (filterStatus === 'good_time' && (!q.isAttempted || (qtm.rating !== 'Good' && qtm.rating !== 'Optimal'))) return false;
+      if (filterStatus === 'medium_time' && (!q.isAttempted || qtm.rating !== 'Moderate')) return false;
+      if (filterStatus === 'poor_time' && (!q.isAttempted || qtm.rating !== 'Needs Intervention')) return false;
       if (filterStatus === 'guesswork' && (!q.isAttempted || timeTakenSec >= 8)) return false;
 
       return true;
@@ -993,16 +997,25 @@ export function ResultReviewClient({
       {activeViewTab === 'report' && (
         <div className="space-y-6">
           {attemptDiagnosticReport ? (
-            <BoardReadinessReport
-              report={attemptDiagnosticReport}
-              studentGender={data?.gender || gender}
-              studentDetails={data?.studentDetails}
-              isTeacherView={userRole === 'teacher'}
-              onGoToSolutions={() => {
-                handleTabChange('solutions');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            />
+            <>
+              <BoardReadinessReport
+                report={attemptDiagnosticReport}
+                studentGender={data?.gender || gender}
+                studentDetails={data?.studentDetails}
+                attemptId={attemptId}
+                isTeacherView={userRole === 'teacher'}
+                onGoToSolutions={() => {
+                  handleTabChange('solutions');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+              <DiagnosticFeedbackWidget
+                attemptId={attemptId}
+                testId={data?.testId}
+                sourceTab="report"
+                className="mt-6"
+              />
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <Spinner className="size-8 text-brand-600 mb-3" />
@@ -1058,7 +1071,7 @@ export function ResultReviewClient({
       {/* 2. Subject Breakdown Cards */}
       <div className="grid gap-3 sm:grid-cols-3">
         {/* Only the subjects this paper actually contains. */}
-        {(['physics', 'chemistry', 'maths', 'biology'] as const)
+        {(['maths', 'physics', 'chemistry', 'biology'] as const)
           .filter((s) => (data.summary.subjectScores[s]?.total ?? 0) > 0)
           .map((s) => {
             const stats = data.summary.subjectScores[s] ?? { marks: 0, maxMarks: 0, correct: 0, total: 0 };
@@ -1189,7 +1202,7 @@ export function ResultReviewClient({
           <div className="flex flex-wrap items-center gap-2">
             {/* Subject Filters */}
             <div className="flex rounded-md bg-slate-100 p-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-              {(['all', 'physics', 'chemistry', 'maths', 'biology'] as const).map((s) => (
+              {(['all', 'maths', 'physics', 'chemistry', 'biology'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setFilterSubject(s)}
@@ -1230,8 +1243,8 @@ export function ResultReviewClient({
           {filteredQuestions.map((q, idx) => {
             const timeTakenSec = Math.round((q.timeSpentMs ?? 0) / 1000);
             const ets = getQuestionETS(q.metadata?.expectedTime, q.expectedTimeS);
-            const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets);
-            const isGuesswork = q.isAttempted && timeTakenSec < 8;
+            const qtm = evaluateQuestionTimeManagement(timeTakenSec, ets, q.isCorrect, Boolean(q.isAttempted));
+            const isGuesswork = q.isAttempted && timeTakenSec > 0 && timeTakenSec < 8;
             const isEveryThird =
               (idx + 1) % 3 === 0 || (filteredQuestions.length < 3 && idx === filteredQuestions.length - 1);
 
@@ -1304,15 +1317,19 @@ export function ResultReviewClient({
                         {q.isAttempted && (
                           <Badge
                             tone={
-                              qtm.score === 3
+                              qtm.category === 'EFFICIENT_MASTERY'
                                 ? 'green'
-                                : qtm.score === 2
-                                  ? 'amber'
-                                  : 'red'
+                                : qtm.category === 'OVER_INVESTED_SUCCESS'
+                                  ? 'brand'
+                                  : qtm.category === 'DISCIPLINED_ATTEMPT'
+                                    ? 'slate'
+                                    : qtm.category === 'CARELESS_RUSHING'
+                                      ? 'amber'
+                                      : 'red'
                             }
                             className="text-xs font-semibold"
                           >
-                            {qtm.label} ({qtm.score} pt{qtm.score > 1 ? 's' : ''})
+                            {qtm.label} (Q: {qtm.qi})
                           </Badge>
                         )}
 
@@ -1542,6 +1559,14 @@ export function ResultReviewClient({
               No questions match these filters.
             </div>
           )}
+
+          {/* Diagnostic Test & Report Student Feedback Widget on Solutions Tab */}
+          <DiagnosticFeedbackWidget
+            attemptId={attemptId}
+            testId={data?.testId}
+            sourceTab="solutions"
+            className="mt-6"
+          />
         </div>
       </div>
 

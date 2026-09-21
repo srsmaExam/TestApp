@@ -822,9 +822,9 @@ export function TestBuilderClient({
           {/* Summary Metric Chips */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
             <StatTile label="Total Questions" value={assigned.length} tone="slate" />
+            <StatTile label="Maths" value={subjectCounts.maths} tone="amber" />
             <StatTile label="Physics" value={subjectCounts.physics} tone="blue" />
             <StatTile label="Chemistry" value={subjectCounts.chemistry} tone="emerald" />
-            <StatTile label="Maths" value={subjectCounts.maths} tone="amber" />
             <StatTile label="Biology" value={subjectCounts.biology} tone="purple" />
             <StatTile label="Max Marks" value={totalMaxMarks} tone="brand" />
           </div>
@@ -1111,9 +1111,9 @@ export function TestBuilderClient({
                 <div className="w-36">
                   <Select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)}>
                     <option value="all">All Subjects</option>
+                    <option value="maths">Mathematics</option>
                     <option value="physics">Physics</option>
                     <option value="chemistry">Chemistry</option>
-                    <option value="maths">Mathematics</option>
                     <option value="biology">Biology</option>
                   </Select>
                 </div>
@@ -1743,9 +1743,9 @@ export function TestBuilderClient({
                     value={markingSubject}
                     onChange={(e) => setMarkingSubject(e.target.value as any)}
                   >
+                    <option value="maths">Mathematics ({subjectCounts.maths})</option>
                     <option value="physics">Physics ({subjectCounts.physics})</option>
                     <option value="chemistry">Chemistry ({subjectCounts.chemistry})</option>
-                    <option value="maths">Mathematics ({subjectCounts.maths})</option>
                     <option value="biology">Biology ({subjectCounts.biology})</option>
                   </Select>
                 </div>

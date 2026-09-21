@@ -37,6 +37,8 @@ import * as authLogin from './auth/login';
 import * as authLogout from './auth/logout';
 import * as authCheckPhone from './auth/check-phone';
 import * as studentReportDetails from './student/report-details';
+import * as studentLeadAction from './student/lead-action';
+import * as studentFeedback from './student/feedback';
 
 // 2. Cron Handlers
 import * as cronSweep from './cron/sweep-expired';
@@ -133,6 +135,8 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     // /api/student/*
     if (s0 === 'student') {
       if (s1 === 'report-details') return { handler: studentReportDetails, params: {}, pattern: '/api/student/report-details' };
+      if (s1 === 'lead-action') return { handler: studentLeadAction, params: {}, pattern: '/api/student/lead-action' };
+      if (s1 === 'feedback') return { handler: studentFeedback, params: {}, pattern: '/api/student/feedback' };
     }
     // /api/cron/*
     if (s0 === 'cron' && s1 === 'sweep-expired') {
@@ -275,6 +279,8 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/auth/logout', verbs: ['POST'] },
   { pattern: '/api/auth/check-phone', verbs: ['POST'] },
   { pattern: '/api/student/report-details', verbs: ['POST'] },
+  { pattern: '/api/student/lead-action', verbs: ['POST'] },
+  { pattern: '/api/student/feedback', verbs: ['GET', 'POST'] },
   { pattern: '/api/cron/sweep-expired', verbs: ['GET', 'POST'] },
   { pattern: '/api/batches', verbs: ['GET'] },
   { pattern: '/api/students', verbs: ['GET', 'POST'] },

@@ -186,12 +186,12 @@ export function TestRunnerClient({
   // Subject tabs are derived from the paper, not hardcoded — a Physics-only
   // sectional test used to render two dead tabs reading 0/0.
   const subjects = useMemo(() => {
-    const order = ['physics', 'chemistry', 'maths', 'biology'] as const;
+    const order = ['maths', 'physics', 'chemistry', 'biology'] as const;
     const present = new Set(questions.map((q) => q.subject));
     return order.filter((s) => present.has(s));
   }, [questions]);
 
-  const currentSubject = currentQ?.subject ?? subjects[0] ?? 'physics';
+  const currentSubject = currentQ?.subject ?? subjects[0] ?? 'maths';
 
   // IDB Storage key for offline mirror
   const idbKey = `vtp_attempt_${attemptId}`;
@@ -658,7 +658,7 @@ export function TestRunnerClient({
   };
 
   // Jump to first question of selected subject tab
-  const handleSubjectTab = (subj: 'physics' | 'chemistry' | 'maths' | 'biology') => {
+  const handleSubjectTab = (subj: 'maths' | 'physics' | 'chemistry' | 'biology') => {
     const idx = questions.findIndex((q) => q.subject === subj);
     if (idx !== -1) {
       goToQuestion(idx);

@@ -78,6 +78,7 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
       position: testQuestions.position,
       type: questions.type,
       options: questions.options,
+      subject: questions.subject,
     })
     .from(testQuestions)
     .innerJoin(questions, eq(questions.id, testQuestions.questionId))
@@ -88,10 +89,35 @@ export const POST = withApi<Ctx>(async (req, { params }) => {
     throw new HttpError(422, 'empty_test', 'Test has no questions assigned.');
   }
 
-  // Materialize question order
-  let questionOrder = assigned.map((a) => a.questionId);
-  if (test.shuffleQuestions) {
-    questionOrder = shuffleArray(questionOrder);
+  // Materialize question order:
+  // Subjects must always follow: maths -> physics -> chemistry -> biology.
+  // If shuffleQuestions is true, questions are shuffled within each subject section.
+  const ORDERED_SUBJECTS = ['maths', 'physics', 'chemistry', 'biology'] as const;
+  const subjectBuckets: Record<(typeof ORDERED_SUBJECTS)[number], string[]> = {
+    maths: [],
+    physics: [],
+    chemistry: [],
+    biology: [],
+  };
+  const otherQuestions: string[] = [];
+
+  for (const a of assigned) {
+    if (a.subject in subjectBuckets) {
+      subjectBuckets[a.subject as (typeof ORDERED_SUBJECTS)[number]].push(a.questionId);
+    } else {
+      otherQuestions.push(a.questionId);
+    }
+  }
+
+  let questionOrder: string[] = [];
+  for (const subj of ORDERED_SUBJECTS) {
+    const ids = subjectBuckets[subj];
+    if (ids.length > 0) {
+      questionOrder.push(...(test.shuffleQuestions ? shuffleArray(ids) : ids));
+    }
+  }
+  if (otherQuestions.length > 0) {
+    questionOrder.push(...(test.shuffleQuestions ? shuffleArray(otherQuestions) : otherQuestions));
   }
 
   // Materialize option orders

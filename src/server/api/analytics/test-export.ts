@@ -28,19 +28,18 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     submitted_at: string;
   }>(
     `SELECT
-       r.rank,
+       rank() OVER (PARTITION BY a.test_id ORDER BY a.total_marks DESC NULLS LAST) AS rank,
        p.full_name,
        p.username,
        p.batch,
-       r.total_marks,
-       r.percentile,
+       a.total_marks,
+       round(100 * percent_rank() OVER (PARTITION BY a.test_id ORDER BY a.total_marks ASC NULLS FIRST)::numeric, 1) AS percentile,
        a.total_time_s,
        a.submitted_at
-     FROM v_test_ranks r
-     JOIN profiles p ON p.id = r.student_id
-     JOIN attempts a ON a.test_id = r.test_id AND a.student_id = r.student_id AND a.attempt_no = r.attempt_no
-     WHERE r.test_id = $1
-     ORDER BY r.rank ASC, a.submitted_at ASC`,
+     FROM attempts a
+     JOIN profiles p ON p.id = a.student_id
+     WHERE a.test_id = $1 AND a.status IN ('submitted', 'auto_submitted') AND a.total_marks IS NOT NULL
+     ORDER BY rank ASC, a.submitted_at ASC`,
     [testId],
   );
 

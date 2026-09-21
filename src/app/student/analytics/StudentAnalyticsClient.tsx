@@ -21,6 +21,7 @@ import {
 } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
 import { BoardReadinessReport } from '@/components/report/BoardReadinessReport';
+import { DiagnosticFeedbackWidget } from '@/components/report/DiagnosticFeedbackWidget';
 import type { DiagnosticEvaluationResult } from '@/lib/diagnostic-evaluator';
 
 interface StudentAnalyticsData {
@@ -501,6 +502,7 @@ export function StudentAnalyticsClient({
             report={activeReport}
             studentGender={data.gender || gender}
             studentDetails={data.studentDetails}
+            attemptId={paramAttemptId || data.recentTests?.[0]?.attemptId}
             isTeacherView={isTeacherView}
           />
 
@@ -530,6 +532,13 @@ export function StudentAnalyticsClient({
               </div>
             </div>
           )}
+
+          {/* Student Feedback on Diagnostic Test & Report */}
+          <DiagnosticFeedbackWidget
+            attemptId={paramAttemptId || data.recentTests?.[0]?.attemptId}
+            sourceTab="report"
+            className="mt-6"
+          />
         </>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">

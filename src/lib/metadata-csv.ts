@@ -78,11 +78,12 @@ export function parseExpectedTime(raw: string | null | undefined): { commaSepara
   const trimmed = raw.trim();
   const match = trimmed.match(/(\d+)\s*[–\-—,]\s*(\d+)/);
   if (match) {
-    const min = match[1];
-    const max = match[2];
+    const min = Number(match[1]);
+    const max = Number(match[2]);
+    const mean = Math.round((min + max) / 2);
     return {
       commaSeparated: `${min},${max}`,
-      seconds: Number(max),
+      seconds: mean,
     };
   }
   const single = trimmed.match(/(\d+)/);

@@ -27,6 +27,7 @@ import {
   BarChart3,
   GraduationCap,
   ArrowRight,
+  MessageCircle,
 } from 'lucide-react';
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Dialog, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import type {
@@ -55,6 +56,7 @@ interface BoardReadinessReportProps {
   isTeacherView?: boolean;
   showPrintButton?: boolean;
   onGoToSolutions?: () => void;
+  attemptId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -357,13 +359,20 @@ function BriSpeedometerGauge({
         </div>
       </div>
 
-      {/* Level of Preparation Status Pill */}
+      {/* Level of Preparation Status Banner */}
       <div className="mt-3.5 w-full text-center">
-        <span className="text-[11px] font-black tracking-wider uppercase text-slate-500 dark:text-slate-400 block mb-1">
+        <span className="text-xs sm:text-sm font-black tracking-wider uppercase text-slate-700 dark:text-slate-300 block mb-1.5">
           Level of Preparation
         </span>
-        <div className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs sm:text-sm font-black tracking-wide shadow-xs ${prepStyle.bg}`}>
-          {isHigh ? '🏆' : isMed ? '🎯' : '⚡'} {prepStyle.label}
+        <div className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3.5 py-1.5 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-extrabold tracking-wide shadow-2xs transition-all ${
+          isHigh
+            ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200'
+            : isMed
+            ? 'border-blue-500/40 bg-blue-500/15 text-blue-800 dark:text-blue-200'
+            : 'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200'
+        }`}>
+          <span className="text-sm">{isHigh ? '🏆' : isMed ? '🎯' : '⚡'}</span>
+          <span>{prepStyle.label}</span>
         </div>
       </div>
     </div>
@@ -378,6 +387,7 @@ export function BoardReadinessReport({
   isTeacherView = false,
   showPrintButton = isTeacherView,
   onGoToSolutions,
+  attemptId,
 }: BoardReadinessReportProps) {
   const isMale = (studentGender || report.studentGender) === 'Male';
   const avatarSrc = isMale ? '/board-challenge/Male.webp' : '/board-challenge/Female.webp';
@@ -388,6 +398,26 @@ export function BoardReadinessReport({
   const [showBrochureModal, setShowBrochureModal] = useState(false);
   const [revisitFilter, setRevisitFilter] = useState<'all' | RevisitCategory>('all');
   const [auditFilter, setAuditFilter] = useState<'all' | 'incorrect' | 'overtime' | 'revisit'>('all');
+
+  const handleWhatsAppAction = (action: 'whatsapp_contact_us' | 'whatsapp_enroll_now') => {
+    try {
+      fetch('/api/student/lead-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          attemptId: attemptId || null,
+          source: 'report_page_5',
+        }),
+      }).catch((err) => console.error('[lead-action] tracking error', err));
+    } catch {
+      // ignore
+    }
+
+    const message = `Hi\nI took Shri Ram Smart Minds Academy's Board Diagnostic Test.\nI am Interested in  Class 10 Board Mastery Course`;
+    const url = `https://wa.me/918463911854?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const handleCopyText = async () => {
     try {
@@ -460,28 +490,37 @@ export function BoardReadinessReport({
     }
   };
 
-  const getTimeManagementBadge = (rating: 'Good' | 'Medium' | 'Poor' | string) => {
+  const getTimeManagementBadge = (rating: 'Optimal' | 'Good' | 'Moderate' | 'Needs Intervention' | 'Medium' | 'Poor' | string) => {
     switch (rating) {
-      case 'Good':
+      case 'Optimal':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
             <span className="size-1.5 rounded-full bg-emerald-500" />
+            Optimal
+          </span>
+        );
+      case 'Good':
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+            <span className="size-1.5 rounded-full bg-teal-500" />
             Good
           </span>
         );
+      case 'Moderate':
       case 'Medium':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
             <span className="size-1.5 rounded-full bg-amber-500" />
-            Medium
+            {rating === 'Medium' ? 'Medium' : 'Moderate'}
           </span>
         );
+      case 'Needs Intervention':
       case 'Poor':
       default:
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
             <span className="size-1.5 rounded-full bg-rose-500" />
-            Poor
+            {rating === 'Poor' ? 'Poor' : 'Needs Intervention'}
           </span>
         );
     }
@@ -541,12 +580,13 @@ export function BoardReadinessReport({
             Unattempted
           </span>
         );
+      case 'Severe Overtime':
       case 'High Friction Gap':
       default:
         return (
           <span className="inline-flex items-center gap-1 rounded-md border border-purple-500/30 bg-purple-50 px-2 py-0.5 text-xs font-bold text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
             <Zap className="size-3" />
-            High Friction Gap
+            Severe Overtime
           </span>
         );
     }
@@ -646,7 +686,7 @@ export function BoardReadinessReport({
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
             >
-              P4 • Next Steps
+              P4 • Recommendations
             </button>
             <button
               type="button"
@@ -919,13 +959,7 @@ export function BoardReadinessReport({
                   <BarChart3 className="size-4 text-brand-600 dark:text-brand-400" />
                   Difficulty-Wise Performance
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Mobile battery percentage indicator of questions solved across Easy, Medium, and Hard tiers
-                </p>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider self-start sm:self-auto">
-                Battery Level (%)
-              </span>
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1097,7 +1131,7 @@ export function BoardReadinessReport({
 
             {report.strengths.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
-                No syllabus categories scored above 70% in this test. Focused revision will help build your core strengths!
+                No syllabus categories scored 50% or above in this test. Focused revision will help build your core strengths!
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-3">
@@ -1109,23 +1143,33 @@ export function BoardReadinessReport({
                       ? 'bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-xs'
                       : 'bg-gradient-to-r from-amber-700 to-orange-700 text-white shadow-xs';
 
+                  const isCore = s.percentage >= 70;
+                  const isPotential = s.percentage < 60;
+                  const cardTag = isCore
+                    ? 'Verified Core Strength'
+                    : isPotential
+                      ? 'Areas with Most Potential'
+                      : 'Emerging Strength';
+
                   return (
                     <div
                       key={s.rank}
-                      className={`flex flex-col justify-between rounded-2xl border p-4 sm:p-5 transition-all shadow-xs ${s.isEmerging
-                        ? 'border-amber-200/80 bg-gradient-to-br from-amber-50/70 to-orange-50/30 dark:border-amber-900/40 dark:from-amber-950/30 dark:to-orange-950/20'
-                        : 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-teal-950/20'
-                        }`}
+                      className={`flex flex-col justify-between rounded-2xl border p-4 sm:p-5 transition-all shadow-xs ${
+                        isCore
+                          ? 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-teal-950/20'
+                          : 'border-blue-200/80 bg-gradient-to-br from-blue-50/70 to-indigo-50/30 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-indigo-950/20'
+                      }`}
                     >
                       <div>
                         <div className="flex items-center justify-between">
                           <span className={`px-2.5 py-0.5 rounded-md font-black text-xs tracking-wider uppercase ${medalClass}`}>
                             {podiumMedal}
                           </span>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${s.isEmerging
-                            ? 'bg-amber-100/70 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
-                            : 'bg-emerald-100/70 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-                            }`}>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                            isCore
+                              ? 'bg-emerald-100/70 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                              : 'bg-blue-100/70 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                          }`}>
                             {s.percentage}%
                           </span>
                         </div>
@@ -1143,16 +1187,20 @@ export function BoardReadinessReport({
                         </p>
                       </div>
 
-                      <div className={`mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center gap-1.5 text-xs font-bold ${s.isEmerging ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                        {s.isEmerging ? (
+                      <div className={`mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center gap-1.5 text-xs font-bold ${
+                        isCore
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : 'text-blue-700 dark:text-blue-400'
+                      }`}>
+                        {isCore ? (
                           <>
-                            <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                            <span>{report.strengthsTitle === 'AREAS WITH MOST POTENTIAL' ? 'Area with Most Potential' : 'Emerging Strength'}</span>
+                            <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span>{cardTag}</span>
                           </>
                         ) : (
                           <>
-                            <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                            <span>Verified Core Strength</span>
+                            <Sparkles className="size-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <span>{cardTag}</span>
                           </>
                         )}
                       </div>
@@ -1191,29 +1239,30 @@ export function BoardReadinessReport({
                       { name: 'Word Problem', icon: <BookOpen className="size-4 text-purple-500" /> },
                     ];
 
-                    return PATTERNS.map((p) => {
+                    const sortedPatterns = PATTERNS.map((p) => {
                       const found = report.structures.find((s) => s.type.toLowerCase() === p.name.toLowerCase());
                       const st = found ?? { type: p.name, correct: 0, total: 0, percentage: 0 };
                       const starRating = Math.round((st.percentage / 100) * 5 * 10) / 10;
+                      return { p, st, starRating };
+                    }).sort((a, b) => b.st.percentage - a.st.percentage);
 
-                      return (
-                        <TableRow key={st.type} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <TableCell className="py-3 px-3 sm:px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex size-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 shrink-0">
-                                {p.icon}
-                              </div>
-                              <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                                {st.type}
-                              </span>
+                    return sortedPatterns.map(({ p, st, starRating }) => (
+                      <TableRow key={st.type} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <TableCell className="py-3 px-3 sm:px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex size-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 shrink-0">
+                              {p.icon}
                             </div>
-                          </TableCell>
-                          <TableCell className="py-3 px-3 sm:px-4 text-left sm:text-right whitespace-nowrap shrink-0">
-                            <EcommerceStarRating rating={starRating} align="responsive" />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    });
+                            <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                              {st.type}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-3 sm:px-4 text-left sm:text-right whitespace-nowrap shrink-0">
+                          <EcommerceStarRating rating={starRating} align="responsive" />
+                        </TableCell>
+                      </TableRow>
+                    ));
                   })()}
                 </TableBody>
               </Table>
@@ -1265,7 +1314,7 @@ export function BoardReadinessReport({
 
           {/* Priority Gaps */}
           {(() => {
-            const weaknessGaps = (report.priorityGaps || []).filter((g) => g.scorePercent <= 70).slice(0, 4);
+            const weaknessGaps = (report.priorityGaps || []).filter((g) => g.scorePercent < 50).slice(0, 4);
             return (
               <div className="mt-6 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
@@ -1301,14 +1350,14 @@ export function BoardReadinessReport({
                     </h4>
 
                     <p className="mt-2 max-w-lg text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
-                      Outstanding performance! You scored above 70% across all evaluated syllabus categories. Keep up the phenomenal work for your board exams!
+                      Outstanding performance! You scored 50% or above across all evaluated syllabus categories. Keep up the phenomenal work for your board exams!
                     </p>
 
                     {/* 3 Academic Milestone Badges */}
                     <div className="mt-5 flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-emerald-200/60 dark:border-slate-800">
                       <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-emerald-100 dark:border-slate-700 shadow-2xs">
                         <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                        All Subjects &gt; 70%
+                        All Categories &gt;= 50%
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-emerald-100 dark:border-slate-700 shadow-2xs">
                         <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -1340,18 +1389,28 @@ export function BoardReadinessReport({
                       return (
                         <div
                           key={g.rank}
-                          className={`rounded-2xl border p-4 sm:p-5 shadow-xs transition-all ${borderClass}`}
+                          className={`flex flex-col justify-between rounded-2xl border p-4 sm:p-5 shadow-xs transition-all ${borderClass}`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-400">#{g.rank} Priority Focus</span>
-                            {getPriorityBadge(g.priority)}
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-400">#{g.rank} Priority Focus</span>
+                              {getPriorityBadge(g.priority)}
+                            </div>
+                            <h4 className="mt-2.5 text-base font-black text-slate-900 dark:text-white">
+                              {g.name}
+                            </h4>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <EcommerceStarRating rating={Math.round((g.scorePercent / 100) * 5 * 10) / 10} align="start" />
+                              <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                                {g.scorePercent}%
+                              </span>
+                            </div>
                           </div>
-                          <h4 className="mt-2.5 text-base font-black text-slate-900 dark:text-white">
-                            {g.name}
-                          </h4>
-                          <div className="mt-2">
-                            <EcommerceStarRating rating={Math.round((g.scorePercent / 100) * 5 * 10) / 10} align="start" />
-                          </div>
+                          {g.message && (
+                            <p className="mt-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300 font-medium border-t border-slate-100 dark:border-slate-800/80 pt-2.5">
+                              {g.message}
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -1369,7 +1428,7 @@ export function BoardReadinessReport({
                 Topics to Revisit
               </h3>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Detailed chapter-wise observations for Mathematics and Science requiring review or reinforcement:
+                Key chapters in Mathematics and Science where you can review questions and strengthen your concepts:
               </p>
             </div>
 
@@ -1393,24 +1452,6 @@ export function BoardReadinessReport({
                       </h4>
                     </div>
                   </div>
-
-                  {(hasGuesswork || hasUnattempted) && (
-                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-                      <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                      <div className="space-y-1">
-                        {hasGuesswork && (
-                          <p>
-                            <strong>Rapid Responses / Guesswork:</strong> Some chapters were answered very quickly. These chapters appear to be guesswork, so we cannot reliably determine conceptual competency.
-                          </p>
-                        )}
-                        {hasUnattempted && (
-                          <p>
-                            <strong>Unattempted Chapters:</strong> These questions were left unattempted during the exam, so competency could not be assessed and requires independent practice.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Mobile Question Cards (< md) */}
                   <div className="space-y-2.5 md:hidden">
@@ -1477,6 +1518,21 @@ export function BoardReadinessReport({
                       </TableBody>
                     </Table>
                   </div>
+
+                  {(hasGuesswork || hasUnattempted) && (
+                    <div className="pt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 space-y-0.5 border-t border-slate-100 dark:border-slate-800/60">
+                      {hasGuesswork && (
+                        <p>
+                          <span className="font-bold text-orange-600 dark:text-orange-400">* Rapid Guesswork:</span> Questions answered in under 8 seconds. We recommend reviewing these concepts to verify solid foundational understanding.
+                        </p>
+                      )}
+                      {hasUnattempted && (
+                        <p>
+                          <span className="font-bold text-slate-600 dark:text-slate-300">* Unattempted Chapters:</span> Questions left unattempted during the exam. Practice these chapters independently to build speed and confidence.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -1501,24 +1557,6 @@ export function BoardReadinessReport({
                       </h4>
                     </div>
                   </div>
-
-                  {(hasGuesswork || hasUnattempted) && (
-                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-                      <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                      <div className="space-y-1">
-                        {hasGuesswork && (
-                          <p>
-                            <strong>Rapid Responses / Guesswork:</strong> Some chapters were answered very quickly. These chapters appear to be guesswork, so we cannot reliably determine conceptual competency.
-                          </p>
-                        )}
-                        {hasUnattempted && (
-                          <p>
-                            <strong>Unattempted Chapters:</strong> These questions were left unattempted during the exam, so competency could not be assessed and requires independent practice.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Mobile Question Cards (< md) */}
                   <div className="space-y-2.5 md:hidden">
@@ -1594,6 +1632,21 @@ export function BoardReadinessReport({
                       </TableBody>
                     </Table>
                   </div>
+
+                  {(hasGuesswork || hasUnattempted) && (
+                    <div className="pt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 space-y-0.5 border-t border-slate-100 dark:border-slate-800/60">
+                      {hasGuesswork && (
+                        <p>
+                          <span className="font-bold text-orange-600 dark:text-orange-400">* Rapid Guesswork:</span> Questions answered in under 8 seconds. We recommend reviewing these concepts to verify solid foundational understanding.
+                        </p>
+                      )}
+                      {hasUnattempted && (
+                        <p>
+                          <span className="font-bold text-slate-600 dark:text-slate-300">* Unattempted Chapters:</span> Questions left unattempted during the exam. Practice these chapters independently to build speed and confidence.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -1620,7 +1673,7 @@ export function BoardReadinessReport({
         </section>
 
       {/* =========================================================================
-          PAGE 4: YOUR NEXT STEPS (ADAPTED BY PREPARATION LEVEL)
+          PAGE 4: RECOMMENDATIONS (ADAPTED BY PREPARATION LEVEL)
           ========================================================================= */}
       <section
         className={`report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
@@ -1634,7 +1687,7 @@ export function BoardReadinessReport({
               Shri Ram Smart Minds Academy
             </span>
             <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
-              PAGE 4 — YOUR NEXT STEPS
+              PAGE 4 — RECOMMENDATIONS
             </h2>
           </div>
           <div className="text-right shrink-0">
@@ -1658,7 +1711,7 @@ export function BoardReadinessReport({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="rounded-md bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs">
+                        <span className="rounded-md bg-emerald-600 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white shadow-xs">
                           🏆 Level of Preparation: High Achievement Potential
                         </span>
                         <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
@@ -1799,7 +1852,7 @@ export function BoardReadinessReport({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="rounded-md bg-blue-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs">
+                        <span className="rounded-md bg-blue-600 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white shadow-xs">
                           🎯 Level of Preparation: Conceptually Strong
                         </span>
                         <span className="text-xs font-bold text-blue-800 dark:text-blue-300">
@@ -1949,7 +2002,7 @@ export function BoardReadinessReport({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-amber-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-xs">
+                      <span className="rounded-md bg-amber-500 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-950 shadow-xs">
                         ⚡ Level of Preparation: Basic
                       </span>
                       <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
@@ -2198,14 +2251,22 @@ export function BoardReadinessReport({
                   SRSMA Way: From knowing the chapter to confidently solving what comes next.
                 </p>
               </div>
-              <div className="shrink-0 flex items-center gap-2">
+              <div className="shrink-0 flex flex-col sm:flex-row lg:flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => setShowBrochureModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-black text-slate-950 shadow-sm transition hover:bg-amber-300"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-black text-slate-950 shadow-sm transition hover:bg-amber-300"
                 >
                   <FileText className="size-4" />
                   View Full Brochure Flyer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleWhatsAppAction('whatsapp_contact_us')}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-black text-white shadow-sm transition active:scale-[0.99]"
+                >
+                  <MessageCircle className="size-4" />
+                  Contact Us
                 </button>
               </div>
             </div>
@@ -2332,6 +2393,18 @@ export function BoardReadinessReport({
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Enroll Now CTA Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => handleWhatsAppAction('whatsapp_enroll_now')}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-4 text-xs sm:text-sm shadow-md transition-all active:scale-[0.99]"
+                >
+                  <MessageCircle className="size-4" />
+                  <span>Enroll Now via WhatsApp</span>
+                </button>
               </div>
             </div>
 
@@ -2667,7 +2740,110 @@ export function BoardReadinessReport({
             </div>
           </div>
 
-          {/* 4.1 Scoring & BRI Derivation */}
+          {/* Executive Diagnostic Scorecard — All Master Scores in One Glance */}
+          <div className="mt-6 rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 p-5 shadow-xs dark:border-amber-800/40 dark:from-slate-900 dark:via-slate-900/90 dark:to-amber-950/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-amber-200/60 pb-3 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="size-4 text-amber-700 dark:text-amber-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  Master Diagnostic Scorecard &amp; Key Evaluation Metrics
+                </h3>
+              </div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                Summary of all evaluated diagnostic axes
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {/* BRI Score */}
+              <div className="rounded-xl border border-brand-200/80 bg-brand-50/50 p-3 dark:border-brand-900/40 dark:bg-brand-950/20">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300">
+                  BRI Index
+                </span>
+                <div className="mt-1 text-xl font-black text-brand-700 dark:text-brand-300 tnum">
+                  {report.briScore}%
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                  {report.levelOfPreparation}
+                </p>
+              </div>
+
+              {/* Raw Marks */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Raw Score
+                </span>
+                <div className="mt-1 text-xl font-black text-slate-900 dark:text-white tnum">
+                  {report.totalRawScore} / {report.totalQuestions}
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {Math.round((report.totalRawScore / report.totalQuestions) * 100)}% unweighted
+                </p>
+              </div>
+
+              {/* Accuracy */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Accuracy
+                </span>
+                <div className="mt-1 text-xl font-black text-emerald-600 dark:text-emerald-400 tnum">
+                  {report.skills.accuracy.scorePercent}%
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {report.skills.accuracy.correctCount} of {report.skills.accuracy.attemptedCount} att.
+                </p>
+              </div>
+
+              {/* TMS */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  TMS Pacing
+                </span>
+                <div className="mt-1 text-xl font-black text-indigo-600 dark:text-indigo-400 tnum">
+                  {report.timeManagement.finalScorePercent}%
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                  {report.timeManagement.rating}
+                </p>
+              </div>
+
+              {/* Maths & Science */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Subject Scores
+                </span>
+                <div className="mt-1 flex items-baseline gap-1.5 font-mono text-sm font-black text-slate-900 dark:text-white">
+                  <span>M: {report.breakdown.mathematics.percentage}%</span>
+                  <span>•</span>
+                  <span>S: {report.breakdown.science.percentage}%</span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  Maths vs Science
+                </p>
+              </div>
+
+              {/* Strengths / Gaps Count */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Identified Gaps
+                </span>
+                <div className="mt-1 flex items-baseline gap-2 font-mono text-sm font-black">
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {report.strengths.length} Str.
+                  </span>
+                  <span>•</span>
+                  <span className={report.priorityGaps.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                    {report.priorityGaps.length} Weak.
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {report.priorityGaps.length === 0 ? 'Excellence achieved' : 'Action items'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. Scoring & BRI Derivation */}
           <div className="mt-8 space-y-4">
             <div className="flex items-center gap-2">
               <div className="flex size-7 items-center justify-center rounded-lg bg-brand-600 text-white text-xs font-black">
@@ -2746,11 +2922,18 @@ export function BoardReadinessReport({
             </div>
           </div>
 
-          {/* 4.2 Area Breakdowns Calculation Steps */}
-          <div className="mt-8 space-y-3">
-            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-              2. Area &amp; Difficulty Breakdown Derivations
-            </h3>
+          {/* 2. Area, Science Discipline & Difficulty Breakdown Derivations */}
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-brand-600 text-white text-xs font-black">
+                <Layers className="size-4" />
+              </div>
+              <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                2. Area, Science Discipline &amp; Difficulty Breakdown Derivations
+              </h3>
+            </div>
+
+            {/* 2.1 Core Areas & Difficulty */}
             <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
               <Table>
                 <TableHeader>
@@ -2791,9 +2974,115 @@ export function BoardReadinessReport({
                 </TableBody>
               </Table>
             </div>
+
+            {/* 2.2 Science Sub-Disciplines Breakdown */}
+            {report.calculationSteps.scienceDisciplineBreakdowns && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Science Sub-Disciplines Breakdown (Physics, Chemistry, Biology)
+                  </h4>
+                  <span className="text-[11px] font-medium text-slate-400">Itemized Science scores</span>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Discipline</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Matching Qs</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score / Total</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Formula</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Percentage</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {report.calculationSteps.scienceDisciplineBreakdowns.map((sd) => (
+                        <TableRow key={sd.discipline}>
+                          <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                            {sd.discipline}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {sd.matchingQuestions.map((q) => (
+                                <span key={q} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                  Q{q}
+                                </span>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold tnum text-xs text-slate-800 dark:text-slate-200">
+                            {sd.score} / {sd.total}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                            {sd.formula}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                            {sd.percentage}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* 2.3 Subject × Difficulty Cross-Tabulation */}
+            {report.calculationSteps.subjectDifficultyMatrix && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Subject × Difficulty Cross-Tabulation
+                  </h4>
+                  <span className="text-[11px] font-medium text-slate-400">Easy vs Medium vs Difficult across Mathematics and Science</span>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Subject</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Difficulty Tier</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score / Total</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Formula</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Accuracy %</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {report.calculationSteps.subjectDifficultyMatrix.map((m) => (
+                        <TableRow key={`${m.subject}-${m.difficulty}`}>
+                          <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                            {m.subject}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${
+                              m.difficulty === 'Easy'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : m.difficulty === 'Medium'
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                  : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                            }`}>
+                              {m.difficulty}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-bold tnum text-xs text-slate-800 dark:text-slate-200">
+                            {m.score} / {m.total}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                            {m.formula}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                            {m.percentage}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 4.3 Cognitive Skills & Accuracy Derivations */}
+          {/* 3. Primary Cognitive Skills & Accuracy Derivations */}
           <div className="mt-8 space-y-3">
             <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
               3. Primary Cognitive Skills &amp; Accuracy Derivations
@@ -2844,7 +3133,7 @@ export function BoardReadinessReport({
             </div>
           </div>
 
-          {/* 4.4 Question Structure Derivations */}
+          {/* 4. Question Structure Derivations */}
           <div className="mt-8 space-y-3">
             <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
               4. Question Structure Performance Derivations
@@ -2891,41 +3180,307 @@ export function BoardReadinessReport({
             </div>
           </div>
 
-          {/* 4.5 Time Management & Pacing Derivations */}
-          {report.calculationSteps.timeManagement && (
-            <div className="mt-8 space-y-3">
+          {/* 5. Strengths Derivation & Ranking Audit */}
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-600 text-white text-xs font-black">
+                <Sparkles className="size-4" />
+              </div>
               <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-                5. Time Management &amp; Pacing Derivations
+                5. Strengths Derivation &amp; Ranking Audit
               </h3>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="w-12 text-center text-xs font-bold uppercase tracking-wider">Rank</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Strength Area</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Classification Tier</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score %</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Evaluated Evidence &amp; Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.strengthsRanking.map((s) => {
+                    const isCore = s.percentage >= 70;
+                    return (
+                      <TableRow key={s.rank}>
+                        <TableCell className="text-center font-bold text-xs">
+                          <span className="flex size-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-black mx-auto">
+                            #{s.rank}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                          {s.name}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                            isCore
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/40'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300/40'
+                          }`}>
+                            {s.tag || (isCore ? 'Verified Core Strength' : 'Areas with Most Potential')}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                          {s.percentage}%
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-600 dark:text-slate-300 max-w-md">
+                          {s.reason}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 6. Weakness Engine Evaluation Matrix & Priority Gaps Audit */}
+          <div className="mt-8 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-rose-600 text-white text-xs font-black">
+                  <Target className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                    6. Weakness Engine Evaluation Matrix &amp; Priority Gaps Audit
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Faculty audit of all 9 diagnostic weakness labels, thresholds (&lt; 50%), mutual exclusion pairs, and final priority gap assignments.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 6.1 Priority Gaps Audit (Final Selected Weaknesses) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <AlertTriangle className="size-3.5 text-rose-500" />
+                  6.1 Selected Priority Gaps (Final Weaknesses on Page 3)
+                </h4>
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {report.calculationSteps.priorityGapsRanking.length} Priority Gap{report.calculationSteps.priorityGapsRanking.length === 1 ? '' : 's'} Selected
+                </span>
+              </div>
+
+              {report.calculationSteps.priorityGapsRanking.length === 0 ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20 flex items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 font-bold">
+                    <CheckCircle2 className="size-5" />
+                  </div>
+                  <div className="text-xs">
+                    <strong className="text-emerald-900 dark:text-emerald-300 font-bold block">
+                      Faculty Audit Confirmation: Zero Weakness Areas Detected (&lt; 50%)
+                    </strong>
+                    <span className="text-emerald-800/90 dark:text-emerald-400">
+                      All evaluated syllabus categories scored 50% or above. The student achieved the academic excellence benchmark across all evaluated dimensions.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {report.calculationSteps.priorityGapsRanking.map((g) => (
+                    <div
+                      key={g.rank}
+                      className="rounded-2xl border border-rose-200/80 bg-gradient-to-br from-white to-rose-50/40 p-4 shadow-xs dark:border-rose-900/40 dark:from-slate-900 dark:to-rose-950/20"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">#{g.rank} Priority Focus</span>
+                        {getPriorityBadge(g.priority)}
+                      </div>
+                      <h5 className="mt-2 text-sm font-black text-slate-900 dark:text-white">
+                        {g.name}
+                      </h5>
+                      <div className="mt-2 flex items-center justify-between">
+                        <EcommerceStarRating rating={Math.round((g.scorePercent / 100) * 5 * 10) / 10} align="start" />
+                        <span className="font-mono text-xs font-black text-rose-700 dark:text-rose-400">
+                          {g.scorePercent}%
+                        </span>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                        <strong>Trigger:</strong> {g.ruleApplied}
+                      </div>
+                      {g.message && (
+                        <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed italic">
+                          &ldquo;{g.message}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 6.2 Complete 9-Label Weakness Engine Matrix (All Evaluated Values) */}
+            {report.calculationSteps.allWeaknessEvaluations && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    6.2 Complete 9-Label Weakness Evaluation Engine Matrix (All Values)
+                  </h4>
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    Full Evaluation Ledger &bull; 9 Engine Labels + Fallback Pacing
+                  </span>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Weakness Dimension</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Category Type</TableHead>
+                        <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Evaluated Value</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Diagnostic Formula / Base</TableHead>
+                        <TableHead className="text-xs font-bold uppercase tracking-wider">Threshold Rule</TableHead>
+                        <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Trigger Status</TableHead>
+                        <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Priority Band</TableHead>
+                        <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Selection Outcome</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {report.calculationSteps.allWeaknessEvaluations.map((w) => {
+                        const isSelected = w.status === 'Selected Priority Gap';
+                        const isSuppressed = w.status.includes('Suppressed');
+                        const isMet = w.status === 'Benchmark Met (>= 50%)';
+
+                        return (
+                          <TableRow
+                            key={w.id}
+                            className={
+                              isSelected
+                                ? 'bg-rose-50/40 dark:bg-rose-950/20'
+                                : isSuppressed
+                                  ? 'bg-amber-50/30 dark:bg-amber-950/15'
+                                  : undefined
+                            }
+                          >
+                            <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                              <div>{w.name}</div>
+                              <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                                {w.triggerReason}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-600 dark:text-slate-400 text-xs font-medium">
+                              {w.categoryType}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-bold text-xs tnum">
+                              <span
+                                className={
+                                  w.evaluatedScore < 50
+                                    ? 'text-rose-600 dark:text-rose-400'
+                                    : 'text-emerald-600 dark:text-emerald-400'
+                                }
+                              >
+                                {w.evaluatedScore}%
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-mono text-[11px] text-slate-600 dark:text-slate-400 max-w-xs">
+                              {w.formula}
+                            </TableCell>
+                            <TableCell className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                              {w.thresholdCondition}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {w.isTriggered ? (
+                                <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                  <AlertTriangle className="size-3" /> Deficit Triggered
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                  <Check className="size-3" /> Benchmark Met
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {w.priority === 'Benchmark Met (>= 50%)' ? (
+                                <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                  &ge; 50% Satisfied
+                                </span>
+                              ) : (
+                                getPriorityBadge(w.priority as PriorityLevel)
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {isSelected ? (
+                                <span className="inline-block rounded-full bg-rose-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-2xs">
+                                  Selected #{w.selectedRank}
+                                </span>
+                              ) : isSuppressed ? (
+                                <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                  {w.status}
+                                </span>
+                              ) : isMet ? (
+                                <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                  No Deficit (&ge; 50%)
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-slate-400">Not Triggered</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 7. Time Management & Pacing Derivations (TMS) */}
+          {report.calculationSteps.timeManagement && (
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-black">
+                  <Clock className="size-4" />
+                </div>
+                <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+                  7. Time Management &amp; Pacing Derivations (TMS)
+                </h3>
+              </div>
+
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Scoring Formula</span>
                     <p className="mt-1 font-mono text-xs font-bold text-slate-900 dark:text-white">
-                      (Total Score / (3 * Attempted)) * 100
+                      TMS (%) = (Σ Qi / N) * 100
                     </p>
                     <p className="mt-1 text-xs text-brand-600 dark:text-brand-400 font-bold">
                       {report.calculationSteps.timeManagement.formula} = {report.calculationSteps.timeManagement.finalScorePercent}%
                     </p>
+                    <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      t_est = Mean of Lowerbound &amp; Upperbound
+                    </p>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Per-Question Multipliers</span>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Piecewise Qi Rules</span>
                     <ul className="mt-1 space-y-0.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                      <li>• Time &lt; 1.5x ETS: <strong className="text-emerald-600">Good (3 pts)</strong></li>
-                      <li>• 1.5x - 2.0x ETS: <strong className="text-amber-600">Medium (2 pts)</strong></li>
-                      <li>• Time &gt; 2.0x ETS: <strong className="text-rose-600">Poor (1 pt)</strong></li>
+                      <li>• Correct, r ≤ 1.0: <strong className="text-emerald-600">Efficient Mastery (1.0)</strong></li>
+                      <li>• Correct, r &gt; 1.0: <strong className="text-teal-600">Over-Invested (max 0.25, 1/r)</strong></li>
+                      <li>• Incorrect, r &lt; 0.70: <strong className="text-amber-600">Careless Rushing</strong></li>
+                      <li>• Incorrect, 0.70-1.30: <strong className="text-blue-600">Disciplined Attempt (0.50)</strong></li>
+                      <li>• Incorrect, r &gt; 1.30: <strong className="text-rose-600">Time Trap</strong></li>
                     </ul>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rating &amp; Flags</span>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Classification &amp; Flags</span>
                     <div className="mt-1 flex items-center gap-2">
                       {getTimeManagementBadge(report.calculationSteps.timeManagement.ratingResult)}
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         {report.calculationSteps.timeManagement.finalScorePercent}%
                       </span>
                     </div>
+                    <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      ≥85% Optimal | 70-84% Good | 50-69% Moderate | &lt;50% Needs Intervention
+                    </p>
                     {report.calculationSteps.timeManagement.guessworkQuestions.length > 0 ? (
                       <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
                         ⚠️ Guesswork: Q{report.calculationSteps.timeManagement.guessworkQuestions.join(', Q')} (&lt;8s)
@@ -2937,16 +3492,86 @@ export function BoardReadinessReport({
                     )}
                   </div>
                 </div>
+
+                {/* Detailed Category Count Badges */}
+                {report.calculationSteps.timeManagement.categoryCounts && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                      Behavioral Distribution:
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                      Efficient Mastery: {report.calculationSteps.timeManagement.categoryCounts['EFFICIENT_MASTERY'] || 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-2 py-1 text-[11px] font-bold text-teal-800 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-800/50">
+                      Over-Invested: {report.calculationSteps.timeManagement.categoryCounts['OVER_INVESTED_SUCCESS'] || 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                      Disciplined Attempt: {report.calculationSteps.timeManagement.categoryCounts['DISCIPLINED_ATTEMPT'] || 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                      Careless Rushing: {report.calculationSteps.timeManagement.categoryCounts['CARELESS_RUSHING'] || 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50">
+                      Time Trap: {report.calculationSteps.timeManagement.categoryCounts['TIME_TRAP'] || 0}
+                    </span>
+                    {(report.calculationSteps.timeManagement.categoryCounts['UNATTEMPTED'] || 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        Unattempted: {report.calculationSteps.timeManagement.categoryCounts['UNATTEMPTED']}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* 4.6 Full Question-by-Question Diagnostic Audit */}
+          {/* 8. Chapter Score & Priority Classification Audit */}
+          <div className="mt-8 space-y-3">
+            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              8. Chapter Score &amp; Priority Classification Audit
+            </h3>
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Chapter Name</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Subject</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score / Total</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Accuracy %</TableHead>
+                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Priority Classification</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.calculationSteps.allChapterScores.map((c) => (
+                    <TableRow key={`${c.subject}-${c.chapter}`}>
+                      <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
+                        {c.chapter}
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                        {c.subject}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
+                        {c.correct} / {c.total}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
+                        {c.percentage}%
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getPriorityBadge(c.priority)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 9. Full Question-by-Question Diagnostic Audit */}
           <div className="mt-8 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-                  6. Full Question-by-Question Audit Table ({report.calculationSteps.questionAudit.length} Questions)
+                  9. Full Question-by-Question Audit Table ({report.calculationSteps.questionAudit.length} Questions)
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Itemized record of responses, time taken, time limits, weights, and revisit classifications:
@@ -3046,24 +3671,28 @@ export function BoardReadinessReport({
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
-                            {item.timeTakenS}s / ETS {item.expectedUpperBoundS}s
+                            {item.timeTakenS}s / ETS {item.expectedBenchmarkS ?? item.expectedUpperBoundS}s
                           </div>
                           <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
                             {item.timeManagementLabel && (
                               <span
-                                className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${item.timeManagementScore === 3
+                                className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${item.timeManagementCategory === 'EFFICIENT_MASTERY'
                                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                  : item.timeManagementScore === 2
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                  : item.timeManagementCategory === 'OVER_INVESTED_SUCCESS'
+                                    ? 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300'
+                                    : item.timeManagementCategory === 'DISCIPLINED_ATTEMPT'
+                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                                      : item.timeManagementCategory === 'CARELESS_RUSHING'
+                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                                   }`}
                               >
-                                {item.timeManagementLabel} ({item.timeManagementScore} pts)
+                                {item.timeManagementLabel} {item.timeManagementQi !== undefined ? `(Q: ${item.timeManagementQi})` : ''}
                               </span>
                             )}
                             {item.isGuesswork && (
                               <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[9px] font-black text-amber-950 dark:bg-amber-900/60 dark:text-amber-200">
-                                ⚡ &lt;10s Guesswork
+                                ⚡ &lt;8s Guesswork
                               </span>
                             )}
                           </div>
@@ -3113,47 +3742,6 @@ export function BoardReadinessReport({
                         </TableCell>
                       </TableRow>
                     ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-
-          {/* 4.6 Chapter Accuracy & Priority Ranking */}
-          <div className="mt-8 space-y-3">
-            <h3 className="text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-              6. Chapter Score &amp; Priority Classification Audit
-            </h3>
-            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Chapter Name</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Subject</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Score / Total</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Accuracy %</TableHead>
-                    <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Priority Classification</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.calculationSteps.allChapterScores.map((c) => (
-                    <TableRow key={`${c.subject}-${c.chapter}`}>
-                      <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
-                        {c.chapter}
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                        {c.subject}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
-                        {c.correct} / {c.total}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-xs text-brand-700 dark:text-brand-400">
-                        {c.percentage}%
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getPriorityBadge(c.priority)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
             </div>

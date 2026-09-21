@@ -18,6 +18,13 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   const { id: testId } = await params;
   const url = new URL(req.url);
   const bestOnly = url.searchParams.get('bestOnly') !== 'false';
+  const enrollmentParam = url.searchParams.get('enrollment')?.trim();
+  const profileFilter =
+    enrollmentParam === 'provisional'
+      ? 'AND p.is_provisional = true'
+      : enrollmentParam === 'enrolled'
+        ? 'AND p.is_provisional = false'
+        : '';
 
   const db = await getDb();
 
@@ -45,22 +52,21 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     total_time_s: number | null;
   }>(
     `SELECT
-       r.student_id,
+       a.student_id,
        p.full_name,
        p.username,
        p.batch,
-       r.attempt_no,
-       r.total_marks,
-       r.rank,
-       r.percentile,
+       a.attempt_no,
+       a.total_marks,
+       rank() OVER (PARTITION BY a.test_id ORDER BY a.total_marks DESC NULLS LAST) AS rank,
+       round(100 * percent_rank() OVER (PARTITION BY a.test_id ORDER BY a.total_marks ASC NULLS FIRST)::numeric, 1) AS percentile,
        a.submitted_at,
        a.total_time_s,
        a.id as attempt_id
-     FROM v_test_ranks r
-     JOIN profiles p ON p.id = r.student_id
-     JOIN attempts a ON a.test_id = r.test_id AND a.student_id = r.student_id AND a.attempt_no = r.attempt_no
-     WHERE r.test_id = $1
-     ORDER BY r.rank ASC, a.submitted_at ASC`,
+     FROM attempts a
+     JOIN profiles p ON p.id = a.student_id
+     WHERE a.test_id = $1 AND a.status IN ('submitted', 'auto_submitted') AND a.total_marks IS NOT NULL ${profileFilter}
+     ORDER BY rank ASC, a.submitted_at ASC`,
     [testId],
   );
 
@@ -162,7 +168,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
      FROM attempt_answers aa
      JOIN attempts a ON a.id = aa.attempt_id
      JOIN profiles p ON p.id = a.student_id
-     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND aa.response IS NOT NULL AND p.is_provisional = false
+     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND aa.response IS NOT NULL ${profileFilter}
      GROUP BY aa.question_id, aa.response->>'key'`,
     [testId],
   );
@@ -188,7 +194,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
      FROM attempt_answers aa
      JOIN attempts a ON a.id = aa.attempt_id
      JOIN profiles p ON p.id = a.student_id
-     WHERE a.test_id = $1 AND a.status <> 'in_progress' AND p.is_provisional = false`,
+     WHERE a.test_id = $1 AND a.status <> 'in_progress' ${profileFilter}`,
     [testId],
   );
 
@@ -245,7 +251,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
      FROM test_questions tq
      JOIN questions q ON q.id = tq.question_id
      LEFT JOIN attempts a ON a.test_id = tq.test_id AND a.status <> 'in_progress'
-       AND NOT EXISTS (SELECT 1 FROM profiles pp WHERE pp.id = a.student_id AND pp.is_provisional = true)
+     LEFT JOIN profiles p ON p.id = a.student_id ${profileFilter}
      LEFT JOIN attempt_answers aa ON aa.attempt_id = a.id AND aa.question_id = tq.question_id
      WHERE tq.test_id = $1
      GROUP BY tq.question_id, tq.position, q.subject, q.chapter, q.topic, q.type, q.difficulty, SUBSTRING(q.body FROM 1 FOR 120), q.expected_time_s

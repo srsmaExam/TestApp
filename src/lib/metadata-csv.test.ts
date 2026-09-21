@@ -18,8 +18,8 @@ describe('metadata-csv', () => {
   });
 
   it('parses expected time accurately', () => {
-    expect(parseExpectedTime('45,60')).toEqual({ commaSeparated: '45,60', seconds: 60 });
-    expect(parseExpectedTime('30-45')).toEqual({ commaSeparated: '30,45', seconds: 45 });
+    expect(parseExpectedTime('45,60')).toEqual({ commaSeparated: '45,60', seconds: 53 });
+    expect(parseExpectedTime('30-45')).toEqual({ commaSeparated: '30,45', seconds: 38 });
     expect(parseExpectedTime('90')).toEqual({ commaSeparated: '90', seconds: 90 });
     expect(parseExpectedTime(null)).toEqual({ commaSeparated: '60', seconds: 60 });
   });

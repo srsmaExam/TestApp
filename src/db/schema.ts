@@ -73,6 +73,8 @@ export const profiles = pgTable('profiles', {
   classLevel: text('class_level'),
   gender: text('gender'),
   school: text('school'),
+  whatsappContactClicked: boolean('whatsapp_contact_clicked').notNull().default(false),
+  whatsappEnrollClicked: boolean('whatsapp_enroll_clicked').notNull().default(false),
 });
 
 export const papers = pgTable('papers', {
@@ -308,8 +310,50 @@ export const storedFiles = pgTable('stored_files', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const studentLeadActions = pgTable(
+  'student_lead_actions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
+    action: text('action').notNull(),
+    source: text('source').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('student_lead_actions_student_idx').on(t.studentId),
+    index('student_lead_actions_attempt_idx').on(t.attemptId),
+  ],
+);
+
+export const studentFeedback = pgTable(
+  'student_feedback',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
+    testId: uuid('test_id').references(() => tests.id, { onDelete: 'set null' }),
+    testRating: smallint('test_rating'),
+    reportRating: smallint('report_rating'),
+    feedbackText: text('feedback_text'),
+    sourceTab: text('source_tab'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('student_feedback_student_idx').on(t.studentId),
+    index('student_feedback_attempt_idx').on(t.attemptId),
+  ],
+);
+
 export type Profile = typeof profiles.$inferSelect;
 export type Paper = typeof papers.$inferSelect;
 export type Question = typeof questions.$inferSelect;
 export type QuestionImage = typeof questionImages.$inferSelect;
 export type StoredFile = typeof storedFiles.$inferSelect;
+export type StudentLeadAction = typeof studentLeadActions.$inferSelect;
+export type StudentFeedback = typeof studentFeedback.$inferSelect;

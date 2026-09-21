@@ -65,6 +65,16 @@ export async function StudentTestInstructionView({ testId }: { testId: string })
     subjectMap.set(row.subject, (subjectMap.get(row.subject) ?? 0) + 1);
   }
 
+  const subjectOrder: Record<string, number> = {
+    maths: 1,
+    physics: 2,
+    chemistry: 3,
+    biology: 4,
+  };
+  const subjectCounts = [...subjectMap.entries()]
+    .sort(([a], [b]) => (subjectOrder[a] ?? 99) - (subjectOrder[b] ?? 99))
+    .map(([subject, count]) => ({ subject, count }));
+
   const [{ attemptsUsed }] = await db
     .select({ attemptsUsed: sql<number>`cast(count(*) as int)` })
     .from(attempts)
@@ -75,7 +85,7 @@ export async function StudentTestInstructionView({ testId }: { testId: string })
       <TestInstructionClient
         test={test}
         markingRules={[...ruleMap.values()]}
-        subjectCounts={[...subjectMap.entries()].map(([subject, count]) => ({ subject, count }))}
+        subjectCounts={subjectCounts}
         attemptsUsed={attemptsUsed}
         studentName={session.fullName}
       />

@@ -547,10 +547,6 @@ export default function BoardChallengePage() {
                 <Link href="/login" className="transition hover:text-amber-600 dark:hover:text-amber-400">
                   Student Sign In
                 </Link>
-                <span>•</span>
-                <Link href="/SRSMA" className="transition hover:text-amber-600 dark:hover:text-amber-400">
-                  Staff Portal
-                </Link>
               </div>
             </div>
           </div>

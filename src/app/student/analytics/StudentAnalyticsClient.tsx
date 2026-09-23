@@ -467,7 +467,7 @@ export function StudentAnalyticsClient({
   const activeReport = showSamplePreview ? data.sampleDiagnosticReport : data.diagnosticReport;
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Sample Preview Banner */}
       {showSamplePreview && (
         <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs shadow-sm dark:border-amber-800/80 dark:bg-amber-950/40">

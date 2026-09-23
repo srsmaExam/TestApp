@@ -48,12 +48,14 @@ export type PreparationLevel =
 export type SkillValueCategory = 'Good' | 'Average' | 'Needs Strengthening';
 export type PriorityLevel = 'High Priority' | 'Medium Priority' | 'Low Priority';
 export type RevisitCategory =
-  | 'Pacing / Time Management'
+  | 'Too Slow'
+  | 'Too Fast but Incorrect'
   | 'Conceptual / Calculation Gap'
+  | 'Unattempted'
+  | 'Pacing / Time Management'
   | 'Severe Overtime'
   | 'High Friction Gap'
-  | 'Rapid Guesswork'
-  | 'Unattempted';
+  | 'Rapid Guesswork';
 
 export interface AreaPerformance {
   score: number;
@@ -543,11 +545,14 @@ export function evaluateTimeManagement(
     expectedUpperBoundS?: number;
     benchmarkTimeS?: number;
     isCorrect?: boolean | null;
+    diagnosticWeight?: number;
   }>,
   totalQuestionsCount?: number,
 ): TimeManagementSummary {
   const N = Math.max(1, totalQuestionsCount ?? questions.length);
   let totalQi = 0;
+  let totalWeightedQi = 0;
+  let totalDiagnosticWeight = 0;
   let attemptedCount = 0;
   const guessworkQuestions: number[] = [];
   const items: QuestionTimeEvaluation[] = [];
@@ -574,8 +579,16 @@ export function evaluateTimeManagement(
       q.attempted,
     );
 
+    const weight =
+      typeof q.diagnosticWeight === 'number' && !isNaN(q.diagnosticWeight) && q.diagnosticWeight > 0
+        ? q.diagnosticWeight
+        : 1.0;
+
     categoryCounts[evalResult.category] += 1;
     totalQi += evalResult.qi;
+    totalWeightedQi += evalResult.qi * weight;
+    totalDiagnosticWeight += weight;
+
     if (q.attempted && q.timeTakenSeconds > 0) {
       attemptedCount += 1;
     }
@@ -602,6 +615,7 @@ export function evaluateTimeManagement(
   if (missingCount > 0) {
     categoryCounts.UNATTEMPTED += missingCount;
     for (let i = questions.length + 1; i <= N; i++) {
+      totalDiagnosticWeight += 1.0;
       items.push({
         qno: i,
         timeTakenSeconds: 0,
@@ -620,14 +634,19 @@ export function evaluateTimeManagement(
     }
   }
 
-  // Final Metric: TMS (%) = (1 / N * Σ Qi) * 100
-  const finalScorePercent = Number(((totalQi / N) * 100).toFixed(1));
-  const rating = classifyTimeManagementBand(finalScorePercent);
+  // Final Metric: TMS (%) calculated based on diagnostic weights:
+  // TMS (%) = (Σ (Qi * Wi) / Σ Wi) * 100
+  const finalScorePercent =
+    totalDiagnosticWeight > 0
+      ? Number(((totalWeightedQi / totalDiagnosticWeight) * 100).toFixed(1))
+      : 0;
+  const roundedScorePercent = Math.round(finalScorePercent);
+  const rating = classifyTimeManagementBand(roundedScorePercent);
 
   return {
-    totalScore: Number(totalQi.toFixed(2)),
-    maxPossibleScore: N,
-    finalScorePercent: Math.round(finalScorePercent),
+    totalScore: Number(totalWeightedQi.toFixed(2)),
+    maxPossibleScore: Number(totalDiagnosticWeight.toFixed(2)),
+    finalScorePercent: roundedScorePercent,
     tmsScore: finalScorePercent,
     rating,
     band: rating,
@@ -646,8 +665,8 @@ export function classifySkillValue(percentage: number): SkillValueCategory {
 }
 
 export function classifyPreparationLevel(bri: number): PreparationLevel {
-  if (bri >= 80) return 'High achievement Potential';
-  if (bri >= 60) return 'Conceptually Strong';
+  if (bri >= 70) return 'High achievement Potential';
+  if (bri >= 50) return 'Conceptually Strong';
   return 'Basic';
 }
 
@@ -947,6 +966,7 @@ export function evaluateDiagnosticReport(
       expectedUpperBoundS: eq.benchmarkTime,
       benchmarkTimeS: eq.benchmarkTime,
       isCorrect: eq.isCorrect,
+      diagnosticWeight: eq.weight,
     })),
     N,
   );
@@ -996,7 +1016,7 @@ export function evaluateDiagnosticReport(
 
 
 
-  // 6 Candidate Strengths Engine (strictly limited to 6 candidates)
+  // 5 Core Academic Strengths Engine (strictly limited to core academic categories; Time Management is featured in its own dedicated section)
   interface CandidateStrength {
     id: string;
     strongName: string;
@@ -1062,17 +1082,6 @@ export function evaluateDiagnosticReport(
         'You answer questions with good care and precision. Keep building this strength while maintaining your solving speed!',
       developingReason:
         'Your accuracy is currently among your better-performing areas. With careful practice, you can make this an even stronger skill.',
-    },
-    {
-      id: 'time_management',
-      strongName: 'TIME MANAGEMENT SKILL',
-      developingName: 'TIME MANAGEMENT',
-      percentage: timeManagement.finalScorePercent,
-      totalTested: timeManagement.maxPossibleScore,
-      strongReason:
-        'You use your test time effectively and manage your questions well. Keep practising under timed conditions to make this strength even stronger!',
-      developingReason:
-        'You are making a good start in managing your test time. Timed practice can help you become faster and more consistent.',
     },
   ];
 
@@ -1159,13 +1168,13 @@ export function evaluateDiagnosticReport(
   const appSkillScore = appSkillTotalWeight > 0 ? Math.round((appSkillEarnedWeight / appSkillTotalWeight) * 100) : 0;
 
   // -------------------------------------------------------------------------
-  // A. Conceptual Gap
+  // A. Conceptual Understanding
   // -------------------------------------------------------------------------
   // Primary Skill = Conceptual Foundation
   // Conceptual Score = (sum(Correct * Weight) / sum(Weight)) * 100
   if (conceptualFoundation.totalWeight > 0 && conceptualFoundation.scorePercent < 50) {
     weaknessCandidates.push({
-      name: 'Conceptual Gap',
+      name: 'Conceptual Understanding',
       scorePercent: Math.round(conceptualFoundation.scorePercent),
       priority: classifyPriority(conceptualFoundation.scorePercent),
       message: 'You need to strengthen some fundamental concepts before moving confidently to more advanced questions.',
@@ -1175,13 +1184,13 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // B. Application Gap
+  // B. Application Skill
   // -------------------------------------------------------------------------
   // Primary Skill = Application
   // Application Score = (sum(Correct * Weight) / sum(Weight)) * 100
   if (appSkillTotalWeight > 0 && appSkillScore < 50) {
     weaknessCandidates.push({
-      name: 'Application Gap',
+      name: 'Application Skill',
       scorePercent: appSkillScore,
       priority: classifyPriority(appSkillScore),
       message: 'Your basic understanding is developing, but you need more practice using concepts in unfamiliar and application-based situations.',
@@ -1191,7 +1200,7 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // C. Problem-Solving Gap
+  // C. Problem Solving Skill
   // -------------------------------------------------------------------------
   // Primary Skill = Problem Solving, Multi-step question performance
   // Primary score: ProblemSolving Score = (sum(Correct * Weight) / sum(Weight)) * 100
@@ -1217,7 +1226,7 @@ export function evaluateDiagnosticReport(
   if (isPSTriggered) {
     if (chosenPSScore < 50) {
       weaknessCandidates.push({
-        name: 'Problem-Solving Gap',
+        name: 'Problem Solving Skill',
         scorePercent: chosenPSScore,
         priority: classifyPriority(chosenPSScore),
         message: 'You need more practice breaking complex problems into manageable steps and connecting ideas systematically.',
@@ -1232,7 +1241,7 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // D. Interpretation Gap
+  // D. Question Interpretation Skill
   // -------------------------------------------------------------------------
   // Primary/Secondary Skill = Interpretation / Visual Interpretation
   // OR Visual Dependency = High OR Question Structure = Data-based / Diagram-based
@@ -1240,7 +1249,7 @@ export function evaluateDiagnosticReport(
   if (questionInterpretation.totalWeight > 0 && questionInterpretation.scorePercent < 50) {
     const interpScore = Math.round(questionInterpretation.scorePercent);
     weaknessCandidates.push({
-      name: 'Interpretation Gap',
+      name: 'Question Interpretation Skill',
       scorePercent: interpScore,
       priority: classifyPriority(interpScore),
       message: 'Practise reading diagrams and data carefully, identifying the relevant information and using it correctly to reach the answer.',
@@ -1250,7 +1259,7 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // E. Accuracy Risk
+  // E. Accuracy
   // -------------------------------------------------------------------------
   // Accuracy = (Correct / Attempted) * 100
   // Trigger when: Accuracy < 50% AND conceptual/application performance is >= 50%
@@ -1261,7 +1270,7 @@ export function evaluateDiagnosticReport(
   if (totalAttempted > 0 && rawAccuracyPercent < 50 && hasConceptualOrAppMastery) {
     const roundedAcc = Math.round(rawAccuracyPercent);
     weaknessCandidates.push({
-      name: 'Accuracy Risk',
+      name: 'Accuracy',
       scorePercent: roundedAcc,
       priority: classifyPriority(roundedAcc),
       message: 'You appear to understand several of the concepts tested, but avoidable errors may be costing you marks. Focus on careful calculation, reading and checking.',
@@ -1271,7 +1280,7 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // F. Difficulty Readiness Gap
+  // F. Difficulty Readiness
   // -------------------------------------------------------------------------
   // Easy Score, Medium Score, Difficult Score
   // Trigger: Easy >= 50% AND Medium/Difficult performance drops significantly (Easy - Medium >= 20 or Easy - Difficult >= 30)
@@ -1289,7 +1298,7 @@ export function evaluateDiagnosticReport(
   if (easyPerf.totalQuestions > 0 && easyPct >= 50 && (hasMedDrop || hasDiffDrop)) {
     if (medDiffScore < 50) {
       weaknessCandidates.push({
-        name: 'Difficulty Readiness Gap',
+        name: 'Difficulty Readiness',
         scorePercent: medDiffScore,
         priority: classifyPriority(medDiffScore),
         message: 'Your foundation is developing well, but you need to gradually build confidence with more challenging questions.',
@@ -1304,7 +1313,7 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // G. Multi-Step Question Gap
+  // G. Multi-Step Question Skill
   // -------------------------------------------------------------------------
   // MultiStep = (Correct MultiStep / Total MultiStep) * 100
   // MultiStep Gap = DirectScore - MultiStepScore
@@ -1316,7 +1325,7 @@ export function evaluateDiagnosticReport(
 
   if (isMultiStepGapTriggered) {
     weaknessCandidates.push({
-      name: 'Multi-Step Question Gap',
+      name: 'Multi-Step Question Skill',
       scorePercent: multiStepScore,
       priority: classifyPriority(multiStepScore),
       message: 'You are comfortable with direct questions, but questions requiring several connected steps are currently more challenging.',
@@ -1328,7 +1337,7 @@ export function evaluateDiagnosticReport(
   }
 
   // -------------------------------------------------------------------------
-  // H. Application-Based Question Gap
+  // H. Application-Based Question Skill
   // -------------------------------------------------------------------------
   // Question Structure = Application-based
   // ApplicationQuestionScore = (Correct ApplicationQuestions / Total ApplicationQuestions) * 100
@@ -1340,7 +1349,7 @@ export function evaluateDiagnosticReport(
 
   if (isAppQuestionGapTriggered) {
     weaknessCandidates.push({
-      name: 'Application-Based Question Gap',
+      name: 'Application-Based Question Skill',
       scorePercent: appStructureScore,
       priority: classifyPriority(appStructureScore),
       message: 'You handle direct questions well. Your next step is to practise applying the same concepts in unfamiliar situations.',
@@ -1382,14 +1391,14 @@ export function evaluateDiagnosticReport(
 
   // -------------------------------------------------------------------------
   // Weakness Selection Logic:
-  // 1. First 6 (A to F): Conceptual Gap, Application Gap, Problem-Solving Gap,
-  //    Interpretation Gap, Accuracy Risk, Difficulty Readiness Gap
-  // 2. Rest 3 (G to I): Multi-Step Question Gap, Application-Based Question Gap,
+  // 1. First 6 (A to F): Conceptual Understanding, Application Skill, Problem Solving Skill,
+  //    Question Interpretation Skill, Accuracy, Difficulty Readiness
+  // 2. Rest 3 (G to I): Multi-Step Question Skill, Application-Based Question Skill,
   //    Direct-Question Dependency
   // Mutual exclusion pairs (similar types):
-  // - Problem-Solving Gap & Multi-Step Question Gap -> do not both highlight
-  // - Application Gap & Application-Based Question Gap -> do not both highlight
-  // - Interpretation Gap & Direct-Question Dependency -> do not both highlight
+  // - Problem Solving Skill & Multi-Step Question Skill -> do not both highlight
+  // - Application Skill & Application-Based Question Skill -> do not both highlight
+  // - Question Interpretation Skill & Direct-Question Dependency -> do not both highlight
   //
   // Strategy: Try to get up to 4 weaknesses from the First 6 (A to F) first.
   // Then consider the Rest 3 as long as their similar counterpart is not already included.
@@ -1398,12 +1407,12 @@ export function evaluateDiagnosticReport(
   // If not, congratulate the student as before.
   // -------------------------------------------------------------------------
   const FIRST_6_NAMES = new Set([
-    'Conceptual Gap',
-    'Application Gap',
-    'Problem-Solving Gap',
-    'Interpretation Gap',
-    'Accuracy Risk',
-    'Difficulty Readiness Gap',
+    'Conceptual Understanding',
+    'Application Skill',
+    'Problem Solving Skill',
+    'Question Interpretation Skill',
+    'Accuracy',
+    'Difficulty Readiness',
   ]);
 
   const candidatesFirst6 = weaknessCandidates
@@ -1435,48 +1444,34 @@ export function evaluateDiagnosticReport(
     if (selectedGaps.length >= 4) break;
 
     // Check similarity exclusions:
-    // Problem Solving Gap & Multi-Step Question Gap -> do not both highlight
-    if (c.name === 'Multi-Step Question Gap' && hasSelected('Problem-Solving Gap')) {
+    // Problem Solving Skill & Multi-Step Question Skill -> do not both highlight
+    if (
+      c.name === 'Multi-Step Question Skill' &&
+      (hasSelected('Problem Solving Skill') || hasSelected('Problem-Solving Gap'))
+    ) {
       continue;
     }
-    // Application Gap & Application-Based Question Gap -> do not both highlight
-    if (c.name === 'Application-Based Question Gap' && hasSelected('Application Gap')) {
+    // Application Skill & Application-Based Question Skill -> do not both highlight
+    if (
+      c.name === 'Application-Based Question Skill' &&
+      (hasSelected('Application Skill') || hasSelected('Application Gap'))
+    ) {
       continue;
     }
-    // Interpretation Gap & Direct-Question Dependency -> do not both highlight
-    if (c.name === 'Direct-Question Dependency' && hasSelected('Interpretation Gap')) {
+    // Question Interpretation Skill & Direct-Question Dependency -> do not both highlight
+    if (
+      c.name === 'Direct-Question Dependency' &&
+      (hasSelected('Question Interpretation Skill') || hasSelected('Interpretation Gap'))
+    ) {
       continue;
     }
 
     selectedGaps.push(c);
   }
 
-  // Step 3: If none (0) found, check if any question took more time than expected
-  if (selectedGaps.length === 0) {
-    const overtimeQs = evaluatedQuestions.filter(
-      (q) => q.attempted && q.timeTakenSeconds > q.upperLimit,
-    );
-    if (overtimeQs.length > 0) {
-      // Pick the question with highest overtime ratio
-      const worstOvertimeQ = [...overtimeQs].sort(
-        (a, b) => b.timeTakenSeconds / b.upperLimit - a.timeTakenSeconds / a.upperLimit,
-      )[0];
-
-      const pacingScore = Math.min(
-        49,
-        Math.max(20, Math.round((worstOvertimeQ.upperLimit / worstOvertimeQ.timeTakenSeconds) * 100)),
-      );
-
-      selectedGaps.push({
-        name: 'Pacing / Time Management',
-        scorePercent: pacingScore,
-        priority: classifyPriority(pacingScore),
-        message: `You demonstrated good overall understanding, but Question ${worstOvertimeQ.meta.qno} (${worstOvertimeQ.meta.chapter}) took more time than expected (${worstOvertimeQ.timeTakenSeconds}s vs limit ${worstOvertimeQ.upperLimit}s). Timed practice will help refine your pacing.`,
-        triggerReason: `Question ${worstOvertimeQ.meta.qno} took ${worstOvertimeQ.timeTakenSeconds}s (expected ${worstOvertimeQ.upperLimit}s)`,
-        totalTested: 1,
-      });
-    }
-  }
+  // Note: Time Management is evaluated in its own dedicated section (Page 2 for TMS >= 70%,
+  // Page 3 for TMS < 70%) and is not included as a card in Priority Gaps (Weaknesses).
+  // If 0 academic gaps < 50% are found, student receives the celebratory "No Weakness Areas Detected" achievement card.
 
   // Display only categories < 50% (up to 4)
   const priorityGaps: PriorityGapItem[] = selectedGaps
@@ -1494,11 +1489,10 @@ export function evaluateDiagnosticReport(
   // Topics to Revisit
   // Rules:
   // 1. Unattempted questions: Flagged as 'Unattempted' (competency cannot be assessed without an attempt).
-  // 2. Rapid guesswork: Strictly less than 8 seconds only (< 8s) -> Flagged as 'Rapid Guesswork'
-  // 3. Severe overtime (>= 2x limit) & Incorrect -> 'Severe Overtime'
-  // 4. Severe overtime (>= 2x limit) & Correct -> 'Pacing / Time Management'
-  // 5. Normal pacing incorrect -> 'Conceptual / Calculation Gap'
-  // 6. Normal pacing correct -> Mastered (excluded)
+  // 2. Severe overtime (>= 2x limit): Flagged as 'Too Slow' (pacing bottleneck).
+  // 3. Rushed response (< 8s) & Incorrect: Flagged as 'Too Fast but Incorrect' (rapid guesswork/hasty error).
+  // 4. Normal pacing incorrect: Flagged as 'Conceptual / Calculation Gap'.
+  // 5. Correct response within time limits or fast mastered: Excluded from revisit.
   const topicsToRevisit: TopicToRevisitItem[] = [];
 
   for (const q of evaluatedQuestions) {
@@ -1522,18 +1516,24 @@ export function evaluateDiagnosticReport(
       continue;
     }
 
-    // 2. Rapid Guesswork: Strictly less than 8 seconds only
-    const isRapidGuesswork = q.attempted && q.timeTakenSeconds > 0 && q.timeTakenSeconds < 8;
-    if (isRapidGuesswork) {
+    // 2. Severe Overtime (>= 2x limit) -> 'Too Slow'
+    if (q.timeTakenSeconds >= 2 * q.upperLimit) {
+      const issueObserved = q.isCorrect
+        ? `Too Slow: Correct response but required ${q.timeTakenSeconds}s (limit: ${q.upperLimit}s). Requires pacing refinement.`
+        : `Too Slow: Required ${q.timeTakenSeconds}s (limit: ${q.upperLimit}s) and incorrect. High friction & deep conceptual bottleneck.`;
+
+      const recommendedFocusArea = q.isCorrect
+        ? q.meta.conceptTested || q.meta.topic || 'Solving Routine & Speed Drills'
+        : q.meta.prerequisiteConcept || q.meta.conceptTested || q.meta.topic;
+
       topicsToRevisit.push({
         qno: q.meta.qno,
         subject: q.meta.subject,
         chapter: q.meta.chapter,
         topic: q.meta.topic,
-        issueObserved: `Rapid submission (${q.timeTakenSeconds}s < 8s limit). High possibility of unverified guesswork.`,
-        category: 'Rapid Guesswork',
-        recommendedFocusArea:
-          q.meta.conceptTested || q.meta.prerequisiteConcept || q.meta.topic,
+        issueObserved,
+        category: 'Too Slow',
+        recommendedFocusArea,
         timeTaken: q.timeTakenSeconds,
         expectedLimit: q.upperLimit,
         isCorrect: q.isCorrect,
@@ -1542,15 +1542,15 @@ export function evaluateDiagnosticReport(
       continue;
     }
 
-    // 3. Severe Overtime & Incorrect
-    if (q.timeTakenSeconds >= 2 * q.upperLimit && !q.isCorrect) {
+    // 3. Too Fast & Incorrect (< 8s and incorrect) -> 'Too Fast but Incorrect'
+    if (q.timeTakenSeconds < 8 && !q.isCorrect) {
       topicsToRevisit.push({
         qno: q.meta.qno,
         subject: q.meta.subject,
         chapter: q.meta.chapter,
         topic: q.meta.topic,
-        issueObserved: `Severe Overtime (${q.timeTakenSeconds}s vs limit ${q.upperLimit}s) and incorrect. High friction & deep conceptual bottleneck.`,
-        category: 'Severe Overtime',
+        issueObserved: `Too Fast but Incorrect: Answered in ${q.timeTakenSeconds}s (limit: ${q.upperLimit}s) and incorrect. Indicates rushed attempt or rapid guesswork.`,
+        category: 'Too Fast but Incorrect',
         recommendedFocusArea:
           q.meta.prerequisiteConcept || q.meta.conceptTested || q.meta.topic,
         timeTaken: q.timeTakenSeconds,
@@ -1561,26 +1561,7 @@ export function evaluateDiagnosticReport(
       continue;
     }
 
-    // 4. Severe Overtime & Correct
-    if (q.timeTakenSeconds >= 2 * q.upperLimit && q.isCorrect) {
-      topicsToRevisit.push({
-        qno: q.meta.qno,
-        subject: q.meta.subject,
-        chapter: q.meta.chapter,
-        topic: q.meta.topic,
-        issueObserved: `Severe Overtime: Correct response but required ${q.timeTakenSeconds}s (limit: ${q.upperLimit}s). Requires pacing refinement.`,
-        category: 'Pacing / Time Management',
-        recommendedFocusArea:
-          q.meta.conceptTested || q.meta.topic || 'Solving Routine & Speed Drills',
-        timeTaken: q.timeTakenSeconds,
-        expectedLimit: q.upperLimit,
-        isCorrect: true,
-        attempted: true,
-      });
-      continue;
-    }
-
-    // 5. Normal pacing incorrect
+    // 4. Normal pacing incorrect -> 'Conceptual / Calculation Gap'
     if (!q.isCorrect) {
       const category: RevisitCategory = 'Conceptual / Calculation Gap';
 
@@ -1626,13 +1607,13 @@ export function evaluateDiagnosticReport(
 
   let performancePatternInsight = '';
   if (directPerf > multiStepPerf + 20) {
-    performancePatternInsight = `The structural breakdown reveals a distinct contrast: ${studentFirstName} performs significantly better on direct recall questions (${directPerf}%) than on multi-step execution problems (${multiStepPerf}%). This indicates that while foundational memory and definitions are intact, multi-layered problem architectures cause cognitive friction and calculation strain. The primary structural bottleneck is intermediate-step verification; training on breaking complex questions into smaller sub-tasks will immediately stabilize Board exam outcomes.`;
+    performancePatternInsight = `${studentFirstName} does very well on direct questions (${directPerf}%), but finds long, multi-step problems challenging (${multiStepPerf}%). This shows you remember facts, definitions, and basic formulas well. However, when a question has 2 or 3 steps or long calculations, small mistakes happen. To score higher in Boards, practice breaking big questions into simple step-by-step parts and check your work at each step.`;
   } else if (diagramPerf < directPerf - 20) {
-    performancePatternInsight = `Analysis of question formats indicates strong comfort with direct and word-based problems, contrasted by a noticeable performance drop on diagram- and visual-dependent questions (${diagramPerf}%). This highlights that visual parsing and extracting numerical data from schematic illustrations is a critical bottleneck. Regular practice with labelled schematic diagrams and ray/circuit diagrams will rapidly bridge this visual interpretation gap.`;
+    performancePatternInsight = `${studentFirstName} is comfortable with direct word problems, but loses marks on questions with diagrams and figures (${diagramPerf}%). This means reading values and clues from drawings or graphs needs more practice. In Science and Maths, regularly drawing and labelling ray diagrams, electric circuits, and geometric figures will help you answer these questions quickly and accurately.`;
   } else if (multiStepPerf >= 65 && directPerf >= 65) {
-    performancePatternInsight = `${studentFirstName} exhibits a remarkably versatile problem-solving profile, sustaining balanced accuracy across both direct questions (${directPerf}%) and complex multi-step scenarios (${multiStepPerf}%). Diagram-based and application questions are handled with methodological discipline, showing that comprehension is not limited to rote memorization. The primary focus moving forward should be pacing optimization to conserve cognitive energy for the most challenging questions.`;
+    performancePatternInsight = `${studentFirstName} shows strong balance across both direct questions (${directPerf}%) and multi-step problems (${multiStepPerf}%). You understand the concepts well and can apply them without just memorising. Moving forward, focus on managing your time better so you have enough time left in the exam to attempt tough questions calmly and recheck your answers.`;
   } else {
-    performancePatternInsight = `The performance distribution indicates that question structure substantially impacts ${studentFirstName}'s response consistency. Direct prompts are approached with fair confidence, but accuracy declines when questions incorporate compound conditions or data extraction. Strengthening procedural routines for multi-step and diagram-driven questions will prevent hesitation and unlock higher consistency across all syllabus units.`;
+    performancePatternInsight = `${studentFirstName} attempts straightforward questions with good confidence, but accuracy drops when questions become lengthy or combine multiple ideas. Practising more multi-step questions and diagram problems regularly will build your confidence and help you score more consistently across all chapters.`;
   }
 
   // Page 4: Detailed Diagnostic Calculation Steps & Audit Trail (Dev/Audit Mode)
@@ -1645,11 +1626,11 @@ export function evaluateDiagnosticReport(
       briFraction: `${totalWeightedScore} / ${totalDiagnosticWeight}`,
       briResult: briScore,
       levelRule:
-        briScore >= 80
-          ? 'BRI >= 80% -> High achievement Potential'
-          : briScore >= 60
-            ? '60% <= BRI < 80% -> Conceptually Strong'
-            : 'BRI < 60% -> Basic',
+        briScore >= 70
+          ? 'BRI >= 70% -> High achievement Potential'
+          : briScore >= 50
+            ? '50% <= BRI < 70% -> Conceptually Strong'
+            : 'BRI < 50% -> Basic',
       levelResult: levelOfPreparation,
     },
     breakdowns: [
@@ -1914,13 +1895,13 @@ export function evaluateDiagnosticReport(
 
       const items: WeaknessEvaluationAuditItem[] = [];
 
-      // 1. Conceptual Gap
+      // 1. Conceptual Understanding
       const concScore = Math.round(conceptualFoundation.scorePercent);
       const concTriggered = conceptualFoundation.totalWeight > 0 && conceptualFoundation.scorePercent < 50;
-      const concStatus = getGapStatus('Conceptual Gap', concTriggered, concScore);
+      const concStatus = getGapStatus('Conceptual Understanding', concTriggered, concScore);
       items.push({
         id: 'conceptual_gap',
-        name: 'Conceptual Gap',
+        name: 'Conceptual Understanding',
         categoryType: 'Primary Skill',
         evaluatedScore: concScore,
         formula: conceptualFoundation.totalWeight > 0
@@ -1940,13 +1921,13 @@ export function evaluateDiagnosticReport(
         totalTested: conceptualFoundation.totalWeight,
       });
 
-      // 2. Application Gap
+      // 2. Application Skill
       const appTriggered = appSkillTotalWeight > 0 && appSkillScore < 50;
-      const appPairSelected = hasSelected('Application-Based Question Gap');
-      const appStatus = getGapStatus('Application Gap', appTriggered, appSkillScore, appPairSelected);
+      const appPairSelected = hasSelected('Application-Based Question Skill') || hasSelected('Application-Based Question Gap');
+      const appStatus = getGapStatus('Application Skill', appTriggered, appSkillScore, appPairSelected);
       items.push({
         id: 'application_gap',
-        name: 'Application Gap',
+        name: 'Application Skill',
         categoryType: 'Primary Skill',
         evaluatedScore: appSkillScore,
         formula: appSkillTotalWeight > 0
@@ -1966,13 +1947,13 @@ export function evaluateDiagnosticReport(
         totalTested: appSkillTotalWeight,
       });
 
-      // 3. Problem-Solving Gap
+      // 3. Problem Solving Skill
       const psTriggered = Boolean(isPSTriggered && chosenPSScore < 50);
-      const psPairSelected = hasSelected('Multi-Step Question Gap');
-      const psStatus = getGapStatus('Problem-Solving Gap', psTriggered, chosenPSScore, psPairSelected);
+      const psPairSelected = hasSelected('Multi-Step Question Skill') || hasSelected('Multi-Step Question Gap');
+      const psStatus = getGapStatus('Problem Solving Skill', psTriggered, chosenPSScore, psPairSelected);
       items.push({
         id: 'problem_solving_gap',
-        name: 'Problem-Solving Gap',
+        name: 'Problem Solving Skill',
         categoryType: 'Cognitive Execution',
         evaluatedScore: chosenPSScore,
         formula: psScore < 50
@@ -1996,14 +1977,14 @@ export function evaluateDiagnosticReport(
         totalTested: problemSolving.totalWeight,
       });
 
-      // 4. Interpretation Gap
+      // 4. Question Interpretation Skill
       const interpScore = Math.round(questionInterpretation.scorePercent);
       const interpTriggered = questionInterpretation.totalWeight > 0 && questionInterpretation.scorePercent < 50;
       const interpPairSelected = hasSelected('Direct-Question Dependency');
-      const interpStatus = getGapStatus('Interpretation Gap', interpTriggered, interpScore, interpPairSelected);
+      const interpStatus = getGapStatus('Question Interpretation Skill', interpTriggered, interpScore, interpPairSelected);
       items.push({
         id: 'interpretation_gap',
-        name: 'Interpretation Gap',
+        name: 'Question Interpretation Skill',
         categoryType: 'Visual & Data Skill',
         evaluatedScore: interpScore,
         formula: questionInterpretation.totalWeight > 0
@@ -2023,13 +2004,13 @@ export function evaluateDiagnosticReport(
         totalTested: questionInterpretation.totalWeight,
       });
 
-      // 5. Accuracy Risk
+      // 5. Accuracy
       const roundedAcc = Math.round(rawAccuracyPercent);
       const accTriggered = Boolean(totalAttempted > 0 && rawAccuracyPercent < 50 && hasConceptualOrAppMastery);
-      const accStatus = getGapStatus('Accuracy Risk', accTriggered, roundedAcc);
+      const accStatus = getGapStatus('Accuracy', accTriggered, roundedAcc);
       items.push({
         id: 'accuracy_risk',
-        name: 'Accuracy Risk',
+        name: 'Accuracy',
         categoryType: 'Execution Discipline',
         evaluatedScore: roundedAcc,
         formula: totalAttempted > 0 ? `(${totalCorrect} / ${totalAttempted}) * 100%` : '0%',
@@ -2047,12 +2028,12 @@ export function evaluateDiagnosticReport(
         totalTested: totalAttempted,
       });
 
-      // 6. Difficulty Readiness Gap
+      // 6. Difficulty Readiness
       const diffReadyTriggered = Boolean(easyPerf.totalQuestions > 0 && easyPct >= 50 && (hasMedDrop || hasDiffDrop) && medDiffScore < 50);
-      const diffReadyStatus = getGapStatus('Difficulty Readiness Gap', diffReadyTriggered, medDiffScore);
+      const diffReadyStatus = getGapStatus('Difficulty Readiness', diffReadyTriggered, medDiffScore);
       items.push({
         id: 'difficulty_readiness_gap',
-        name: 'Difficulty Readiness Gap',
+        name: 'Difficulty Readiness',
         categoryType: 'Difficulty Progression',
         evaluatedScore: medDiffScore,
         formula: `Easy (${easyPct}%) vs Med (${medPct}%) & Diff (${diffPct}%)`,
@@ -2074,12 +2055,12 @@ export function evaluateDiagnosticReport(
         totalTested: medDiffTotal,
       });
 
-      // 7. Multi-Step Question Gap
-      const msPairExcluded = hasSelected('Problem-Solving Gap');
-      const msStatus = getGapStatus('Multi-Step Question Gap', isMultiStepGapTriggered, multiStepScore, msPairExcluded);
+      // 7. Multi-Step Question Skill
+      const msPairExcluded = hasSelected('Problem Solving Skill') || hasSelected('Problem-Solving Gap');
+      const msStatus = getGapStatus('Multi-Step Question Skill', isMultiStepGapTriggered, multiStepScore, msPairExcluded);
       items.push({
         id: 'multi_step_gap',
-        name: 'Multi-Step Question Gap',
+        name: 'Multi-Step Question Skill',
         categoryType: 'Question Architecture',
         evaluatedScore: multiStepScore,
         formula: multiStepTotal > 0 ? `(${multiStepCorrect} / ${multiStepTotal}) * 100%` : 'No items tested',
@@ -2099,12 +2080,12 @@ export function evaluateDiagnosticReport(
         totalTested: multiStepTotal,
       });
 
-      // 8. Application-Based Question Gap
-      const appStructPairExcluded = hasSelected('Application Gap');
-      const appStructStatus = getGapStatus('Application-Based Question Gap', isAppQuestionGapTriggered, appStructureScore, appStructPairExcluded);
+      // 8. Application-Based Question Skill
+      const appStructPairExcluded = hasSelected('Application Skill') || hasSelected('Application Gap');
+      const appStructStatus = getGapStatus('Application-Based Question Skill', isAppQuestionGapTriggered, appStructureScore, appStructPairExcluded);
       items.push({
         id: 'application_based_gap',
-        name: 'Application-Based Question Gap',
+        name: 'Application-Based Question Skill',
         categoryType: 'Question Architecture',
         evaluatedScore: appStructureScore,
         formula: appStructureTotal > 0 ? `(${appStructureCorrect} / ${appStructureTotal}) * 100%` : 'No items tested',
@@ -2128,7 +2109,7 @@ export function evaluateDiagnosticReport(
       const directDepTriggered = Boolean(
         directTotal > 0 && directScore >= 50 && (appStructureTotal > 0 || multiStepTotal > 0) && directDependencyDiff >= 20 && roundedNonDirect < 50,
       );
-      const directDepPairExcluded = hasSelected('Interpretation Gap');
+      const directDepPairExcluded = hasSelected('Question Interpretation Skill') || hasSelected('Interpretation Gap');
       const directDepStatus = getGapStatus('Direct-Question Dependency', directDepTriggered, roundedNonDirect, directDepPairExcluded);
       items.push({
         id: 'direct_question_dependency',
@@ -2185,7 +2166,7 @@ export function evaluateDiagnosticReport(
       totalQuestions: timeManagement.totalQuestions,
       totalScore: timeManagement.totalScore,
       maxPossibleScore: timeManagement.maxPossibleScore,
-      formula: `(${timeManagement.totalScore} / ${timeManagement.totalQuestions}) * 100%`,
+      formula: `(${timeManagement.totalScore} / ${timeManagement.maxPossibleScore}) * 100%`,
       finalScorePercent: timeManagement.finalScorePercent,
       ratingRule: '>=85% Optimal, 70-84.99% Good, 50-69.99% Moderate, <50% Needs Intervention',
       ratingResult: timeManagement.rating,
@@ -2364,6 +2345,8 @@ function generateReportPlainTextFormat(data: {
   lines.push('');
   lines.push('BOARD READINESS CHALLENGE REPORT');
   lines.push('');
+  lines.push("For Parents: This report is best used as a starting point for understanding your child's current preparation and identifying where focused support can make the greatest difference.");
+  lines.push('');
   lines.push(`Dear ${data.studentName},`);
   lines.push('');
   lines.push(
@@ -2454,7 +2437,7 @@ function generateReportPlainTextFormat(data: {
   lines.push('PAGE 3: WHERE SHOULD YOU IMPROVE?');
   lines.push('================================================================================');
   lines.push('');
-  lines.push('PAGE 3 — WHERE SHOULD YOU IMPROVE?');
+  lines.push('Page 3: WHERE SHOULD YOU IMPROVE?');
   lines.push('');
   lines.push('YOUR PRIORITY GAPS');
   if (data.priorityGaps.length === 0) {
@@ -2487,11 +2470,11 @@ function generateReportPlainTextFormat(data: {
   lines.push('PAGE 4: RECOMMENDATIONS');
   lines.push('================================================================================');
   lines.push('');
-  lines.push('PAGE 4 — RECOMMENDATIONS');
+  lines.push('PAGE 4: RECOMMENDATIONS');
   lines.push('');
   const prepNorm = String(data.levelOfPreparation || '').trim().toLowerCase();
-  const isHighPrep = prepNorm.includes('high achievement') || prepNorm === 'advanced' || data.briScore >= 80;
-  const isConceptuallyStrong = !isHighPrep && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || data.briScore >= 60);
+  const isHighPrep = prepNorm.includes('high achievement') || prepNorm === 'advanced' || data.briScore >= 70;
+  const isConceptuallyStrong = !isHighPrep && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || data.briScore >= 50);
 
   if (isHighPrep) {
     lines.push('HOW TO MOVE FROM STRONG TO EXCELLENT');
@@ -2500,11 +2483,11 @@ function generateReportPlainTextFormat(data: {
     lines.push('② Practise mixed problems');
     lines.push('Combine concepts from different chapters so that you practise identifying the method, not just applying a memorised formula.');
     lines.push('③ Analyse mistakes deeply');
-    lines.push('When you make an error, identify exactly where your reasoning broke down and re-solve the problem independently.');
-    lines.push('④ Build examination efficiency');
-    lines.push('Continue timed practice so that your accuracy remains high even when working under examination pressure.');
-    lines.push('⑤ Use Board preparation strategically');
-    lines.push('Secure all standard Board-level questions first, then use additional time to strengthen case-based, application-based and higher-order questions.');
+    lines.push('When you make an error, understand the exact reason: conceptual gap, misinterpretation, or careless execution.');
+    lines.push('④ Take timed practice seriously');
+    lines.push('Simulate exam conditions with time-bound sets to build speed and accuracy under pressure.');
+    lines.push('⑤ Polish presentation');
+    lines.push('Write structured, step-by-step solutions following CBSE marking schemes.');
   } else if (isConceptuallyStrong) {
     lines.push('TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION');
     lines.push('① Move beyond direct questions');
@@ -2519,14 +2502,12 @@ function generateReportPlainTextFormat(data: {
     lines.push('⑤ Shift towards Board-style practice');
     lines.push('As the examination approaches, progressively increase your practice of sample papers, case-based questions and mixed-chapter questions.');
   } else {
-    lines.push('TURN YOUR GAPS INTO PROGRESS');
-    lines.push('① Strengthen the basics');
-    lines.push('Revisit the concepts behind the questions you could not solve. Make sure you can explain the idea before memorising the method.');
-    lines.push('② Practise a few questions every day');
-    lines.push('Use a simple progression:');
-    lines.push('Basic → Standard → Application');
-    lines.push('Focus on quality and consistency rather than solving a very large number of questions.');
-    lines.push('③ Keep an Error Notebook');
+    lines.push('HOW TO BUILD A SOLID FOUNDATION');
+    lines.push('① Focus on NCERT textbook fundamentals');
+    lines.push('Master definitions, formulas, and solved examples before attempting advanced questions.');
+    lines.push('② Targeted chapter-wise practice');
+    lines.push('Strengthen high-weightage chapters first where marks can be gained quickly.');
+    lines.push('③ Maintain a mistake notebook');
     lines.push('For every important mistake, record:');
     lines.push('What did I get wrong? → Why? → What is the correct approach?');
     lines.push('④ Test yourself regularly');
@@ -2535,13 +2516,19 @@ function generateReportPlainTextFormat(data: {
     lines.push('Become confident with examples and exercises before moving extensively to additional or advanced material.');
   }
   lines.push('');
+  lines.push('A NOTE FOR PARENTS');
+  lines.push("Your child's report is meant to identify where their preparation stands today—not to label their ability.");
+  lines.push("The most useful support at this stage is to understand the areas highlighted in the report, encourage regular practice, and help your child maintain consistency without unnecessary pressure or comparison. Every student develops at a different pace. With the right guidance, focused practice and timely feedback, identified gaps can be strengthened significantly.");
+  lines.push('');
+  lines.push("We hope Shri Ram Smart Minds Academy could provide you and your child a good plan of action for Class X Board Exams. Wish you all the best! You may contact us if you need any further guidance for your child. Thanks!");
+  lines.push('');
 
   // PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE
   lines.push('================================================================================');
   lines.push('PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE');
   lines.push('================================================================================');
-  lines.push('');
-  lines.push('PAGE 5 — NEED STRUCTURED SUPPORT?');
+  lines.push('Page 5: NEED STRUCTURED SUPPORT?');
+  lines.push('We recommend joining our Board Mastery Course to excel in the upcoming Board Exams. Online, Offline and Combined Batches begin from 26th October onwards.');
   lines.push('SRSMA BOARD MASTERY COURSE');
   lines.push('');
   lines.push('WHY THIS COURSE?');
@@ -2610,9 +2597,9 @@ function generateReportPlainTextFormat(data: {
   lines.push(`  BRI = (Total Weighted Score / Total Diagnostic Weight) * 100%`);
   lines.push(`  BRI = (${cs.scoring.weightedScoreSum} / ${cs.scoring.diagnosticWeightSum}) * 100% = ${cs.scoring.briResult}%`);
   lines.push(`• Level of Preparation Threshold Rules:`);
-  lines.push(`  - BRI >= 80%                     -> High achievement Potential`);
-  lines.push(`  - 60% <= BRI < 80%               -> Conceptually Strong`);
-  lines.push(`  - BRI < 60%                      -> Basic`);
+  lines.push(`  - BRI >= 70%                     -> High achievement Potential`);
+  lines.push(`  - 50% <= BRI < 70%               -> Conceptually Strong`);
+  lines.push(`  - BRI < 50%                      -> Basic`);
   lines.push(`• Applied Rule: ${cs.scoring.levelRule} -> Level: ${cs.scoring.levelResult}`);
   lines.push('');
   lines.push('--------------------------------------------------------------------------------');
@@ -2654,8 +2641,8 @@ function generateReportPlainTextFormat(data: {
     lines.push(`  - Incorrect, ratio < 0.70: Qi = 0.50 * (ratio / 0.70) (CARELESS_RUSHING)`);
     lines.push(`  - Incorrect, 0.70 <= ratio <= 1.30: Qi = 0.50 (DISCIPLINED_ATTEMPT)`);
     lines.push(`  - Incorrect, ratio > 1.30: Qi = max(0.0, 0.50 - 0.50 * (ratio - 1.30)) (TIME_TRAP)`);
-    lines.push(`• Total Qi Score: ${cs.timeManagement.totalScore} / ${cs.timeManagement.maxPossibleScore}`);
-    lines.push(`• Time Management Formula: (Σ Qi / N) * 100%`);
+    lines.push(`• Total Qi Score: ${cs.timeManagement.totalScore} / ${cs.timeManagement.maxPossibleScore} points (Diagnostic Weighted)`);
+    lines.push(`• Time Management Formula: (Σ (Qi * Wi) / Σ Wi) * 100%`);
     lines.push(`  Calculation: ${cs.timeManagement.formula} = ${cs.timeManagement.finalScorePercent}%`);
     lines.push(`• Rating Bands: >= 85% (Optimal) | 70-84.99% (Good) | 50-69.99% (Moderate) | < 50% (Needs Intervention)`);
     lines.push(`• Final Rating: ${cs.timeManagement.ratingResult}`);

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { and, desc, eq, sql } from 'drizzle-orm';
-import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles, BookOpen, ArrowRight } from 'lucide-react';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles, BookOpen, ArrowRight, Info } from 'lucide-react';
 import { getDb } from '@/db/client';
 import { attempts, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
@@ -45,7 +45,7 @@ export async function StudentDashboardView() {
     .leftJoin(testQuestions, eq(testQuestions.testId, tests.id))
     .where(and(...visibilityConditions))
     .groupBy(tests.id)
-    .orderBy(desc(tests.createdAt));
+    .orderBy(asc(tests.title), desc(tests.createdAt));
 
   // 2. Fetch all attempts by this student
   const studentAttempts = await db
@@ -120,6 +120,20 @@ export async function StudentDashboardView() {
           <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Available Tests</h2>
           <span className="text-xs text-slate-500 dark:text-slate-400">{availableList.length} total</span>
         </div>
+
+        {/* Diagnostic Test Info Callout */}
+        {availableList.length > 0 && (
+          <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-indigo-50/60 to-blue-50/60 p-4 text-xs sm:text-sm text-slate-700 dark:border-brand-900/60 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/30 dark:to-slate-900 dark:text-slate-300 shadow-2xs">
+            <div className="flex items-start gap-3">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-2xs mt-0.5">
+                <Info className="size-4" />
+              </div>
+              <p className="leading-relaxed">
+                Below are 2 diagnostic tests and each test has only one attempt. You may try one now and try another after some days, which has a different set of questions to check your progress.
+              </p>
+            </div>
+          </div>
+        )}
 
         {availableList.length === 0 ? (
           <EmptyState
@@ -209,7 +223,6 @@ export async function StudentDashboardView() {
                 <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Test Name</th>
-                    <th className="px-4 py-3 font-semibold">Attempt</th>
                     <th className="px-4 py-3 font-semibold">Score</th>
                     <th className="px-4 py-3 font-semibold">Time Spent</th>
                     <th className="px-4 py-3 font-semibold">Submitted On</th>
@@ -220,7 +233,6 @@ export async function StudentDashboardView() {
                   {completedList.map((a) => (
                     <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{a.testTitle}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">Attempt #{a.attemptNo}</td>
                       <td className="px-4 py-3 font-bold text-brand-700 dark:text-brand-400">
                         {a.totalMarks ? Number(a.totalMarks) : 0} / {a.maxMarks ? Number(a.maxMarks) : 0}
                       </td>

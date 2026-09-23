@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Award,
   CheckCircle2,
@@ -10,7 +10,6 @@ import {
   Target,
   FileText,
   Printer,
-  Copy,
   Check,
   TrendingUp,
   Brain,
@@ -250,8 +249,8 @@ function BriSpeedometerGauge({
   const beadX = 90 + 65 * Math.cos(angleRad);
   const beadY = 85 + 65 * Math.sin(angleRad);
 
-  const isHigh = clamped >= 80;
-  const isMed = clamped >= 60 && clamped < 80;
+  const isHigh = clamped >= 70;
+  const isMed = clamped >= 50 && clamped < 70;
 
   return (
     <div className="flex flex-col items-center justify-between rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 via-white to-slate-50/50 p-4 sm:p-5 shadow-xs dark:border-slate-800 dark:from-slate-900/90 dark:via-slate-900 dark:to-slate-950/80 h-full">
@@ -339,7 +338,7 @@ function BriSpeedometerGauge({
               : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
             }`}
         >
-          Basic &lt;60
+          Basic &lt;50
         </div>
         <div
           className={`rounded-lg py-1 border transition-all ${isMed
@@ -347,7 +346,7 @@ function BriSpeedometerGauge({
               : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
             }`}
         >
-          Strong 60–79
+          Strong 50–69
         </div>
         <div
           className={`rounded-lg py-1 border transition-all ${isHigh
@@ -355,7 +354,7 @@ function BriSpeedometerGauge({
               : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
             }`}
         >
-          High 80+
+          High 70+
         </div>
       </div>
 
@@ -379,6 +378,416 @@ function BriSpeedometerGauge({
   );
 }
 
+export function getTimeManagementBadge(rating: 'Optimal' | 'Good' | 'Moderate' | 'Needs Intervention' | 'Medium' | 'Poor' | string) {
+  switch (rating) {
+    case 'Optimal':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Optimal
+        </span>
+      );
+    case 'Good':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+          <span className="size-1.5 rounded-full bg-teal-500" />
+          Good
+        </span>
+      );
+    case 'Moderate':
+    case 'Medium':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+          <span className="size-1.5 rounded-full bg-amber-500" />
+          {rating === 'Medium' ? 'Medium' : 'Moderate'}
+        </span>
+      );
+    case 'Needs Intervention':
+    case 'Poor':
+    default:
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+          <span className="size-1.5 rounded-full bg-rose-500" />
+          {rating === 'Poor' ? 'Poor' : 'Needs Intervention'}
+        </span>
+      );
+  }
+}
+
+function TimeManagementReportSection({
+  timeManagement,
+  isStrength,
+}: {
+  timeManagement: DiagnosticEvaluationResult['timeManagement'];
+  isStrength: boolean;
+}) {
+  const starRating = Math.round(((timeManagement.finalScorePercent ?? 0) / 100) * 5 * 10) / 10;
+  const hasGuesswork = (timeManagement.guessworkQuestions?.length ?? 0) > 0;
+  const counts = timeManagement.categoryCounts || {
+    EFFICIENT_MASTERY: 0,
+    OVER_INVESTED_SUCCESS: 0,
+    CARELESS_RUSHING: 0,
+    DISCIPLINED_ATTEMPT: 0,
+    TIME_TRAP: 0,
+    UNATTEMPTED: 0,
+  };
+
+  const blueBadgeStyle = 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50';
+  const blueDotStyle = 'bg-blue-500';
+
+  const emCount = counts.EFFICIENT_MASTERY || 0;
+  const oiCount = counts.OVER_INVESTED_SUCCESS || 0;
+  const daCount = counts.DISCIPLINED_ATTEMPT || 0;
+  const crCount = counts.CARELESS_RUSHING || 0;
+  const ttCount = counts.TIME_TRAP || 0;
+  const unCount = counts.UNATTEMPTED || 0;
+
+  const BEHAVIORAL_ROWS = [
+    {
+      key: 'EFFICIENT_MASTERY',
+      term: 'Efficient Mastery',
+      badgeTone: blueBadgeStyle,
+      dot: blueDotStyle,
+      explanation: `Solved ${emCount} ${emCount === 1 ? 'Question' : 'Questions'} correctly well within expected time. Shows thorough concept clarity and confident, swift calculations.`,
+      count: emCount,
+    },
+    {
+      key: 'OVER_INVESTED_SUCCESS',
+      term: 'Over-Invested Attempt',
+      badgeTone: blueBadgeStyle,
+      dot: blueDotStyle,
+      explanation: `Solved ${oiCount} ${oiCount === 1 ? 'Question' : 'Questions'} correctly, but took more time than needed. Practicing standard questions will build speed so you do not run short of time on longer 4-mark and 5-mark questions.`,
+      count: oiCount,
+    },
+    {
+      key: 'DISCIPLINED_ATTEMPT',
+      term: 'Disciplined Attempt',
+      badgeTone: blueBadgeStyle,
+      dot: blueDotStyle,
+      explanation: `Attempted ${daCount} ${daCount === 1 ? 'Question' : 'Questions'} with genuine effort within standard time limits. Even though the final answer went wrong, your pacing and approach were calm and disciplined.`,
+      count: daCount,
+    },
+    {
+      key: 'CARELESS_RUSHING',
+      term: 'Careless Rushing',
+      badgeTone: blueBadgeStyle,
+      dot: blueDotStyle,
+      explanation: `Answered ${crCount} ${crCount === 1 ? 'Question' : 'Questions'} too quickly and got incorrect due to rushing or minor calculation slips. Taking 15–20 extra seconds to re-read and double-check prevents these lost marks.`,
+      count: crCount,
+    },
+    {
+      key: 'TIME_TRAP',
+      term: 'Time Trap',
+      badgeTone: blueBadgeStyle,
+      dot: blueDotStyle,
+      explanation: `Got stuck on ${ttCount} tricky ${ttCount === 1 ? 'Question' : 'Questions'}, spent too much time, and still got wrong. If a question is blocking you in an exam, skip it temporarily and return at the end.`,
+      count: ttCount,
+    },
+    {
+      key: 'UNATTEMPTED',
+      term: 'Unattempted',
+      badgeTone: blueBadgeStyle,
+      dot: blueDotStyle,
+      explanation: `Left ${unCount} ${unCount === 1 ? 'Question' : 'Questions'} unattempted due to time running out or uncertainty about the concept.`,
+      count: unCount,
+    },
+  ];
+
+  const visibleRows = BEHAVIORAL_ROWS.filter((row) => row.count > 0);
+
+  return (
+    <div
+      className={`mt-8 space-y-4 rounded-2xl border p-4 sm:p-5 md:p-6 shadow-xs ${
+        isStrength
+          ? 'border-emerald-200/90 bg-white dark:border-slate-800 dark:bg-slate-900'
+          : 'border-amber-200/90 bg-white dark:border-slate-800 dark:bg-slate-900'
+      }`}
+    >
+      {/* Header bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`flex size-7 items-center justify-center rounded-lg text-white ${
+                isStrength ? 'bg-emerald-600' : 'bg-amber-600'
+              }`}
+            >
+              <Clock className="size-4" />
+            </div>
+            <h3 className="text-sm sm:text-base font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              Time Management &amp; Pacing
+            </h3>
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-wider border ${
+                isStrength
+                  ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20 dark:bg-emerald-400/10 dark:text-emerald-300'
+                  : 'bg-amber-500/10 text-amber-800 border-amber-500/20 dark:bg-amber-400/10 dark:text-amber-300'
+              }`}
+            >
+              {isStrength ? (
+                <>
+                  <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+                  Pacing Strength
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400" />
+                  Area for Improvement
+                </>
+              )}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {isStrength
+              ? 'Your overall pacing, speed control, and question discipline reflect strong exam readiness.'
+              : 'Pacing adjustments and time allocation across questions are high-impact areas to raise your board score.'}
+          </p>
+        </div>
+
+        {/* Category & Star Rating */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:justify-end shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Pacing:</span>
+            {getTimeManagementBadge(timeManagement.rating)}
+          </div>
+          <EcommerceStarRating rating={starRating} align="end" />
+        </div>
+      </div>
+
+      {/* Guesswork Flag */}
+      {hasGuesswork ? (
+        <div className="rounded-xl border border-amber-300/80 bg-amber-50/70 p-3 sm:p-3.5 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-200 flex items-start gap-2.5">
+          <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="leading-relaxed">
+            <strong className="font-extrabold text-amber-950 dark:text-amber-100 mr-1">
+              Possibility of Guesswork Detected:
+            </strong>
+            Rapid responses submitted in under 8 seconds indicate a likelihood of guesswork without step-by-step solving. In Board exams, guessing carries high risk of losing marks—allocating deliberate calculation time avoids silly mistakes.
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 sm:p-3 text-xs text-emerald-900 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-200 flex items-center gap-2">
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="font-medium">
+            <strong className="font-bold text-emerald-950 dark:text-emerald-100">No Guesswork Detected:</strong> You maintained a disciplined pace with steady solving time across all attempted questions.
+          </span>
+        </div>
+      )}
+
+      {/* Behavioral Distribution Table */}
+      <div className="space-y-2 pt-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+            Lets see how well you managed your Time in the below table
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900 shadow-2xs">
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
+                <TableHead className="text-xs font-bold uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">
+                  Behavior Pattern
+                </TableHead>
+                <TableHead className="text-center text-xs font-bold uppercase tracking-wider py-2.5 px-3 whitespace-nowrap">
+                  No. of Questions
+                </TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider py-2.5 px-3">
+                  What It Means
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleRows.map((row) => (
+                <TableRow key={row.key} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                  <TableCell className="py-2.5 px-3 whitespace-nowrap">
+                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-bold border ${row.badgeTone}`}>
+                      <span className={`size-1.5 rounded-full ${row.dot}`} />
+                      {row.term}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-2.5 px-3 text-center font-mono font-bold text-sm text-slate-900 dark:text-white tnum whitespace-nowrap">
+                    {row.count}
+                  </TableCell>
+                  <TableCell className="py-2.5 px-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                    {row.explanation}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {visibleRows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                    No question pacing items recorded.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Pacing Feedback Box */}
+      <div
+        className={`rounded-2xl border p-4 sm:p-5 text-xs leading-relaxed transition-all shadow-xs ${
+          isStrength
+            ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/25'
+            : 'border-amber-200 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/25'
+        }`}
+      >
+        <div
+          className={`flex items-center gap-2 pb-2.5 border-b ${
+            isStrength
+              ? 'border-emerald-200/60 dark:border-emerald-800/40'
+              : 'border-amber-200/60 dark:border-amber-800/40'
+          }`}
+        >
+          <div
+            className={`flex size-6 items-center justify-center rounded-lg text-white shadow-2xs ${
+              isStrength ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-amber-600 dark:bg-amber-500'
+            }`}
+          >
+            {isStrength ? (
+              <Sparkles className="size-3.5" />
+            ) : (
+              <Target className="size-3.5" />
+            )}
+          </div>
+          <h4
+            className={`font-black uppercase tracking-wider text-xs ${
+              isStrength
+                ? 'text-emerald-900 dark:text-emerald-300'
+                : 'text-amber-900 dark:text-amber-300'
+            }`}
+          >
+            Pacing Feedback
+          </h4>
+        </div>
+
+        <div className="mt-3 space-y-2 text-slate-700 dark:text-slate-200 font-medium">
+          <p className="text-slate-900 dark:text-slate-100 font-semibold leading-relaxed">
+            {isStrength
+              ? 'Great pacing! You maintained steady speed and composure across the test.'
+              : 'Pacing is your key growth frontier. Allocate time smartly per question to finish comfortably.'}
+          </p>
+
+          <div className="space-y-1.5 pt-0.5">
+            {isStrength ? (
+              <>
+                {counts.EFFICIENT_MASTERY > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Efficient Solving:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {counts.EFFICIENT_MASTERY} question(s) answered quickly and accurately, preserving time for complex problems.
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {counts.OVER_INVESTED_SUCCESS > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Speed Up:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {counts.OVER_INVESTED_SUCCESS} question(s) took extra time. Timed practice on standard questions will help you solve them faster.
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {counts.CARELESS_RUSHING > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Avoid Slips:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {counts.CARELESS_RUSHING} question(s) missed due to rushing. Spend 15 extra seconds double-checking calculations.
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {counts.TIME_TRAP > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Watch Time Traps:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Stuck on {counts.TIME_TRAP} question(s). If stuck for over 60 seconds, star it and move ahead.
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {counts.TIME_TRAP > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Avoid Time Traps:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Stuck on {counts.TIME_TRAP} question(s). If you cannot outline a solution in 60 seconds, move forward first.
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {counts.CARELESS_RUSHING > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Slow Down on Simple Questions:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {counts.CARELESS_RUSHING} mark(s) lost to rushing. Double-check your steps before finalizing.
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {counts.OVER_INVESTED_SUCCESS > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Build Solving Speed:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {counts.OVER_INVESTED_SUCCESS} question(s) were correct but slow. Practice routine textbook questions with a timer.
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {counts.UNATTEMPTED > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0">•</span>
+                    <p>
+                      <strong className="font-bold text-slate-900 dark:text-slate-100">Attempt All Questions:</strong>{' '}
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {counts.UNATTEMPTED} question(s) unattempted. Pacing early questions better will leave time for the entire paper.
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function formatWeaknessName(name: string): string {
+  const map: Record<string, string> = {
+    'Conceptual Gap': 'Conceptual Understanding',
+    'Application Gap': 'Application Skill',
+    'Problem Solving Gap': 'Problem Solving Skill',
+    'Problem-Solving Gap': 'Problem Solving Skill',
+    'Interpretation Gap': 'Question Interpretation Skill',
+    'Accuracy Risk': 'Accuracy',
+    'Difficulty Readiness Gap': 'Difficulty Readiness',
+    'Multi-Step Question Gap': 'Multi-Step Question Skill',
+    'Application-Based Question Gap': 'Application-Based Question Skill',
+  };
+  return map[name] || name;
+}
+
 export function BoardReadinessReport({
   report,
   studentGender,
@@ -392,12 +801,54 @@ export function BoardReadinessReport({
   const isMale = (studentGender || report.studentGender) === 'Male';
   const avatarSrc = isMale ? '/board-challenge/Male.webp' : '/board-challenge/Female.webp';
 
-  const [activeTab, setActiveTab] = useState<'all' | 'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6'>('all');
-  const [copied, setCopied] = useState(false);
-  const [showRawTextModal, setShowRawTextModal] = useState(false);
+  const [activePage, setActivePage] = useState<'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6'>('page1');
   const [showBrochureModal, setShowBrochureModal] = useState(false);
   const [revisitFilter, setRevisitFilter] = useState<'all' | RevisitCategory>('all');
   const [auditFilter, setAuditFilter] = useState<'all' | 'incorrect' | 'overtime' | 'revisit'>('all');
+
+  const getPageSection = (pageId: string) => {
+    const hyphenated = `report-${pageId.replace(/^page(\d+)$/, 'page-$1')}`;
+    return (
+      document.getElementById(hyphenated) ||
+      document.getElementById(`report-${pageId}`) ||
+      document.getElementById(pageId)
+    );
+  };
+
+  const scrollToPage = (pageId: 'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6') => {
+    setActivePage(pageId);
+    const element = getPageSection(pageId);
+    if (element) {
+      const yOffset = -80;
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const pageIds: Array<'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6'> = [
+      'page1',
+      'page2',
+      'page3',
+      'page4',
+      'page5',
+      ...(isTeacherView ? (['page6'] as const) : []),
+    ];
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 180;
+      for (let i = pageIds.length - 1; i >= 0; i--) {
+        const el = getPageSection(pageIds[i]);
+        if (el && el.offsetTop <= scrollPosition) {
+          setActivePage(pageIds[i]);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isTeacherView]);
 
   const handleWhatsAppAction = (action: 'whatsapp_contact_us' | 'whatsapp_enroll_now') => {
     try {
@@ -419,21 +870,8 @@ export function BoardReadinessReport({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleCopyText = async () => {
-    try {
-      await navigator.clipboard.writeText(report.plainTextReport);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch (err) {
-      console.error('Failed to copy plaintext report', err);
-    }
-  };
-
   const handlePrint = () => {
-    setActiveTab('all');
-    setTimeout(() => {
-      window.print();
-    }, 120);
+    window.print();
   };
 
   // Category & Prep Level styling helpers
@@ -490,42 +928,6 @@ export function BoardReadinessReport({
     }
   };
 
-  const getTimeManagementBadge = (rating: 'Optimal' | 'Good' | 'Moderate' | 'Needs Intervention' | 'Medium' | 'Poor' | string) => {
-    switch (rating) {
-      case 'Optimal':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Optimal
-          </span>
-        );
-      case 'Good':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
-            <span className="size-1.5 rounded-full bg-teal-500" />
-            Good
-          </span>
-        );
-      case 'Moderate':
-      case 'Medium':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-            <span className="size-1.5 rounded-full bg-amber-500" />
-            {rating === 'Medium' ? 'Medium' : 'Moderate'}
-          </span>
-        );
-      case 'Needs Intervention':
-      case 'Poor':
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-            <span className="size-1.5 rounded-full bg-rose-500" />
-            {rating === 'Poor' ? 'Poor' : 'Needs Intervention'}
-          </span>
-        );
-    }
-  };
-
   const getPriorityBadge = (priority: PriorityLevel) => {
     switch (priority) {
       case 'High Priority':
@@ -552,11 +954,22 @@ export function BoardReadinessReport({
 
   const getRevisitBadge = (cat: RevisitCategory) => {
     switch (cat) {
+      case 'Too Slow':
+      case 'Severe Overtime':
+      case 'High Friction Gap':
       case 'Pacing / Time Management':
         return (
-          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             <Clock className="size-3" />
-            Pacing / Time Management
+            Too Slow
+          </span>
+        );
+      case 'Too Fast but Incorrect':
+      case 'Rapid Guesswork':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-50 px-2 py-0.5 text-xs font-bold text-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
+            <Zap className="size-3 text-orange-600" />
+            Too Fast but Incorrect
           </span>
         );
       case 'Conceptual / Calculation Gap':
@@ -566,13 +979,6 @@ export function BoardReadinessReport({
             Conceptual / Calculation Gap
           </span>
         );
-      case 'Rapid Guesswork':
-        return (
-          <span className="inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-50 px-2 py-0.5 text-xs font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
-            <Zap className="size-3 text-orange-600" />
-            Rapid Guesswork
-          </span>
-        );
       case 'Unattempted':
         return (
           <span className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -580,13 +986,10 @@ export function BoardReadinessReport({
             Unattempted
           </span>
         );
-      case 'Severe Overtime':
-      case 'High Friction Gap':
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded-md border border-purple-500/30 bg-purple-50 px-2 py-0.5 text-xs font-bold text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
-            <Zap className="size-3" />
-            Severe Overtime
+          <span className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            {cat}
           </span>
         );
     }
@@ -595,14 +998,17 @@ export function BoardReadinessReport({
   const prepStyle = getPrepLevelBadge(report.levelOfPreparation);
 
   const filteredTopics = report.topicsToRevisit.filter((t) => {
+    if (t.category === 'Rapid Guesswork') return false;
     if (revisitFilter === 'all') return true;
     return t.category === revisitFilter;
   });
 
+  const isTmsStrength = (report.timeManagement?.finalScorePercent ?? 0) >= 70;
+
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-16">
       {/* 1. Header Toolbar (Hidden in Print) */}
-      <div className="no-print flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
+      <div className="no-print sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 sm:p-4 shadow-md backdrop-blur-md sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/95">
         <div className="flex items-center gap-3">
           <div className="flex size-10 sm:size-11 items-center justify-center rounded-xl bg-brand-600 text-white shadow-md shrink-0">
             <GraduationCap className="size-5 sm:size-6" />
@@ -636,22 +1042,12 @@ export function BoardReadinessReport({
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 max-w-full">
-          {/* Tab buttons */}
+          {/* Page Scroll navigation buttons */}
           <div className="flex items-center gap-1 overflow-x-auto max-w-full no-scrollbar rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full sm:w-auto">
             <button
               type="button"
-              onClick={() => setActiveTab('all')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'all'
-                ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-            >
-              {isTeacherView ? 'All (1–6)' : 'All (1–5)'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('page1')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page1'
+              onClick={() => scrollToPage('page1')}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page1'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -660,8 +1056,8 @@ export function BoardReadinessReport({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('page2')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page2'
+              onClick={() => scrollToPage('page2')}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page2'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -670,8 +1066,8 @@ export function BoardReadinessReport({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('page3')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page3'
+              onClick={() => scrollToPage('page3')}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page3'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -680,8 +1076,8 @@ export function BoardReadinessReport({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('page4')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page4'
+              onClick={() => scrollToPage('page4')}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page4'
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -690,8 +1086,8 @@ export function BoardReadinessReport({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('page5')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activeTab === 'page5'
+              onClick={() => scrollToPage('page5')}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page5'
                 ? 'bg-brand-600 text-white shadow-xs font-black'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
@@ -701,8 +1097,8 @@ export function BoardReadinessReport({
             {isTeacherView && (
               <button
                 type="button"
-                onClick={() => setActiveTab('page6')}
-                className={`shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 transition ${activeTab === 'page6'
+                onClick={() => scrollToPage('page6')}
+                className={`shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 transition ${activePage === 'page6'
                   ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
                   : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
                   }`}
@@ -714,11 +1110,6 @@ export function BoardReadinessReport({
           </div>
 
           <div className="flex items-center gap-2 justify-end shrink-0">
-            <Button variant="secondary" size="sm" onClick={handleCopyText} title="Copy exact plaintext report" className="text-xs">
-              {copied ? <Check className="mr-1.5 size-3.5 text-emerald-600" /> : <Copy className="mr-1.5 size-3.5" />}
-              {copied ? 'Copied' : 'Copy Text'}
-            </Button>
-
             {showPrintButton && (
               <Button variant="primary" size="sm" onClick={handlePrint} className="bg-brand-600 hover:bg-brand-500 text-xs shadow-xs font-bold">
                 <Printer className="mr-1.5 size-3.5" />
@@ -733,9 +1124,8 @@ export function BoardReadinessReport({
           PAGE 1: BOARD READINESS CHALLENGE REPORT
           ========================================================================= */}
       <section
-        className={`report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
-          activeTab === 'all' || activeTab === 'page1' ? 'block' : 'hidden print:block'
-        }`}
+        id="report-page-1"
+        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
       >
         {/* Header watermark & Brand bar */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
@@ -761,6 +1151,17 @@ export function BoardReadinessReport({
             <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
               BOARD READINESS CHALLENGE REPORT
             </h2>
+            <div className="mt-3 rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 p-3 sm:p-3.5 text-xs sm:text-sm dark:border-blue-900/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/20 flex items-start gap-2.5 shadow-2xs">
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white mt-0.5 shadow-2xs">
+                <Info className="size-3.5" />
+              </div>
+              <div className="leading-relaxed text-slate-700 dark:text-slate-300">
+                <span className="font-extrabold text-blue-800 dark:text-blue-300 mr-1.5 inline-flex items-center">
+                  A Note For Parents:
+                </span>
+                This report is best used as a starting point for understanding your child&apos;s current preparation and identifying where focused support can make the greatest difference.
+              </div>
+            </div>
           </div>
           <div className="text-right shrink-0">
             <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
@@ -935,12 +1336,14 @@ export function BoardReadinessReport({
               </div>
 
               {/* Subject Comparison Insight Box */}
-              <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/60 p-3.5 text-xs leading-relaxed text-indigo-950 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-200 shadow-2xs">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <Sparkles className="size-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <div className="rounded-2xl border-2 border-sky-300/80 bg-gradient-to-r from-sky-50/90 via-blue-50/70 to-indigo-50/70 p-4 text-xs leading-relaxed text-blue-950 dark:border-sky-700/60 dark:bg-gradient-to-r dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/30 dark:text-sky-100 shadow-sm">
+                <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[11px] text-sky-800 dark:text-sky-300">
+                  <div className="flex size-6 items-center justify-center rounded-lg bg-sky-600 text-white shadow-2xs">
+                    <Sparkles className="size-3.5" />
+                  </div>
                   <span>Subject Performance Insight</span>
                 </div>
-                <p className="mt-1 font-medium">
+                <p className="mt-2 font-medium leading-relaxed text-slate-800 dark:text-slate-200">
                   {report.breakdown.mathematics.percentage > report.breakdown.science.percentage
                     ? 'You seem to be doing better in Maths compared to Science. Continue reinforcing core Science application concepts while sustaining your Mathematics momentum.'
                     : report.breakdown.science.percentage > report.breakdown.mathematics.percentage
@@ -1075,13 +1478,16 @@ export function BoardReadinessReport({
           )}
 
           {/* Key Insight Analytical Box */}
-          <div className="mt-8 rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-brand-50/60 to-purple-50/60 p-5 sm:p-6 dark:border-indigo-500/30 dark:bg-gradient-to-r dark:from-slate-900 dark:via-indigo-950/30 dark:to-slate-900 shadow-xs">
+          <div className="mt-8 rounded-2xl border-2 border-purple-400/40 bg-gradient-to-r from-purple-500/15 via-indigo-500/15 to-pink-500/10 p-5 sm:p-6 dark:border-purple-500/40 dark:bg-gradient-to-r dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-slate-900 shadow-md">
             <div className="flex items-start gap-3.5">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-md">
                 <Sparkles className="size-5" />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-xs sm:text-sm font-black tracking-wider uppercase text-indigo-950 dark:text-indigo-200">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800">
+                  Diagnostic Insight
+                </div>
+                <h4 className="text-sm sm:text-base font-black tracking-wider uppercase text-purple-950 dark:text-purple-100">
                   Your Key Insight
                 </h4>
                 <p className="text-xs sm:text-sm leading-relaxed text-slate-800 font-medium dark:text-slate-200">
@@ -1096,9 +1502,8 @@ export function BoardReadinessReport({
           PAGE 2: YOUR STRENGTHS
           ========================================================================= */}
       <section
-        className={`report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
-          activeTab === 'all' || activeTab === 'page2' ? 'block' : 'hidden print:block'
-        }`}
+        id="report-page-2"
+        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -1178,13 +1583,18 @@ export function BoardReadinessReport({
                           {s.name}
                         </h4>
 
-                        <div className="mt-2.5">
-                          <EcommerceStarRating rating={Math.round((s.percentage / 100) * 5 * 10) / 10} align="start" />
+                        {/* Faculty Feedback reason callout */}
+                        <div className={`mt-3 rounded-xl p-3 border text-xs font-medium leading-relaxed shadow-2xs ${
+                          isCore
+                            ? 'bg-emerald-500/10 border-emerald-300/60 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200'
+                            : 'bg-blue-500/10 border-blue-300/60 text-blue-950 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-200'
+                        }`}>
+                          <div className="flex items-center gap-1 font-bold text-[10px] uppercase tracking-wider mb-1 opacity-90">
+                            <Sparkles className="size-3 shrink-0" />
+                            <span>Faculty Evaluation</span>
+                          </div>
+                          <p>{s.reason}</p>
                         </div>
-
-                        <p className="mt-2 text-xs text-slate-600 leading-relaxed dark:text-slate-300">
-                          {s.reason}
-                        </p>
                       </div>
 
                       <div className={`mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center gap-1.5 text-xs font-bold ${
@@ -1210,6 +1620,14 @@ export function BoardReadinessReport({
               </div>
             )}
           </div>
+
+          {/* Time Management Section (When TMS >= 70%: Displayed as Strength on Page 2) */}
+          {report.timeManagement && isTmsStrength && (
+            <TimeManagementReportSection
+              timeManagement={report.timeManagement}
+              isStrength={true}
+            />
+          )}
 
           {/* Question Structure Performance Table */}
           <div className="mt-8 space-y-3">
@@ -1270,13 +1688,16 @@ export function BoardReadinessReport({
           </div>
 
           {/* What This Tells You Narrative Box */}
-          <div className="mt-8 rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-brand-50/50 p-5 sm:p-6 dark:border-amber-500/30 dark:bg-gradient-to-r dark:from-slate-900 dark:via-amber-950/25 dark:to-slate-900 shadow-xs">
+          <div className="mt-8 rounded-2xl border-2 border-amber-400/50 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-brand-500/10 p-5 sm:p-6 dark:border-amber-500/40 dark:bg-gradient-to-r dark:from-amber-950/35 dark:via-orange-950/25 dark:to-slate-900 shadow-md">
             <div className="flex items-start gap-3.5">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 shadow-sm font-black text-sm">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-slate-950 shadow-md font-black text-sm">
                 <Brain className="size-5" />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-xs sm:text-sm font-black tracking-wider uppercase text-amber-950 dark:text-amber-200">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800">
+                  Pattern Analysis
+                </div>
+                <h4 className="text-sm sm:text-base font-black tracking-wider uppercase text-amber-950 dark:text-amber-100">
                   What This Tells You
                 </h4>
                 <p className="text-xs sm:text-sm leading-relaxed text-slate-800 font-medium dark:text-slate-200">
@@ -1291,9 +1712,8 @@ export function BoardReadinessReport({
           PAGE 3: WHERE SHOULD YOU IMPROVE?
           ========================================================================= */}
       <section
-        className={`report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
-          activeTab === 'all' || activeTab === 'page3' ? 'block' : 'hidden print:block'
-        }`}
+        id="report-page-3"
+        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -1302,7 +1722,7 @@ export function BoardReadinessReport({
               Shri Ram Smart Minds Academy
             </span>
             <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
-              PAGE 3 — WHERE SHOULD YOU IMPROVE?
+              Page 3: WHERE SHOULD YOU IMPROVE?
             </h2>
           </div>
           <div className="text-right shrink-0">
@@ -1397,7 +1817,7 @@ export function BoardReadinessReport({
                               {getPriorityBadge(g.priority)}
                             </div>
                             <h4 className="mt-2.5 text-base font-black text-slate-900 dark:text-white">
-                              {g.name}
+                              {formatWeaknessName(g.name)}
                             </h4>
                             <div className="mt-2 flex items-center justify-between gap-2">
                               <EcommerceStarRating rating={Math.round((g.scorePercent / 100) * 5 * 10) / 10} align="start" />
@@ -1407,9 +1827,17 @@ export function BoardReadinessReport({
                             </div>
                           </div>
                           {g.message && (
-                            <p className="mt-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300 font-medium border-t border-slate-100 dark:border-slate-800/80 pt-2.5">
-                              {g.message}
-                            </p>
+                            <div className={`mt-3 rounded-xl p-3 border-2 text-xs font-medium leading-relaxed shadow-xs ${
+                              isHighPriority
+                                ? 'bg-amber-50/95 border-amber-400 text-amber-950 dark:border-amber-500/70 dark:bg-amber-950/40 dark:text-amber-200'
+                                : 'bg-amber-50/90 border-amber-300 text-amber-950 dark:border-amber-600/70 dark:bg-amber-950/40 dark:text-amber-200'
+                            }`}>
+                              <div className="flex items-center gap-1 font-extrabold text-[10px] uppercase tracking-wider mb-1">
+                                <Target className="size-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span className="text-amber-900 dark:text-amber-300 font-extrabold">Improvement Feedback</span>
+                              </div>
+                              <p className="font-semibold text-slate-800 dark:text-slate-200">{g.message}</p>
+                            </div>
                           )}
                         </div>
                       );
@@ -1419,6 +1847,14 @@ export function BoardReadinessReport({
               </div>
             );
           })()}
+
+          {/* Time Management Section (When TMS < 70%: Displayed as Area for Improvement on Page 3) */}
+          {report.timeManagement && !isTmsStrength && (
+            <TimeManagementReportSection
+              timeManagement={report.timeManagement}
+              isStrength={false}
+            />
+          )}
 
           {/* Topics to Revisit: 2 Distinct Tables (Mathematics & Science) */}
           <div className="mt-8 space-y-6">
@@ -1437,7 +1873,15 @@ export function BoardReadinessReport({
               const mathsTopics = report.topicsToRevisit.filter(
                 (t) => t.subject.toLowerCase() === 'maths' || t.subject.toLowerCase() === 'mathematics',
               );
-              const hasGuesswork = mathsTopics.some((t) => t.category === 'Rapid Guesswork');
+              const hasTooFast = mathsTopics.some(
+                (t) => t.category === 'Too Fast but Incorrect' || t.category === 'Rapid Guesswork',
+              );
+              const hasTooSlow = mathsTopics.some(
+                (t) =>
+                  t.category === 'Too Slow' ||
+                  t.category === 'Severe Overtime' ||
+                  t.category === 'Pacing / Time Management',
+              );
               const hasUnattempted = mathsTopics.some((t) => t.category === 'Unattempted');
 
               return (
@@ -1519,11 +1963,16 @@ export function BoardReadinessReport({
                     </Table>
                   </div>
 
-                  {(hasGuesswork || hasUnattempted) && (
+                  {(hasTooFast || hasTooSlow || hasUnattempted) && (
                     <div className="pt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 space-y-0.5 border-t border-slate-100 dark:border-slate-800/60">
-                      {hasGuesswork && (
+                      {hasTooFast && (
                         <p>
-                          <span className="font-bold text-orange-600 dark:text-orange-400">* Rapid Guesswork:</span> Questions answered in under 8 seconds. We recommend reviewing these concepts to verify solid foundational understanding.
+                          <span className="font-bold text-orange-600 dark:text-orange-400">* Too Fast but Incorrect:</span> Questions answered in under 8 seconds that resulted in an incorrect response. Take extra care to read questions thoroughly before answering.
+                        </p>
+                      )}
+                      {hasTooSlow && (
+                        <p>
+                          <span className="font-bold text-amber-600 dark:text-amber-400">* Too Slow:</span> Questions taking more than double the expected time limit. Timed drill practice will help refine solving speed.
                         </p>
                       )}
                       {hasUnattempted && (
@@ -1542,7 +1991,15 @@ export function BoardReadinessReport({
               const scienceTopics = report.topicsToRevisit.filter((t) =>
                 ['physics', 'chemistry', 'biology', 'science'].includes(t.subject.toLowerCase()),
               );
-              const hasGuesswork = scienceTopics.some((t) => t.category === 'Rapid Guesswork');
+              const hasTooFast = scienceTopics.some(
+                (t) => t.category === 'Too Fast but Incorrect' || t.category === 'Rapid Guesswork',
+              );
+              const hasTooSlow = scienceTopics.some(
+                (t) =>
+                  t.category === 'Too Slow' ||
+                  t.category === 'Severe Overtime' ||
+                  t.category === 'Pacing / Time Management',
+              );
               const hasUnattempted = scienceTopics.some((t) => t.category === 'Unattempted');
 
               return (
@@ -1633,11 +2090,16 @@ export function BoardReadinessReport({
                     </Table>
                   </div>
 
-                  {(hasGuesswork || hasUnattempted) && (
+                  {(hasTooFast || hasTooSlow || hasUnattempted) && (
                     <div className="pt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 space-y-0.5 border-t border-slate-100 dark:border-slate-800/60">
-                      {hasGuesswork && (
+                      {hasTooFast && (
                         <p>
-                          <span className="font-bold text-orange-600 dark:text-orange-400">* Rapid Guesswork:</span> Questions answered in under 8 seconds. We recommend reviewing these concepts to verify solid foundational understanding.
+                          <span className="font-bold text-orange-600 dark:text-orange-400">* Too Fast but Incorrect:</span> Questions answered in under 8 seconds that resulted in an incorrect response. Take extra care to read questions thoroughly before answering.
+                        </p>
+                      )}
+                      {hasTooSlow && (
+                        <p>
+                          <span className="font-bold text-amber-600 dark:text-amber-400">* Too Slow:</span> Questions taking more than double the expected time limit. Timed drill practice will help refine solving speed.
                         </p>
                       )}
                       {hasUnattempted && (
@@ -1676,9 +2138,8 @@ export function BoardReadinessReport({
           PAGE 4: RECOMMENDATIONS (ADAPTED BY PREPARATION LEVEL)
           ========================================================================= */}
       <section
-        className={`report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
-          activeTab === 'all' || activeTab === 'page4' ? 'block' : 'hidden print:block'
-        }`}
+        id="report-page-4"
+        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -1687,7 +2148,7 @@ export function BoardReadinessReport({
               Shri Ram Smart Minds Academy
             </span>
             <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
-              PAGE 4 — RECOMMENDATIONS
+              PAGE 4: RECOMMENDATIONS
             </h2>
           </div>
           <div className="text-right shrink-0">
@@ -1700,8 +2161,8 @@ export function BoardReadinessReport({
         {/* Personalized Preparation Level Action Blueprint */}
         {(() => {
           const prepNorm = String(report.levelOfPreparation || '').trim().toLowerCase();
-          const isHigh = prepNorm.includes('high achievement') || prepNorm === 'advanced' || (report.briScore ?? 0) >= 80;
-          const isMed = !isHigh && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || (report.briScore ?? 0) >= 60);
+          const isHigh = prepNorm.includes('high achievement') || prepNorm === 'advanced' || (report.briScore ?? 0) >= 70;
+          const isMed = !isHigh && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || (report.briScore ?? 0) >= 50);
 
           if (isHigh) {
             return (
@@ -2188,6 +2649,29 @@ export function BoardReadinessReport({
           );
         })()}
 
+        {/* A Note For Parents */}
+        <div className="mt-8 rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 p-5 sm:p-6 dark:border-indigo-900/60 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900/95 dark:to-indigo-950/30 shadow-xs">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs font-black">
+              <Info className="size-4" />
+            </div>
+            <h3 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
+              A Note For Parents
+            </h3>
+          </div>
+          <div className="space-y-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+            <p>
+              Your child’s report is meant to identify where their preparation stands today—not to label their ability.
+            </p>
+            <p>
+              The most useful support at this stage is to understand the areas highlighted in the report, encourage regular practice, and help your child maintain consistency without unnecessary pressure or comparison. Every student develops at a different pace. With the right guidance, focused practice and timely feedback, identified gaps can be strengthened significantly.
+            </p>
+            <p className="font-semibold text-indigo-950 dark:text-indigo-200">
+              We hope Shri Ram Smart Minds Academy could provide you and your child a good plan of action for Class X Board Exams. Wish you all the best! You may contact us if you need any further guidance for your child. Thanks!
+            </p>
+          </div>
+        </div>
+
         {/* Official Academic Seal & Certification Footer */}
         <div className="mt-8 border-t border-slate-200/80 dark:border-slate-800 pt-5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
           <div className="flex items-center gap-2">
@@ -2208,9 +2692,8 @@ export function BoardReadinessReport({
           PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE
           ========================================================================= */}
       <section
-        className={`report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${
-          activeTab === 'all' || activeTab === 'page5' ? 'block' : 'hidden print:block'
-        }`}
+        id="report-page-5"
+        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -2218,10 +2701,13 @@ export function BoardReadinessReport({
               <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
               Shri Ram Smart Minds Academy
             </span>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="mt-1">
               <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white break-words">
-                PAGE 5 — NEED STRUCTURED SUPPORT?
+                Page 5: NEED STRUCTURED SUPPORT?
               </h2>
+              <p className="mt-1 text-xs sm:text-sm font-semibold text-brand-700 dark:text-brand-300 leading-relaxed">
+                We recommend joining our Board Mastery Course to excel in the upcoming Board Exams. Online, Offline and Combined Batches begin from 26th October onwards.
+              </p>
             </div>
           </div>
           <div className="text-right shrink-0">
@@ -2695,9 +3181,8 @@ export function BoardReadinessReport({
           ========================================================================= */}
       {isTeacherView && report.calculationSteps && (
         <section
-          className={`report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 ${
-            activeTab === 'all' || activeTab === 'page6' ? 'block' : 'hidden print:block'
-          }`}
+          id="report-page-6"
+          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block print:block"
         >
           {/* Header watermark & Brand bar */}
           <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60 gap-2">
@@ -3294,7 +3779,7 @@ export function BoardReadinessReport({
                         {getPriorityBadge(g.priority)}
                       </div>
                       <h5 className="mt-2 text-sm font-black text-slate-900 dark:text-white">
-                        {g.name}
+                        {formatWeaknessName(g.name)}
                       </h5>
                       <div className="mt-2 flex items-center justify-between">
                         <EcommerceStarRating rating={Math.round((g.scorePercent / 100) * 5 * 10) / 10} align="start" />
@@ -3360,7 +3845,7 @@ export function BoardReadinessReport({
                             }
                           >
                             <TableCell className="font-bold text-slate-900 dark:text-white text-xs">
-                              <div>{w.name}</div>
+                              <div>{formatWeaknessName(w.name)}</div>
                               <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
                                 {w.triggerReason}
                               </div>
@@ -3449,7 +3934,7 @@ export function BoardReadinessReport({
                   <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Scoring Formula</span>
                     <p className="mt-1 font-mono text-xs font-bold text-slate-900 dark:text-white">
-                      TMS (%) = (Σ Qi / N) * 100
+                      TMS (%) = (Σ (Qi × Wi) / Σ Wi) * 100
                     </p>
                     <p className="mt-1 text-xs text-brand-600 dark:text-brand-400 font-bold">
                       {report.calculationSteps.timeManagement.formula} = {report.calculationSteps.timeManagement.finalScorePercent}%

@@ -112,9 +112,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
   it('correctly classifies preparation level', () => {
     expect(classifyPreparationLevel(85)).toBe('High achievement Potential');
     expect(classifyPreparationLevel(80)).toBe('High achievement Potential');
-    expect(classifyPreparationLevel(75)).toBe('Conceptually Strong');
+    expect(classifyPreparationLevel(75)).toBe('High achievement Potential');
+    expect(classifyPreparationLevel(70)).toBe('High achievement Potential');
+    expect(classifyPreparationLevel(69.9)).toBe('Conceptually Strong');
     expect(classifyPreparationLevel(60)).toBe('Conceptually Strong');
-    expect(classifyPreparationLevel(55)).toBe('Basic');
+    expect(classifyPreparationLevel(50)).toBe('Conceptually Strong');
+    expect(classifyPreparationLevel(49.9)).toBe('Basic');
     expect(classifyPreparationLevel(40)).toBe('Basic');
     expect(classifyPreparationLevel(35)).toBe('Basic');
   });
@@ -160,11 +163,11 @@ describe('SRSMA Diagnostic Evaluator', () => {
     // Weighted score: Q1(1) + Q2(1) + Q4(3) = 5
     expect(result.totalWeightedScore).toBe(5);
 
-    // BRI = (5 / 9) * 100 = 55.6%
+    // BRI = (5 / 9) * 100 = 55.6% (in [50%, 70%) -> Conceptually Strong)
     expect(result.briScore).toBeCloseTo(55.6, 1);
-    expect(result.levelOfPreparation).toBe('Basic');
+    expect(result.levelOfPreparation).toBe('Conceptually Strong');
     expect(result.keyInsight).toBe(
-      'You have started building your foundation for the Boards, and this is a good time to strengthen it further. Some gaps are currently making it difficult to consistently convert your understanding into marks. The good news is that these areas can be improved with focused practice. Read the report further to know where you can improve and how to perform better',
+      'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
     );
 
     // Subject performance:
@@ -230,15 +233,15 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
     // Flagged topics to revisit:
     // Q1: Correct within time -> Excluded
-    // Q2: Severe overtime (100s >= 2 * 45s = 90s) -> Pacing / Time Management (mentioned severe overtime)
+    // Q2: Severe overtime (100s >= 2 * 45s = 90s) -> Too Slow
     // Q3: Attempted (>10s) and incorrect -> Conceptual / Calculation Gap
     // Q4: Correct, slight overtime (130s < 240s) -> Excluded
     // Q5: Unattempted (0s) -> Unattempted (competency cannot be assessed)
     expect(result.topicsToRevisit.length).toBe(3);
 
     const q2Flag = result.topicsToRevisit.find((t) => t.qno === 2);
-    expect(q2Flag?.category).toBe('Pacing / Time Management');
-    expect(q2Flag?.issueObserved).toContain('Severe Overtime');
+    expect(q2Flag?.category).toBe('Too Slow');
+    expect(q2Flag?.issueObserved).toContain('Too Slow');
 
     const q3Flag = result.topicsToRevisit.find((t) => t.qno === 3);
     expect(q3Flag?.category).toBe('Conceptual / Calculation Gap');
@@ -254,9 +257,8 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(result.plainTextReport).toContain('PAGE 4: RECOMMENDATIONS');
     expect(result.plainTextReport).toContain('PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE');
     expect(result.plainTextReport).toContain('PAGE 6: DIAGNOSTIC AUDIT & CALCULATION STEPS (DEVELOPMENT ONLY)');
-    expect(result.plainTextReport).toContain('Dear Aarav Sharma,');
-    expect(result.plainTextReport).toContain('TURN YOUR GAPS INTO PROGRESS');
-    expect(result.plainTextReport).toContain('Strengthen the basics');
+    expect(result.plainTextReport).toContain('TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION');
+    expect(result.plainTextReport).toContain('Move beyond direct questions');
 
     // Page 4: Calculation steps audit verification
     expect(result.calculationSteps).toBeDefined();
@@ -294,34 +296,34 @@ describe('SRSMA Diagnostic Evaluator', () => {
       'Congratulations! Outstanding performance — no weakness areas detected (< 50%)',
     );
 
-    // 2. Conceptually Strong (e.g. Q1, Q3, Q4 correct: 1 + 3 + 3 = 7/9 = 77.8% BRI)
+    // 2. Conceptually Strong (e.g. Q1, Q2, Q4 correct: 1 + 1 + 3 = 5/9 = 55.6% BRI, in [50%, 70%))
     const strongScorerPayload: StudentResponsePayload = {
       studentName: 'Rohan Mehta',
       responses: [
         { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 30 }, // Correct (+1)
-        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }, // Wrong (0)
-        { qno: 3, attempted: true, selectedOption: 'C', timeTakenSeconds: 40 }, // Correct (+3)
+        { qno: 2, attempted: true, selectedOption: 'C', timeTakenSeconds: 30 }, // Correct (+1)
+        { qno: 3, attempted: true, selectedOption: 'A', timeTakenSeconds: 40 }, // Wrong (0)
         { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 50 }, // Correct (+3)
         { qno: 5, attempted: true, selectedOption: 'B', timeTakenSeconds: 20 }, // Wrong (0)
       ],
     };
 
     const strongResult = evaluateDiagnosticReport(sampleMetadata, strongScorerPayload);
-    expect(strongResult.briScore).toBeCloseTo(77.8, 1);
+    expect(strongResult.briScore).toBeCloseTo(55.6, 1);
     expect(strongResult.levelOfPreparation).toBe('Conceptually Strong');
     expect(strongResult.keyInsight).toBe(
       'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
     );
   });
 
-  it('flags rapid guesswork in topics to revisit only if strictly less than 8 seconds', () => {
+  it('categorizes rapid incorrect response as Too Fast but Incorrect in topics to revisit', () => {
     const rapidPayload: StudentResponsePayload = {
       studentName: 'Aarav Rapid',
       responses: [
-        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 5 }, // < 8s correct -> Rapid Guesswork
-        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 7 }, // < 8s incorrect -> Rapid Guesswork
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 5 }, // < 8s correct -> Mastered (not in topics to revisit)
+        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 7 }, // < 8s incorrect -> Too Fast but Incorrect
         { qno: 3, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted -> Unattempted
-        { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 12 }, // >= 8s incorrect -> NOT Rapid Guesswork (Normal pacing gap)
+        { qno: 4, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 12 }, // >= 8s incorrect -> Conceptual / Calculation Gap
       ],
     };
 
@@ -331,12 +333,11 @@ describe('SRSMA Diagnostic Evaluator', () => {
     const q3 = res.topicsToRevisit.find((t) => t.qno === 3);
     const q4 = res.topicsToRevisit.find((t) => t.qno === 4);
 
-    expect(q1?.category).toBe('Rapid Guesswork');
-    expect(q1?.issueObserved).toContain('guesswork');
-    expect(q2?.category).toBe('Rapid Guesswork');
-    expect(q2?.issueObserved).toContain('guesswork');
+    expect(q1).toBeUndefined();
+    expect(q2?.category).toBe('Too Fast but Incorrect');
+    expect(q2?.issueObserved).toContain('Too Fast but Incorrect');
     expect(q3?.category).toBe('Unattempted');
-    expect(q4?.category).not.toBe('Rapid Guesswork');
+    expect(q4?.category).toBe('Conceptual / Calculation Gap');
   });
 
   describe('Time Management & Guesswork Scoring Engine (TMS)', () => {
@@ -472,8 +473,14 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(report.timeManagement.attemptedCount).toBe(4);
       expect(report.timeManagement.totalQuestions).toBe(5);
 
-      // Sum of Qi = 1.0 + 0.9346 + 0.4202 + 0.4202 + 0 = 2.775 -> TMS (%) = (2.775 / 5) * 100 = 55.5% -> 56% (Moderate)
-      expect(report.timeManagement.finalScorePercent).toBe(56);
+      // Diagnostic Weighted TMS:
+      // Q1 (w=1): 1.0 * 1 = 1.0
+      // Q2 (w=1): 0.9346 * 1 = 0.9346
+      // Q3 (w=3): 0.4202 * 3 = 1.2606
+      // Q4 (w=3): 0.4202 * 3 = 1.2606
+      // Q5 (w=1): 0 * 1 = 0
+      // Sum Weighted Qi = 4.4558 / 9 total weight = 49.508% -> 50% (Moderate)
+      expect(report.timeManagement.finalScorePercent).toBe(50);
       expect(report.timeManagement.rating).toBe('Moderate');
       expect(report.timeManagement.guessworkQuestions).toEqual([1]);
 
@@ -483,13 +490,13 @@ describe('SRSMA Diagnostic Evaluator', () => {
       expect(report.timeManagement.categoryCounts.UNATTEMPTED).toBe(1);
 
       // Report plain text should mention time management & guesswork
-      expect(report.plainTextReport).toContain('TIME MANAGEMENT SCORE: 56%');
+      expect(report.plainTextReport).toContain('TIME MANAGEMENT SCORE: 50%');
       expect(report.plainTextReport).toContain('⚠️ GUESSWORK OBSERVATION');
       expect(report.plainTextReport).toContain('Q1');
 
       // Calculation steps audit should contain time management
       expect(report.calculationSteps.timeManagement).toBeDefined();
-      expect(report.calculationSteps.timeManagement?.finalScorePercent).toBe(56);
+      expect(report.calculationSteps.timeManagement?.finalScorePercent).toBe(50);
       expect(report.calculationSteps.timeManagement?.ratingResult).toBe('Moderate');
     });
   });
@@ -518,7 +525,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
       // Categories that scored 100% must NOT be in priority gaps
       const gapNames = report.priorityGaps.map((g) => g.name);
-      expect(gapNames).not.toContain('Conceptual Gap');
+      expect(gapNames).not.toContain('Conceptual Understanding');
     });
 
     it('displays only the available categories if there are fewer than 4 with score < 50%', () => {
@@ -595,9 +602,9 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
       const report = evaluateDiagnosticReport(customMeta, payload);
 
-      // Exactly 1 category ('Interpretation Gap') has score < 50%
+      // Exactly 1 category ('Question Interpretation Skill') has score < 50%
       expect(report.priorityGaps.length).toBe(1);
-      expect(report.priorityGaps[0].name).toBe('Interpretation Gap');
+      expect(report.priorityGaps[0].name).toBe('Question Interpretation Skill');
       expect(report.priorityGaps[0].scorePercent).toBe(0);
       expect(report.priorityGaps[0].priority).toBe('High Priority');
       expect(report.priorityGaps[0].message).toBe(
@@ -942,7 +949,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
         ],
       };
       const report = evaluateDiagnosticReport(meta, payload);
-      const gap = report.priorityGaps.find((g) => g.name === 'Conceptual Gap');
+      const gap = report.priorityGaps.find((g) => g.name === 'Conceptual Understanding');
       expect(gap).toBeDefined();
       expect(gap?.scorePercent).toBe(33);
       expect(gap?.priority).toBe('Medium Priority');
@@ -988,7 +995,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
         ],
       };
       const report = evaluateDiagnosticReport(meta, payload);
-      const gap = report.priorityGaps.find((g) => g.name === 'Application Gap');
+      const gap = report.priorityGaps.find((g) => g.name === 'Application Skill');
       expect(gap).toBeDefined();
       expect(gap?.scorePercent).toBe(33);
       expect(gap?.priority).toBe('Medium Priority');
@@ -1018,7 +1025,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
         responses: [{ qno: 1, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 50 }],
       };
       const report = evaluateDiagnosticReport(meta, payload);
-      const gap = report.priorityGaps.find((g) => g.name === 'Problem-Solving Gap');
+      const gap = report.priorityGaps.find((g) => g.name === 'Problem Solving Skill');
       expect(gap).toBeDefined();
       expect(gap?.scorePercent).toBe(0);
       expect(gap?.message).toBe(
@@ -1105,7 +1112,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
         ],
       };
       const report = evaluateDiagnosticReport(meta, payload);
-      const gap = report.priorityGaps.find((g) => g.name === 'Accuracy Risk');
+      const gap = report.priorityGaps.find((g) => g.name === 'Accuracy');
       expect(gap).toBeDefined();
       expect(gap?.scorePercent).toBe(40);
       expect(gap?.priority).toBe('Low Priority');
@@ -1179,7 +1186,7 @@ describe('SRSMA Diagnostic Evaluator', () => {
         ],
       };
       const report = evaluateDiagnosticReport(meta, payload);
-      const gap = report.priorityGaps.find((g) => g.name === 'Difficulty Readiness Gap');
+      const gap = report.priorityGaps.find((g) => g.name === 'Difficulty Readiness');
       expect(gap).toBeDefined();
       expect(gap?.message).toBe(
         'Your foundation is developing well, but you need to gradually build confidence with more challenging questions.',
@@ -1282,14 +1289,14 @@ describe('SRSMA Diagnostic Evaluator', () => {
 
       const report = evaluateDiagnosticReport(meta, payload);
       const valid9Labels = [
-        'Conceptual Gap',
-        'Application Gap',
-        'Problem-Solving Gap',
-        'Interpretation Gap',
-        'Accuracy Risk',
-        'Difficulty Readiness Gap',
-        'Multi-Step Question Gap',
-        'Application-Based Question Gap',
+        'Conceptual Understanding',
+        'Application Skill',
+        'Problem Solving Skill',
+        'Question Interpretation Skill',
+        'Accuracy',
+        'Difficulty Readiness',
+        'Multi-Step Question Skill',
+        'Application-Based Question Skill',
         'Direct-Question Dependency',
       ];
       report.priorityGaps.forEach((g) => {
@@ -1298,12 +1305,12 @@ describe('SRSMA Diagnostic Evaluator', () => {
         expect(g.scorePercent).toBeLessThan(50);
       });
 
-      const multiStepGap = report.priorityGaps.find((g) => g.name === 'Multi-Step Question Gap');
+      const multiStepGap = report.priorityGaps.find((g) => g.name === 'Multi-Step Question Skill');
       expect(multiStepGap?.message).toBe(
         'You are comfortable with direct questions, but questions requiring several connected steps are currently more challenging.',
       );
 
-      const appGap = report.priorityGaps.find((g) => g.name === 'Application-Based Question Gap');
+      const appGap = report.priorityGaps.find((g) => g.name === 'Application-Based Question Skill');
       if (appGap) {
         expect(appGap.message).toBe(
           'You handle direct questions well. Your next step is to practise applying the same concepts in unfamiliar situations.',
@@ -1359,10 +1366,10 @@ describe('SRSMA Diagnostic Evaluator', () => {
       const report = evaluateDiagnosticReport(meta, payload);
       const names = report.priorityGaps.map((g) => g.name);
 
-      // Must have Problem-Solving Gap (from First 6)
-      expect(names).toContain('Problem-Solving Gap');
-      // Must NOT have Multi-Step Question Gap simultaneously
-      expect(names).not.toContain('Multi-Step Question Gap');
+      // Must have Problem Solving Skill (from First 6)
+      expect(names).toContain('Problem Solving Skill');
+      // Must NOT have Multi-Step Question Skill simultaneously
+      expect(names).not.toContain('Multi-Step Question Skill');
     });
 
     it('never highlights both Application Gap and Application-Based Question Gap together', () => {
@@ -1405,9 +1412,9 @@ describe('SRSMA Diagnostic Evaluator', () => {
       const report = evaluateDiagnosticReport(meta, payload);
       const names = report.priorityGaps.map((g) => g.name);
 
-      // Application Gap is in First 6, so it takes precedence over Application-Based Question Gap
-      expect(names).toContain('Application Gap');
-      expect(names).not.toContain('Application-Based Question Gap');
+      // Application Skill is in First 6, so it takes precedence over Application-Based Question Skill
+      expect(names).toContain('Application Skill');
+      expect(names).not.toContain('Application-Based Question Skill');
     });
 
     it('falls back to question taking more time than expected when 0 gaps found from 9 labels', () => {
@@ -1449,11 +1456,17 @@ describe('SRSMA Diagnostic Evaluator', () => {
       };
       const report = evaluateDiagnosticReport(meta, payload);
 
-      // Should have exactly 1 gap from the overtime fallback
-      expect(report.priorityGaps.length).toBe(1);
-      expect(report.priorityGaps[0].name).toBe('Pacing / Time Management');
-      expect(report.priorityGaps[0].message).toContain('took more time than expected');
-      expect(report.priorityGaps[0].scorePercent).toBeLessThan(50);
+      // Time Management is not included as a card in Priority Gaps (Weaknesses).
+      // Since all academic skills scored 100%, priorityGaps is empty and congratulations is preserved.
+      expect(report.priorityGaps.length).toBe(0);
+      expect(
+        report.priorityGaps.some((g) => g.name.includes('Pacing') || g.name.includes('Time Management')),
+      ).toBe(false);
+
+      // But Q2 (150s >= 2 * 60s) is correctly flagged as 'Too Slow' in Topics to Revisit
+      const q2Revisit = report.topicsToRevisit.find((t) => t.qno === 2);
+      expect(q2Revisit?.category).toBe('Too Slow');
+      expect(q2Revisit?.issueObserved).toContain('Too Slow');
     });
 
     it('congratulates student when 0 gaps found and no question took more time than expected', () => {
@@ -1532,6 +1545,67 @@ describe('SRSMA Diagnostic Evaluator', () => {
       // Verify strengths ranking includes tag
       expect(result.calculationSteps.strengthsRanking.length).toBeGreaterThan(0);
       expect(result.calculationSteps.strengthsRanking[0].tag).toBeDefined();
+    });
+
+    it('ensures Time Management never appears as a card in Strengths or Weaknesses', () => {
+      // High TMS student
+      const highTmsPayload: StudentResponsePayload = {
+        studentName: 'Priya Fast',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 20 },
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 25 },
+          { qno: 3, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 },
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 35 },
+          { qno: 5, attempted: true, selectedOption: 'A', timeTakenSeconds: 40 },
+        ],
+      };
+      const highReport = evaluateDiagnosticReport(sampleMetadata, highTmsPayload);
+
+      // Verify strengths cards never contain TIME MANAGEMENT
+      highReport.strengths.forEach((s) => {
+        expect(s.name).not.toMatch(/time management/i);
+      });
+      // Verify weakness cards never contain TIME MANAGEMENT or PACING
+      highReport.priorityGaps.forEach((g) => {
+        expect(g.name).not.toMatch(/time management/i);
+        expect(g.name).not.toMatch(/pacing/i);
+      });
+
+      // Low TMS student with severe overtime
+      const lowTmsPayload: StudentResponsePayload = {
+        studentName: 'Sanjay Slow',
+        responses: [
+          { qno: 1, attempted: true, selectedOption: 'A', timeTakenSeconds: 150 }, // Severe overtime (150 >= 2 * 60)
+          { qno: 2, attempted: true, selectedOption: 'B', timeTakenSeconds: 180 }, // Severe overtime (180 >= 2 * 45)
+          { qno: 3, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 260 }, // Severe overtime & wrong (260 >= 2 * 120)
+          { qno: 4, attempted: true, selectedOption: 'D', timeTakenSeconds: 400 }, // Severe overtime (400 >= 2 * 120)
+          { qno: 5, attempted: true, selectedOption: 'Wrong', timeTakenSeconds: 5 }, // Too fast (< 8s) & wrong
+        ],
+      };
+      const lowReport = evaluateDiagnosticReport(sampleMetadata, lowTmsPayload);
+
+      // Strengths & Weaknesses cards must NOT contain Time Management
+      lowReport.strengths.forEach((s) => {
+        expect(s.name).not.toMatch(/time management/i);
+      });
+      lowReport.priorityGaps.forEach((g) => {
+        expect(g.name).not.toMatch(/time management/i);
+        expect(g.name).not.toMatch(/pacing/i);
+      });
+
+      // In Topics to Revisit, verify exact issue categories (Too Slow, Too Fast but Incorrect)
+      const q1Revisit = lowReport.topicsToRevisit.find((t) => t.qno === 1);
+      const q3Revisit = lowReport.topicsToRevisit.find((t) => t.qno === 3);
+      const q5Revisit = lowReport.topicsToRevisit.find((t) => t.qno === 5);
+
+      expect(q1Revisit?.category).toBe('Too Slow');
+      expect(q3Revisit?.category).toBe('Too Slow');
+      expect(q5Revisit?.category).toBe('Too Fast but Incorrect');
+
+      // No topics should have 'Pacing / Time Management' tag
+      lowReport.topicsToRevisit.forEach((t) => {
+        expect(t.category).not.toBe('Pacing / Time Management');
+      });
     });
   });
 });

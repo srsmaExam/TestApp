@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { apiSession } from '@/lib/auth';
+import { apiSessionFast } from '@/lib/auth';
 import { HttpError, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
 import { attemptAnswers, attempts, questionImages } from '@/db/schema';
@@ -8,7 +8,7 @@ import { getFileMetadata, readFileRecord } from '@/lib/storage';
 type Ctx = { params: Promise<{ questionId: string; placeholder: string }> };
 
 export const GET = withApi<Ctx>(async (req, { params }) => {
-  const session = await apiSession();
+  const session = await apiSessionFast();
   const { questionId, placeholder } = await params;
 
   const db = await getDb();
@@ -35,7 +35,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   }
 
   const etag = `"${meta.sha256 || meta.size}"`;
-  const cacheControl = 'private, max-age=86400, stale-while-revalidate=604800';
+  const cacheControl = 'public, max-age=86400, s-maxage=86400';
 
   // 2. Return 304 immediately with 0 bytes of DB egress if client has it cached
   if (req.headers.get('if-none-match') === etag) {

@@ -1643,7 +1643,7 @@ function InlineQuestionEditor({
                   if (img) {
                     return (
                       <Image
-                        src={`/api/files/images/${question.id}/${placeholderId}`}
+                        src={`/api/files/images/${question.id}/${placeholderId}?v=${img.createdAt ? new Date(img.createdAt).getTime() : Date.now()}`}
                         alt={placeholderId}
                         width={180}
                         height={100}

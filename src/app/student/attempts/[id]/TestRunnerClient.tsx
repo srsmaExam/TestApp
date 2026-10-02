@@ -105,6 +105,11 @@ function PaletteButton({
   );
 }
 
+/** Debounce for answer-driven saves: rapid re-selections collapse into one request. */
+const ANSWER_SAVE_DEBOUNCE_MS = 2000;
+/** Idle heartbeat. It only sends when something changed since the last save. */
+const HEARTBEAT_MS = 60_000;
+
 export function TestRunnerClient({
   attemptId,
   testTitle,
@@ -112,6 +117,7 @@ export function TestRunnerClient({
   studentName,
   serverTime,
   initialExtensionsCount = 0,
+  initialQuestions,
 }: {
   attemptId: string;
   testTitle: string;
@@ -119,6 +125,7 @@ export function TestRunnerClient({
   studentName: string;
   serverTime: string;
   initialExtensionsCount?: number;
+  initialQuestions?: QuestionRuntimeState[];
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState<QuestionRuntimeState[]>([]);
@@ -156,6 +163,9 @@ export function TestRunnerClient({
   // Active question timing tracking
   const activeSinceRef = useRef<number>(performance.now());
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** True while there are changes the server has not seen. Gates every autosave. */
+  const dirtyRef = useRef(false);
+  const initialQuestionsRef = useRef(initialQuestions);
 
   /**
    * A live mirror of `questions` for callbacks that must not be re-created when
@@ -203,12 +213,19 @@ export function TestRunnerClient({
     async function init() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/attempts/${attemptId}/questions`);
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || 'Failed to load test questions');
+        // Questions normally arrive pre-loaded from the server component;
+        // fetch only as a fallback.
+        let serverData: QuestionRuntimeState[];
+        if (initialQuestionsRef.current) {
+          serverData = initialQuestionsRef.current;
+        } else {
+          const res = await fetch(`/api/attempts/${attemptId}/questions`);
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to load test questions');
+          }
+          serverData = await res.json();
         }
-        const serverData: QuestionRuntimeState[] = await res.json();
 
         // Check IndexedDB for newer offline unsaved answers
         const idbSaved = (await get(idbKey)) as Record<string, Partial<QuestionRuntimeState>> | undefined;
@@ -229,6 +246,9 @@ export function TestRunnerClient({
           }
           return q;
         });
+
+        // Offline answers may be newer than the server's — push them on the next sync.
+        if (idbSaved) dirtyRef.current = true;
 
         if (mounted) {
           setQuestions(reconciled);
@@ -305,10 +325,11 @@ export function TestRunnerClient({
   // Stable identity (no `questions` dependency) so the heartbeat and listener
   // effects below mount exactly once.
   const syncWithServer = useCallback(async () => {
-    if (questionsRef.current.length === 0 || !navigator.onLine) return;
+    if (questionsRef.current.length === 0 || !navigator.onLine || !dirtyRef.current) return;
     setIsSyncing(true);
 
     flushTimeSpent();
+    dirtyRef.current = false;
 
     try {
       const res = await fetch(`/api/attempts/${attemptId}/answers`, {
@@ -323,6 +344,7 @@ export function TestRunnerClient({
           router.push(`/student/attempts/${attemptId}/result`);
           return;
         }
+        dirtyRef.current = true;
         if (res.status === 401) {
           setSyncError('Signed out — your answers are saved on this device. Sign in again in another tab.');
           return;
@@ -333,6 +355,7 @@ export function TestRunnerClient({
       setSyncError(null);
       setLastSavedAt(Date.now());
     } catch {
+      dirtyRef.current = true;
       setSyncError('Not saved to the server — your answers are safe on this device and will re-sync.');
     } finally {
       setIsSyncing(false);
@@ -341,18 +364,19 @@ export function TestRunnerClient({
 
   // Debounced auto-sync when questions state updates
   const scheduleSync = useCallback(() => {
+    dirtyRef.current = true;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       syncWithServer();
-    }, 300);
+    }, ANSWER_SAVE_DEBOUNCE_MS);
   }, [syncWithServer]);
 
-  // 6. Periodic Heartbeat Sync (every 15s). Mounts once, because
-  // syncWithServer's identity is now stable.
+  // 6. Periodic Heartbeat Sync (every 60s, only when something changed).
+  // Mounts once, because syncWithServer's identity is stable.
   useEffect(() => {
     const heartbeat = setInterval(() => {
       syncWithServer();
-    }, 15000);
+    }, HEARTBEAT_MS);
     return () => clearInterval(heartbeat);
   }, [syncWithServer]);
 
@@ -372,32 +396,28 @@ export function TestRunnerClient({
     // always labels the body text/plain — the route also exports POST and
     // parses the body as text for exactly this.
     const flushBeacon = () => {
+      if (submitStartedRef.current || !dirtyRef.current) return;
       flushTimeSpent();
       const blob = new Blob([JSON.stringify(buildAnswersPayload())], { type: 'text/plain;charset=UTF-8' });
-      navigator.sendBeacon(`/api/attempts/${attemptId}/answers`, blob);
+      const queued = navigator.sendBeacon(`/api/attempts/${attemptId}/answers`, blob);
+      if (queued) {
+        dirtyRef.current = false;
+        // The beacon carried everything; drop the pending debounced PATCH.
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+          debounceTimerRef.current = null;
+        }
+      }
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        // Both: syncWithServer's fetch is the normal path (retried, observable
-        // errors), flushBeacon is the guarantee if the page is frozen before
-        // that fetch resolves — belt and suspenders, not a race.
-        flushTimeSpent();
-        syncWithServer();
+        // One beacon, and only if there are unsaved changes. On mobile this is
+        // often the last event before the OS kills the tab, so it must be a
+        // beacon (survives teardown) rather than a fetch.
         flushBeacon();
-        // Log event
-        fetch(`/api/attempts/${attemptId}/events`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventType: 'tab_hidden' }),
-        }).catch(() => {});
       } else {
         activeSinceRef.current = performance.now();
-        fetch(`/api/attempts/${attemptId}/events`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventType: 'tab_visible' }),
-        }).catch(() => {});
       }
     };
 
@@ -490,7 +510,8 @@ export function TestRunnerClient({
 
     setCurrentIndex(targetIndex);
     activeSinceRef.current = performance.now();
-    scheduleSync();
+    // Navigation changes only visit/time data; it rides the next heartbeat.
+    dirtyRef.current = true;
   };
 
   // Action: Select MCQ Option
@@ -679,6 +700,10 @@ export function TestRunnerClient({
     async (mode: 'auto' | 'manual', options?: { autoSubmitted?: boolean; reason?: string }) => {
       if (submitStartedRef.current) return;
       submitStartedRef.current = true;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       setSubmitting(true);
       flushTimeSpent();
 

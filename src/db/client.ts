@@ -67,7 +67,8 @@ async function initialise(): Promise<{ client: ClientQueryable; db: Db }> {
 
     globalForDb.__vtpPgPool = pool;
 
-    await runMigrations(pool);
+    // Opt-in skip (set only if you always run `npm run migrate` before deploying).
+    if (process.env.SKIP_RUNTIME_MIGRATIONS !== 'true') await runMigrations(pool);
     const db = drizzleNodePg(pool, { schema }) as Db;
     db.$client = pool;
 

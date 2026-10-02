@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { apiStudent } from '@/lib/auth';
+import { apiStudentFast } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { getDb } from '@/db/client';
 import { attempts } from '@/db/schema';
@@ -30,7 +30,7 @@ const patchAnswersSchema = z.object({
 });
 
 const handler = withApi<Ctx>(async (req, { params }) => {
-  const session = await apiStudent();
+  const session = await apiStudentFast();
   const { id: attemptId } = await params;
   const db = await getDb();
 

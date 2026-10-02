@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm';
 import { requireStudent } from '@/lib/auth';
 import { getDb } from '@/db/client';
 import { attempts, profiles, tests } from '@/db/schema';
-import { TestRunnerClient } from '../attempts/[id]/TestRunnerClient';
+import { TestRunnerClient, type QuestionRuntimeState } from '../attempts/[id]/TestRunnerClient';
+import { loadAttemptQuestions } from '@/lib/attempt-questions';
 
 export async function StudentTestRunnerView({ attemptId }: { attemptId: string }) {
   const session = await requireStudent();
@@ -37,6 +38,7 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
       deadlineAt: attempts.deadlineAt,
       timeExtensionsCount: attempts.timeExtensionsCount,
       questionOrder: attempts.questionOrder,
+      optionOrders: attempts.optionOrders,
       totalMarks: attempts.totalMarks,
       testTitle: tests.title,
       durationS: tests.durationS,
@@ -57,6 +59,15 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
     redirect(`/student/attempts/${attemptId}/result`);
   }
 
+  // Pre-load questions so the client needn't fetch them on mount. On failure the
+  // client falls back to GET /api/attempts/[id]/questions.
+  let initialQuestions: QuestionRuntimeState[] | undefined;
+  try {
+    initialQuestions = (await loadAttemptQuestions(db, attempt.id, attempt)) as QuestionRuntimeState[];
+  } catch {
+    initialQuestions = undefined;
+  }
+
   const displayTitle =
     !isReportUnlocked && attempt.testTitle.toLowerCase().includes('set a')
       ? 'Board Readiness Challenge'
@@ -70,6 +81,7 @@ export async function StudentTestRunnerView({ attemptId }: { attemptId: string }
       studentName={session.fullName}
       serverTime={new Date().toISOString()}
       initialExtensionsCount={attempt.timeExtensionsCount ?? 0}
+      initialQuestions={initialQuestions}
     />
   );
 }

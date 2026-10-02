@@ -17,7 +17,7 @@ const teacherId = '99999999-9999-4999-8999-999999999999';
 let pg: PGlite;
 let db: Db;
 
-let currentSession = {
+const currentSession = {
   userId: student1Id,
   username: 'student1',
   fullName: 'Student One',

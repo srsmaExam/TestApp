@@ -1600,20 +1600,19 @@ export function evaluateDiagnosticReport(
   }
 
   // Dynamic Narrative Generation: Page 2 "WHAT THIS TELLS YOU"
-  const studentFirstName = student.studentName.split(' ')[0] || student.studentName;
   const directPerf = structures.find((s) => s.type === 'Direct')?.percentage ?? 0;
   const multiStepPerf = structures.find((s) => s.type === 'Multi-step')?.percentage ?? 0;
   const diagramPerf = structures.find((s) => s.type === 'Diagram-based')?.percentage ?? 0;
 
   let performancePatternInsight = '';
   if (directPerf > multiStepPerf + 20) {
-    performancePatternInsight = `${studentFirstName} does very well on direct questions (${directPerf}%), but finds long, multi-step problems challenging (${multiStepPerf}%). This shows you remember facts, definitions, and basic formulas well. However, when a question has 2 or 3 steps or long calculations, small mistakes happen. To score higher in Boards, practice breaking big questions into simple step-by-step parts and check your work at each step.`;
+    performancePatternInsight = `You do very well on direct questions (${directPerf}%), but find long, multi-step problems challenging (${multiStepPerf}%). This shows you remember facts, definitions, and basic formulas well. However, when a question has 2 or 3 steps or long calculations, small mistakes happen. To score higher in Boards, practice breaking big questions into simple step-by-step parts and check your work at each step.`;
   } else if (diagramPerf < directPerf - 20) {
-    performancePatternInsight = `${studentFirstName} is comfortable with direct word problems, but loses marks on questions with diagrams and figures (${diagramPerf}%). This means reading values and clues from drawings or graphs needs more practice. In Science and Maths, regularly drawing and labelling ray diagrams, electric circuits, and geometric figures will help you answer these questions quickly and accurately.`;
+    performancePatternInsight = `You are comfortable with direct word problems, but lose marks on questions with diagrams and figures (${diagramPerf}%). This means reading values and clues from drawings or graphs needs more practice. In Science and Maths, regularly drawing and labelling ray diagrams, electric circuits, and geometric figures will help you answer these questions quickly and accurately.`;
   } else if (multiStepPerf >= 65 && directPerf >= 65) {
-    performancePatternInsight = `${studentFirstName} shows strong balance across both direct questions (${directPerf}%) and multi-step problems (${multiStepPerf}%). You understand the concepts well and can apply them without just memorising. Moving forward, focus on managing your time better so you have enough time left in the exam to attempt tough questions calmly and recheck your answers.`;
+    performancePatternInsight = `You show strong balance across both direct questions (${directPerf}%) and multi-step problems (${multiStepPerf}%). You understand the concepts well and can apply them without just memorising. Moving forward, focus on managing your time better so you have enough time left in the exam to attempt tough questions calmly and recheck your answers.`;
   } else {
-    performancePatternInsight = `${studentFirstName} attempts straightforward questions with good confidence, but accuracy drops when questions become lengthy or combine multiple ideas. Practising more multi-step questions and diagram problems regularly will build your confidence and help you score more consistently across all chapters.`;
+    performancePatternInsight = `You attempt straightforward questions with good confidence, but accuracy drops when questions become lengthy or combine multiple ideas. Practising more multi-step questions and diagram problems regularly will build your confidence and help you score more consistently across all chapters.`;
   }
 
   // Page 4: Detailed Diagnostic Calculation Steps & Audit Trail (Dev/Audit Mode)

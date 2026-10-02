@@ -234,7 +234,10 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
     studentName: studentProfile?.fullName,
     gender: studentProfile?.gender ?? null,
     testId: test.id,
-    testTitle: test.title,
+    testTitle:
+      !hasUnlockedSolutions && test.title.toLowerCase().includes('set a')
+        ? 'Board Readiness Challenge'
+        : test.title,
     attemptNo: attempt.attemptNo,
     status: attempt.status,
     startedAt: attempt.startedAt,

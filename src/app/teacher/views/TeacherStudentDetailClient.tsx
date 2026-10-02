@@ -13,11 +13,12 @@ import {
   Clock,
   Eye,
   FileCheck,
-  Mail,
+  MessageSquare,
   Phone,
   RotateCw,
   Search,
   Sparkles,
+  Star,
   Trash2,
   User,
   Users,
@@ -72,7 +73,6 @@ type AttemptSummary = {
 type AllStudentOption = {
   id: string;
   fullName: string;
-  username: string;
   batch: string | null;
 };
 
@@ -89,11 +89,42 @@ export function TeacherStudentDetailClient({
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [attempts, setAttempts] = useState<AttemptSummary[]>([]);
   const [allStudents, setAllStudents] = useState<AllStudentOption[]>([]);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'responses'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'analytics' | 'responses' | 'feedback'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // Student feedback state
+  const [studentFeedbacks, setStudentFeedbacks] = useState<any[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [deleteFeedbackTarget, setDeleteFeedbackTarget] = useState<any | null>(null);
+  const [deleteFeedbackSubmitting, setDeleteFeedbackSubmitting] = useState(false);
+
+  async function handleDeleteFeedback() {
+    if (!deleteFeedbackTarget) return;
+    try {
+      setDeleteFeedbackSubmitting(true);
+      const res = await fetch(`/api/student/feedback?id=${encodeURIComponent(deleteFeedbackTarget.id)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to delete feedback.');
+      }
+      setStudentFeedbacks((prev) => prev.filter((fb) => fb.id !== deleteFeedbackTarget.id));
+      setDeleteFeedbackTarget(null);
+      toast.success('Student feedback was successfully deleted.', {
+        title: 'Feedback deleted',
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Could not delete feedback.', {
+        title: 'Delete failed',
+      });
+    } finally {
+      setDeleteFeedbackSubmitting(false);
+    }
+  }
 
   // Load student profile & attempts
   useEffect(() => {
@@ -121,6 +152,26 @@ export function TeacherStudentDetailClient({
     }
   }, [studentId]);
 
+  // Load student feedback
+  useEffect(() => {
+    async function fetchFeedback() {
+      if (!studentId) return;
+      try {
+        setFeedbackLoading(true);
+        const res = await fetch(`/api/student/feedback?studentId=${studentId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setStudentFeedbacks(data.feedback || []);
+        }
+      } catch {
+        // Soft fail
+      } finally {
+        setFeedbackLoading(false);
+      }
+    }
+    fetchFeedback();
+  }, [studentId]);
+
   // Load roster list for the Quick Student Switcher
   useEffect(() => {
     async function loadAllStudents() {
@@ -133,7 +184,6 @@ export function TeacherStudentDetailClient({
               json.students.map((s: any) => ({
                 id: s.id,
                 fullName: s.fullName,
-                username: s.username,
                 batch: s.batch,
               })),
             );
@@ -254,16 +304,9 @@ export function TeacherStudentDetailClient({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">
-                      @{student.username}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Mail className="size-3 text-slate-400" />
-                      {student.email}
-                    </span>
                     {student.phone ? (
-                      <span className="flex items-center gap-1 font-mono">
-                        <Phone className="size-3 text-slate-400" />
+                      <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+                        <Phone className="size-3.5 text-brand-600 dark:text-brand-400" />
                         {student.phone}
                       </span>
                     ) : null}
@@ -339,6 +382,19 @@ export function TeacherStudentDetailClient({
           >
             <FileCheck className="size-4" />
             Test Responses &amp; Solutions ({attempts.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('feedback')}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
+              activeTab === 'feedback'
+                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <MessageSquare className="size-4" />
+            Feedback ({studentFeedbacks.length})
           </button>
         </div>
       </div>
@@ -484,6 +540,92 @@ export function TeacherStudentDetailClient({
           )}
         </div>
       )}
+
+      {/* Tab 3: Student Feedback */}
+      {activeTab === 'feedback' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Student Ratings &amp; Diagnostic Feedback
+            </h2>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {studentFeedbacks.length} feedback submissions
+            </span>
+          </div>
+
+          {feedbackLoading ? (
+            <div className="flex justify-center py-16">
+              <Spinner className="size-8 text-brand-600 dark:text-brand-400" />
+            </div>
+          ) : studentFeedbacks.length === 0 ? (
+            <EmptyState
+              icon={<MessageSquare className="size-8 text-slate-400" />}
+              title="No feedback submitted"
+              hint="This student has not submitted any ratings or reviews yet."
+            />
+          ) : (
+            <div className="space-y-3">
+              {studentFeedbacks.map((fb) => (
+                <Card key={fb.id} className="border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Badge tone="brand">{fb.testTitle || 'Test Report'}</Badge>
+                      <Badge tone={fb.sourceTab === 'solutions' ? 'purple' : 'brand'}>
+                        {fb.sourceTab === 'solutions' ? 'Solutions' : 'Report'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-400">
+                        {new Date(fb.updatedAt || fb.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteFeedbackTarget(fb)}
+                        className="inline-flex size-7 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition"
+                        title="Delete this feedback"
+                        aria-label="Delete feedback"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                    <div className="flex items-center justify-between rounded-lg bg-slate-50 p-2 px-3 text-xs dark:bg-slate-800/50">
+                      <span className="font-semibold text-slate-600 dark:text-slate-300">Test Experience:</span>
+                      <div className="flex items-center gap-1 font-bold text-amber-500">
+                        <Star className="size-3.5 fill-amber-400" />
+                        <span>{fb.testRating ? `${fb.testRating} / 5` : 'Not rated'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg bg-slate-50 p-2 px-3 text-xs dark:bg-slate-800/50">
+                      <span className="font-semibold text-slate-600 dark:text-slate-300">Report Clarity:</span>
+                      <div className="flex items-center gap-1 font-bold text-amber-500">
+                        <Star className="size-3.5 fill-amber-400" />
+                        <span>{fb.reportRating ? `${fb.reportRating} / 5` : 'Not rated'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {fb.feedbackText && (
+                    <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-200">
+                      <span className="font-bold text-slate-500 uppercase tracking-wider block mb-1">Feedback Comments:</span>
+                      <p className="whitespace-pre-wrap">{fb.feedbackText}</p>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
 
     {/* Delete Student Confirm Dialog */}
@@ -492,8 +634,19 @@ export function TeacherStudentDetailClient({
       onClose={() => !deleteSubmitting && setDeleteConfirmOpen(false)}
       onConfirm={handleDeleteStudent}
       title={`Delete ${student?.fullName}?`}
-      description={`This will permanently delete ${student?.fullName} (${student?.username}) and all their test attempts, exam history, and scores. This action cannot be undone.`}
+      description={`This will permanently delete ${student?.fullName}${student?.phone ? ` (${student?.phone})` : ''} and all their test attempts, exam history, and scores. This action cannot be undone.`}
       confirmText={deleteSubmitting ? 'Deleting…' : 'Delete Permanently'}
+      tone="danger"
+    />
+
+    {/* Delete Feedback Confirm Dialog */}
+    <ConfirmDialog
+      isOpen={Boolean(deleteFeedbackTarget)}
+      onClose={() => !deleteFeedbackSubmitting && setDeleteFeedbackTarget(null)}
+      onConfirm={handleDeleteFeedback}
+      title="Delete Student Feedback?"
+      description={`Are you sure you want to delete this feedback from ${student?.fullName || 'student'}? This action cannot be undone.`}
+      confirmText={deleteFeedbackSubmitting ? 'Deleting…' : 'Delete Feedback'}
       tone="danger"
     />
     </>

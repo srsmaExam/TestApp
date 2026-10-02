@@ -66,6 +66,7 @@ async function main() {
     canLogin: true,
     batch: 'JEE-2027-A',
     phone: '+919876543210',
+    phoneVerified: true,
   });
 
   for (let i = 0; i < DEMO_STUDENT_NAMES.length; i++) {
@@ -353,6 +354,7 @@ async function upsertProfile(
     canLogin: boolean;
     batch?: string;
     phone?: string;
+    phoneVerified?: boolean;
   },
 ) {
   const [existing] = await db.select().from(profiles).where(eq(profiles.username, values.username));

@@ -109,11 +109,8 @@ export function StudentsView() {
   // Form states
   const [createForm, setCreateForm] = useState({
     fullName: '',
-    username: '',
-    email: '',
     phone: '',
     batch: '',
-    password: '',
   });
   const [createSubmitting, setCreateSubmitting] = useState(false);
 
@@ -126,10 +123,8 @@ export function StudentsView() {
 
   const [editForm, setEditForm] = useState({
     fullName: '',
-    email: '',
     phone: '',
     batch: '',
-    newPassword: '',
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
 
@@ -215,7 +210,7 @@ export function StudentsView() {
 
       toast.success(`Created account for ${json.student.fullName}`);
       setCreateModalOpen(false);
-      setCreateForm({ fullName: '', username: '', email: '', phone: '', batch: '', password: '' });
+      setCreateForm({ fullName: '', phone: '', batch: '' });
       loadStudents();
       loadBatches();
     } catch (err: any) {
@@ -284,15 +279,13 @@ export function StudentsView() {
     }
   }
 
-  // Edit / Reset Password
+  // Edit Student
   function openEditModal(student: Student) {
     setSelectedStudent(student);
     setEditForm({
       fullName: student.fullName,
-      email: student.email,
       phone: student.phone ?? '',
       batch: student.batch ?? '',
-      newPassword: '',
     });
     setEditModalOpen(true);
   }
@@ -304,13 +297,9 @@ export function StudentsView() {
     try {
       const payload: any = {
         fullName: editForm.fullName,
-        email: editForm.email,
         phone: editForm.phone.trim() || null,
         batch: editForm.batch.trim() || null,
       };
-      if (editForm.newPassword) {
-        payload.newPassword = editForm.newPassword;
-      }
 
       const res = await fetch(`/api/students/${selectedStudent.id}`, {
         method: 'PATCH',
@@ -528,7 +517,7 @@ export function StudentsView() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search by name, username or email…"
+              placeholder="Search by name or phone…"
               className="pl-9"
               aria-label="Search students"
             />
@@ -653,14 +642,11 @@ export function StudentsView() {
                       >
                         {s.fullName}
                       </Link>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
-                        {s.phone ? (
-                          <span className="font-mono font-medium text-brand-700 dark:text-brand-300">
-                            {s.phone} ·{' '}
-                          </span>
-                        ) : null}
-                        {s.username} · {s.email}
-                      </p>
+                      {s.phone ? (
+                        <p className="text-xs font-mono font-medium text-brand-700 dark:text-brand-300">
+                          {s.phone}
+                        </p>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Badge tone={s.batch && s.batch !== 'General' ? 'brand' : 'slate'}>
@@ -789,28 +775,10 @@ export function StudentsView() {
             />
           </div>
           <div>
-            <Label>Username *</Label>
-            <Input
-              required
-              value={createForm.username}
-              onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-              placeholder="e.g. ramesh.sharma"
-            />
-          </div>
-          <div>
-            <Label>Email Address *</Label>
-            <Input
-              type="email"
-              required
-              value={createForm.email}
-              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-              placeholder="e.g. ramesh@example.com"
-            />
-          </div>
-          <div>
-            <Label>WhatsApp Number (for student login)</Label>
+            <Label>WhatsApp Number * (used for student login)</Label>
             <Input
               type="tel"
+              required
               value={createForm.phone}
               onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
               placeholder="e.g. +91 98765 43210"
@@ -829,15 +797,6 @@ export function StudentsView() {
                 <option key={b.name} value={b.name} />
               ))}
             </datalist>
-          </div>
-          <div>
-            <Label>Password (Default: 112345)</Label>
-            <Input
-              type="password"
-              value={createForm.password}
-              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-              placeholder="112345"
-            />
           </div>
         </form>
       </Dialog>
@@ -867,7 +826,7 @@ export function StudentsView() {
       >
         <form id="import-csv-form" onSubmit={handleImportCsv} className="space-y-4">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Paste CSV text with columns: <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-800 dark:bg-slate-800 dark:text-slate-200">Full Name, Username, Email, Phone, Batch, Password</code>. Phone is used for student WhatsApp login. Password defaults to <code className="font-mono">112345</code> if omitted.
+            Paste CSV text with columns: <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-800 dark:bg-slate-800 dark:text-slate-200">Full Name, Phone, Batch</code>. The phone number is used for student WhatsApp login.
           </p>
 
           <Textarea
@@ -875,7 +834,7 @@ export function StudentsView() {
             required
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
-            placeholder={`Full Name, Username, Email, Phone, Batch, Password\nAditi Verma, aditiv, aditi@example.com, +91 9876543210, JEE-2027-A, 112345\nKaran Patel, karanp, karan@example.com, +91 9876543211, JEE-2027-B,`}
+            placeholder={`Full Name, Phone, Batch\nAditi Verma, +91 9876543210, JEE-2027-A\nKaran Patel, +91 9876543211, JEE-2027-B`}
             className="font-mono text-xs"
           />
 
@@ -940,7 +899,7 @@ export function StudentsView() {
       <Dialog
         isOpen={editModalOpen}
         onClose={() => !editSubmitting && setEditModalOpen(false)}
-        title={`Edit Student: ${selectedStudent?.username}`}
+        title={`Edit Student: ${selectedStudent?.fullName}`}
         footer={
           <div className="flex items-center justify-end gap-2">
             <Button
@@ -960,7 +919,7 @@ export function StudentsView() {
       >
         <form id="edit-student-form" onSubmit={handleEditStudent} className="space-y-3.5">
           <div>
-            <Label>Full Name</Label>
+            <Label>Full Name *</Label>
             <Input
               required
               value={editForm.fullName}
@@ -968,18 +927,10 @@ export function StudentsView() {
             />
           </div>
           <div>
-            <Label>Email</Label>
-            <Input
-              type="email"
-              required
-              value={editForm.email}
-              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>WhatsApp Number (for student login)</Label>
+            <Label>WhatsApp Number * (used for student login)</Label>
             <Input
               type="tel"
+              required
               value={editForm.phone}
               onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
               placeholder="e.g. +91 98765 43210"
@@ -999,15 +950,6 @@ export function StudentsView() {
               ))}
             </datalist>
           </div>
-          <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
-            <Label>Reset Password (leave blank to keep current)</Label>
-            <Input
-              type="password"
-              value={editForm.newPassword}
-              onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
-              placeholder="Enter new password (min 4 characters)"
-            />
-          </div>
         </form>
       </Dialog>
 
@@ -1019,8 +961,8 @@ export function StudentsView() {
         title={activeToggleTarget?.isActive ? 'Deactivate Student Account' : 'Activate Student Account'}
         description={
           activeToggleTarget?.isActive
-            ? `Are you sure you want to deactivate ${activeToggleTarget?.fullName} (${activeToggleTarget?.username})? They will be barred from signing in until reactivated.`
-            : `Re-activate ${activeToggleTarget?.fullName} (${activeToggleTarget?.username}) so they can log in and take tests?`
+            ? `Are you sure you want to deactivate ${activeToggleTarget?.fullName}${activeToggleTarget?.phone ? ` (${activeToggleTarget.phone})` : ''}? They will be barred from signing in until reactivated.`
+            : `Re-activate ${activeToggleTarget?.fullName}${activeToggleTarget?.phone ? ` (${activeToggleTarget.phone})` : ''} so they can log in and take tests?`
         }
         confirmText={activeToggleTarget?.isActive ? 'Deactivate Account' : 'Activate Account'}
         tone={activeToggleTarget?.isActive ? 'danger' : 'brand'}
@@ -1075,7 +1017,7 @@ export function StudentsView() {
         onClose={() => !deleteSubmitting && setDeleteTarget(null)}
         onConfirm={handleDeleteStudent}
         title={`Delete ${deleteTarget?.fullName}?`}
-        description={`This will permanently delete ${deleteTarget?.fullName} (${deleteTarget?.username}) and all their test attempts and exam history. This action cannot be undone.`}
+        description={`This will permanently delete ${deleteTarget?.fullName}${deleteTarget?.phone ? ` (${deleteTarget.phone})` : ''} and all their test attempts and exam history. This action cannot be undone.`}
         confirmText={deleteSubmitting ? 'Deleting…' : 'Delete Permanently'}
         tone="danger"
       />

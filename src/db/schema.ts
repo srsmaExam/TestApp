@@ -75,6 +75,7 @@ export const profiles = pgTable('profiles', {
   school: text('school'),
   whatsappContactClicked: boolean('whatsapp_contact_clicked').notNull().default(false),
   whatsappEnrollClicked: boolean('whatsapp_enroll_clicked').notNull().default(false),
+  phoneVerified: boolean('phone_verified').notNull().default(false),
 });
 
 export const papers = pgTable('papers', {
@@ -350,6 +351,25 @@ export const studentFeedback = pgTable(
   ],
 );
 
+export const phoneOtps = pgTable(
+  'phone_otps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    phone: text('phone').notNull(),
+    otpHash: text('otp_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    attempts: smallint('attempts').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('phone_otps_phone_idx').on(t.phone)],
+);
+
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type Profile = typeof profiles.$inferSelect;
 export type Paper = typeof papers.$inferSelect;
 export type Question = typeof questions.$inferSelect;
@@ -357,3 +377,7 @@ export type QuestionImage = typeof questionImages.$inferSelect;
 export type StoredFile = typeof storedFiles.$inferSelect;
 export type StudentLeadAction = typeof studentLeadActions.$inferSelect;
 export type StudentFeedback = typeof studentFeedback.$inferSelect;
+export type PhoneOtp = typeof phoneOtps.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;
+
+

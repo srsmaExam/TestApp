@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import { sql } from 'drizzle-orm';
+import { getDb } from '@/db/client';
+import { profiles } from '@/db/schema';
 import { homeFor, login, loginWithPhone, normalizePhone } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 import { clientKey, rateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { isOtpAuthEnabled } from '@/lib/settings';
 
 const PhoneLoginSchema = z.object({
   phone: z.string().min(1, 'WhatsApp number is required'),
@@ -33,7 +37,7 @@ export const POST = withApi(async (req) => {
     }
 
     const { phone, countryCode, fullName, classLevel } = parsed.data;
-    const { cleanDigits } = normalizePhone(countryCode, phone);
+    const { fullPhone, cleanDigits } = normalizePhone(countryCode, phone);
 
     const byPhone = rateLimit(`login:p:${cleanDigits}`, PER_TARGET_LIMIT, PER_TARGET_WINDOW_MS);
     const byClient = rateLimit(`login:c:${ip}`, PER_CLIENT_LIMIT, PER_CLIENT_WINDOW_MS);
@@ -46,6 +50,29 @@ export const POST = withApi(async (req) => {
         `Too many sign-in attempts. Try again in ${Math.ceil(retryAfterS / 60)} minute(s).`,
         { retryAfterS },
       );
+    }
+
+    const otpEnabled = await isOtpAuthEnabled();
+    if (otpEnabled) {
+      const db = await getDb();
+      const [matched] = await db
+        .select({
+          id: profiles.id,
+          phoneVerified: profiles.phoneVerified,
+        })
+        .from(profiles)
+        .where(
+          sql`${profiles.phone} = ${fullPhone} OR ${profiles.phone} = ${cleanDigits} OR ${profiles.phone} = ${'+' + cleanDigits} OR (${cleanDigits} = '9876543210' AND lower(${profiles.username}) = 'student')`,
+        )
+        .limit(1);
+
+      if (!matched || !matched.phoneVerified) {
+        throw new HttpError(
+          401,
+          'otp_required',
+          'Verification required. Please complete WhatsApp OTP verification.',
+        );
+      }
     }
 
     const session = await loginWithPhone(countryCode, phone, { fullName, classLevel });

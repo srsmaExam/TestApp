@@ -4,6 +4,7 @@ import { getDb } from '@/db/client';
 import { profiles } from '@/db/schema';
 import { normalizePhone } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
+import { isOtpAuthEnabled } from '@/lib/settings';
 
 const CheckPhoneSchema = z.object({
   phone: z.string().min(1, 'WhatsApp number is required'),
@@ -19,6 +20,7 @@ export const POST = withApi(async (req) => {
 
   const { phone, countryCode } = parsed.data;
   const { fullPhone, cleanDigits } = normalizePhone(countryCode, phone);
+  const otpAuthEnabled = await isOtpAuthEnabled();
 
   const db = await getDb();
   const matches = await db
@@ -29,6 +31,7 @@ export const POST = withApi(async (req) => {
       role: profiles.role,
       isActive: profiles.isActive,
       canLogin: profiles.canLogin,
+      phoneVerified: profiles.phoneVerified,
     })
     .from(profiles)
     .where(
@@ -61,6 +64,8 @@ export const POST = withApi(async (req) => {
       ok: true,
       exists: true,
       requiresDetails,
+      otpAuthEnabled,
+      phoneVerified: Boolean(user.phoneVerified),
       fullName: isDefaultName ? '' : user.fullName,
       classLevel: user.classLevel ?? '10',
     });
@@ -70,6 +75,8 @@ export const POST = withApi(async (req) => {
   return json({
     ok: true,
     exists: false,
+    otpAuthEnabled,
+    phoneVerified: false,
     requiresDetails: true,
     classLevel: '10',
   });

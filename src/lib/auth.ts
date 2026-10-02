@@ -78,7 +78,7 @@ export function normalizePhone(
 export async function loginWithPhone(
   countryCode: string,
   rawPhone: string,
-  extraDetails?: { fullName?: string; classLevel?: string },
+  extraDetails?: { fullName?: string; classLevel?: string; phoneVerified?: boolean },
 ): Promise<Session> {
   const { fullPhone, cleanDigits } = normalizePhone(countryCode, rawPhone);
 
@@ -117,6 +117,9 @@ export async function loginWithPhone(
     const updates: Partial<typeof profiles.$inferInsert> = {};
     if (!user.phone) {
       updates.phone = fullPhone;
+    }
+    if (extraDetails?.phoneVerified !== undefined) {
+      updates.phoneVerified = extraDetails.phoneVerified;
     }
     if (extraDetails?.fullName?.trim()) {
       updates.fullName = extraDetails.fullName.trim();
@@ -164,6 +167,7 @@ export async function loginWithPhone(
           isActive: true,
           canLogin: true,
           isProvisional: true,
+          phoneVerified: extraDetails?.phoneVerified ?? false,
         })
         .returning();
 

@@ -96,16 +96,25 @@ Bad Phone, badphone, badphone@example.com, 12345`;
       expect(res.errors[0].field).toBe('phone');
     });
 
-    it('accepts two genuinely different phone numbers', () => {
-      const csv = `Full Name, Username, Email, Phone
-Student A, studenta, a@example.com, 9876543210
-Student B, studentb, b@example.com, 9876543211`;
+    it('accepts CSV with only Full Name, Phone, and Batch (auto-generating internal username/email)', () => {
+      const csv = `Full Name, Phone, Batch
+Kavya Nair, 9876543220, Target 2026
+Rohan Das, +91 9876543221, Class 10`;
 
       const res = parseStudentCsv(csv);
       expect(res.errors).toHaveLength(0);
       expect(res.validRows).toHaveLength(2);
-      expect(res.validRows[0].phone).toBe('+919876543210');
-      expect(res.validRows[1].phone).toBe('+919876543211');
+      expect(res.validRows[0].fullName).toBe('Kavya Nair');
+      expect(res.validRows[0].phone).toBe('+919876543220');
+      expect(res.validRows[0].batch).toBe('Target 2026');
+      expect(res.validRows[0].username).toBeDefined();
+      expect(res.validRows[0].email).toBeDefined();
+      expect(res.validRows[0].password).toBe('112345');
+
+      expect(res.validRows[1].fullName).toBe('Rohan Das');
+      expect(res.validRows[1].phone).toBe('+919876543221');
+      expect(res.validRows[1].batch).toBe('Class 10');
     });
   });
 });
+

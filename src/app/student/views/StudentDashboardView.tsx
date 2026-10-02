@@ -1,9 +1,10 @@
+import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles, BookOpen, ArrowRight, Info } from 'lucide-react';
 import { getDb } from '@/db/client';
-import { attempts, testQuestions, tests } from '@/db/schema';
+import { attempts, profiles, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
 import { Badge, buttonClass, Card, CardBody, EmptyState } from '@/components/ui';
 import { StudentChrome } from '../StudentChrome';
@@ -15,6 +16,24 @@ export async function StudentDashboardView() {
 
   const db = await getDb();
   const now = new Date();
+
+  // Check if report has been unlocked by this student (or if role is teacher)
+  let isReportUnlocked = false;
+  try {
+    const [profile] = await db
+      .select({
+        whatsappConsent: profiles.whatsappConsent,
+        city: profiles.city,
+      })
+      .from(profiles)
+      .where(eq(profiles.id, session.userId));
+
+    isReportUnlocked = Boolean(
+      (session.role as string) === 'teacher' || (profile && profile.whatsappConsent && profile.city),
+    );
+  } catch {
+    isReportUnlocked = false;
+  }
 
   // 1. Fetch published tests with question count
   //
@@ -75,6 +94,25 @@ export async function StudentDashboardView() {
     };
   });
 
+  // Filter & format for pre-unlock vs unlocked state:
+  // Before student writes test and unlocks the report:
+  // - Display only 1 test, which is "Board Readiness Challenge Set A" renamed to "Board Readiness Challenge"
+  // - Initially do not display the 2 diagnostic tests callout
+  // Once student unlocks the report:
+  // - Display the full screen as it is (all tests, original names, and the 2 diagnostic tests callout)
+  const setATest = availableList.find((t) => t.title.toLowerCase().includes('set a')) ?? availableList[0];
+
+  const displayList = isReportUnlocked
+    ? availableList
+    : setATest
+      ? [
+        {
+          ...setATest,
+          title: 'Board Readiness Challenge',
+        },
+      ]
+      : [];
+
   // 4. Completed attempts for history review
   const completedList = studentAttempts
     .filter((a) => a.status === 'submitted' || a.status === 'auto_submitted')
@@ -83,7 +121,9 @@ export async function StudentDashboardView() {
       const resultsAvailable = test?.resultsPolicy === 'immediate' || Boolean(test?.releasedAt);
       return {
         ...a,
-        testTitle: test?.title ?? 'Board Readiness Challenge Test',
+        testTitle: !isReportUnlocked
+          ? 'Board Readiness Challenge'
+          : (test?.title ?? 'Board Readiness Challenge Test'),
         resultsAvailable,
       };
     });
@@ -91,189 +131,193 @@ export async function StudentDashboardView() {
   return (
     <StudentChrome session={session}>
       <div className="space-y-8 min-w-0 max-w-full">
-      {/* Welcome Banner */}
-      <div className="rounded-xl bg-gradient-to-r from-brand-900 to-brand-700 p-6 text-white shadow-sm dark:from-brand-950 dark:to-brand-800">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
-          <div className="min-w-0">
-            <span className="inline-flex items-center rounded-full bg-brand-800/80 px-2.5 py-0.5 text-xs font-semibold text-accent-400 dark:bg-brand-900/90">
-              <Sparkles className="mr-1 size-3" />
-              Board Readiness Challenge Preparation
-            </span>
-            <h1 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-white truncate sm:text-wrap">
-              Welcome back, {session.fullName}!
-            </h1>
-            <p className="mt-0.5 text-xs text-brand-100 dark:text-brand-200">
-              Timed CBT tests, instant evaluation, and in-depth performance reports.
-            </p>
-          </div>
-
-          <Link href="/student/analytics" className={buttonClass('accent', 'md')}>
-            <Award className="mr-1.5 size-4" />
-            View My Report
-          </Link>
-        </div>
-      </div>
-
-      {/* Available Tests */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Available Tests</h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400">{availableList.length} total</span>
-        </div>
-
-        {/* Diagnostic Test Info Callout */}
-        {availableList.length > 0 && (
-          <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-indigo-50/60 to-blue-50/60 p-4 text-xs sm:text-sm text-slate-700 dark:border-brand-900/60 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/30 dark:to-slate-900 dark:text-slate-300 shadow-2xs">
-            <div className="flex items-start gap-3">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-2xs mt-0.5">
-                <Info className="size-4" />
-              </div>
-              <p className="leading-relaxed">
-                Below are 2 diagnostic tests and each test has only one attempt. You may try one now and try another after some days, which has a different set of questions to check your progress.
+        {/* Welcome Banner */}
+        <div className="rounded-xl bg-gradient-to-r from-brand-900 to-brand-700 p-6 text-white shadow-sm dark:from-brand-950 dark:to-brand-800">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <div className="min-w-0">
+              <span className="inline-flex items-center rounded-full bg-brand-800/80 px-2.5 py-0.5 text-xs font-semibold text-accent-400 dark:bg-brand-900/90">
+                <Sparkles className="mr-1 size-3" />
+                Board Readiness Challenge Preparation
+              </span>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white truncate sm:text-wrap">
+                Welcome, {session.fullName}!
+              </h1>
+              <p className="mt-1 text-sm sm:text-base text-brand-100 dark:text-brand-200 font-medium">
+                Timed Online tests, instant evaluation, and in-depth performance reports.
               </p>
             </div>
-          </div>
-        )}
 
-        {availableList.length === 0 ? (
-          <EmptyState
-            title="No tests published yet"
-            hint="Check back soon! Your teacher will publish practice and mock tests here."
-          />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {availableList.map((t) => (
-              <Card key={t.id} className="transition-all hover:border-brand-300 hover:shadow-sm dark:hover:border-brand-700">
-                <CardBody className="flex h-full flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-slate-900 dark:text-slate-100">{t.title}</h3>
+            <Link href="/student/analytics" className={buttonClass('accent', 'md')}>
+              <Award className="mr-1.5 size-4" />
+              View My Report
+            </Link>
+          </div>
+        </div>
+
+        {/* Available Tests */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Available Tests</h2>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{displayList.length} total</span>
+          </div>
+
+          {/* Diagnostic Test Info Callout: Only visible once the student unlocks the report */}
+          {isReportUnlocked && displayList.length > 0 && (
+            <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-r from-brand-50/90 via-indigo-50/60 to-blue-50/60 p-4 text-xs sm:text-sm text-slate-700 dark:border-brand-900/60 dark:bg-gradient-to-r dark:from-slate-900 dark:via-brand-950/30 dark:to-slate-900 dark:text-slate-300 shadow-2xs">
+              <div className="flex items-start gap-3">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white shadow-2xs mt-0.5">
+                  <Info className="size-4" />
+                </div>
+                <p className="leading-relaxed">
+                  Below are 2 diagnostic tests and each test has only one attempt.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {displayList.length === 0 ? (
+            <EmptyState
+              title="No tests published yet"
+              hint="Check back soon! Your teacher will publish practice and mock tests here."
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {displayList.map((t) => (
+                <Card key={t.id} className="transition-all hover:border-brand-300 hover:shadow-sm dark:hover:border-brand-700">
+                  <CardBody className="flex h-full flex-col justify-between space-y-4">
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 leading-snug">
+                          {t.title}
+                        </h3>
+                        {t.activeAttempt ? (
+                          <Badge tone="amber">In Progress</Badge>
+                        ) : t.isOpen ? (
+                          <Badge tone="green">Open</Badge>
+                        ) : (
+                          <Badge tone="slate">Closed</Badge>
+                        )}
+                      </div>
+
+                      {t.description && (
+                        <p className="line-clamp-2 text-sm sm:text-base font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {t.description}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-3.5 pt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="size-4 text-brand-600 dark:text-brand-400" />
+                          {Math.round(t.durationS / 60)} mins
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <HelpCircle className="size-4 text-brand-600 dark:text-brand-400" />
+                          {t.questionCount} Questions
+                        </span>
+                        <span>
+                          {t.maxAttempts === 0 ? (
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-400">Unlimited Attempts</span>
+                          ) : (
+                            <>Attempts Left: <strong>{t.attemptsRemaining}</strong> / {t.maxAttempts}</>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
                       {t.activeAttempt ? (
-                        <Badge tone="amber">In Progress</Badge>
-                      ) : t.isOpen ? (
-                        <Badge tone="green">Open</Badge>
+                        <Link
+                          href={`/student/attempts/${t.activeAttempt.id}`}
+                          className={buttonClass('accent', 'md', 'w-full text-sm sm:text-base font-bold')}
+                        >
+                          <Play className="mr-1.5 size-4" />
+                          Resume Test
+                        </Link>
+                      ) : t.canAttempt ? (
+                        <Link
+                          href={`/student/tests/${t.id}`}
+                          className={buttonClass('primary', 'md', 'w-full text-sm sm:text-base font-bold')}
+                        >
+                          <PlayCircle className="mr-1.5 size-4" />
+                          Take Test
+                        </Link>
                       ) : (
-                        <Badge tone="slate">Closed</Badge>
+                        <button
+                          disabled
+                          className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-md bg-slate-100 py-2.5 text-xs sm:text-sm font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+                        >
+                          {t.attemptsRemaining === 0 ? 'All Attempts Completed' : 'Window Closed'}
+                        </button>
                       )}
                     </div>
+                  </CardBody>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
-                    {t.description && (
-                      <p className="line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{t.description}</p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500 dark:text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="size-3.5" />
-                        {Math.round(t.durationS / 60)} mins
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <HelpCircle className="size-3.5" />
-                        {t.questionCount} Questions
-                      </span>
-                      <span>
-                        {t.maxAttempts === 0 ? (
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-400">Unlimited Attempts</span>
-                        ) : (
-                          <>Attempts Left: <strong>{t.attemptsRemaining}</strong> / {t.maxAttempts}</>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
-                    {t.activeAttempt ? (
-                      <Link
-                        href={`/student/attempts/${t.activeAttempt.id}`}
-                        className={buttonClass('accent', 'md', 'w-full')}
-                      >
-                        <Play className="mr-1.5 size-4" />
-                        Resume Test
-                      </Link>
-                    ) : t.canAttempt ? (
-                      <Link
-                        href={`/student/tests/${t.id}`}
-                        className={buttonClass('primary', 'md', 'w-full')}
-                      >
-                        <PlayCircle className="mr-1.5 size-4" />
-                        Take Test
-                      </Link>
-                    ) : (
-                      <button
-                        disabled
-                        className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-md bg-slate-100 py-2 text-xs font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500"
-                      >
-                        {t.attemptsRemaining === 0 ? 'All Attempts Completed' : 'Window Closed'}
-                      </button>
-                    )}
-                  </div>
-                </CardBody>
-              </Card>
-            ))}
+        {/* Completed Tests History */}
+        {completedList.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Completed Attempts</h2>
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Test Name</th>
+                      <th className="px-4 py-3 font-semibold">Score</th>
+                      <th className="px-4 py-3 font-semibold">Time Spent</th>
+                      <th className="px-4 py-3 font-semibold">Submitted On</th>
+                      <th className="px-4 py-3 text-right font-semibold">Review</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {completedList.map((a) => (
+                      <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{a.testTitle}</td>
+                        <td className="px-4 py-3 font-bold text-brand-700 dark:text-brand-400">
+                          {a.totalMarks ? Number(a.totalMarks) : 0} / {a.maxMarks ? Number(a.maxMarks) : 0}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                          {Math.round((a.totalTimeS ?? 0) / 60)} mins
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                          {a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {a.resultsAvailable ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <Link
+                                href={`/student/attempts/${a.id}/result?tab=solutions`}
+                                className={buttonClass('secondary', 'sm')}
+                                title="View Question-by-Question Solutions"
+                              >
+                                <Eye className="mr-1 size-3" />
+                                Solutions
+                              </Link>
+                              <Link
+                                href={`/student/attempts/${a.id}/result?tab=report`}
+                                className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-brand-500 transition"
+                                title="View 5-Page Board Readiness Diagnostic Report"
+                              >
+                                <Award className="size-3" />
+                                <span>5-Page Report</span>
+                              </Link>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic dark:text-slate-500">Results Pending</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
         )}
-      </div>
-
-      {/* Completed Tests History */}
-      {completedList.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Completed Attempts</h2>
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Test Name</th>
-                    <th className="px-4 py-3 font-semibold">Score</th>
-                    <th className="px-4 py-3 font-semibold">Time Spent</th>
-                    <th className="px-4 py-3 font-semibold">Submitted On</th>
-                    <th className="px-4 py-3 text-right font-semibold">Review</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {completedList.map((a) => (
-                    <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{a.testTitle}</td>
-                      <td className="px-4 py-3 font-bold text-brand-700 dark:text-brand-400">
-                        {a.totalMarks ? Number(a.totalMarks) : 0} / {a.maxMarks ? Number(a.maxMarks) : 0}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {Math.round((a.totalTimeS ?? 0) / 60)} mins
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {a.resultsAvailable ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <Link
-                              href={`/student/attempts/${a.id}/result?tab=solutions`}
-                              className={buttonClass('secondary', 'sm')}
-                              title="View Question-by-Question Solutions"
-                            >
-                              <Eye className="mr-1 size-3" />
-                              Solutions
-                            </Link>
-                            <Link
-                              href={`/student/attempts/${a.id}/result?tab=report`}
-                              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-brand-500 transition"
-                              title="View 5-Page Board Readiness Diagnostic Report"
-                            >
-                              <Award className="size-3" />
-                              <span>5-Page Report</span>
-                            </Link>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic dark:text-slate-500">Results Pending</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
 
         {/* Section: About Shri Ram Smart Minds Academy */}
         <div className="rounded-2xl border border-amber-300/60 bg-gradient-to-r from-amber-500/10 via-white to-blue-900/10 p-5 sm:p-7 dark:border-amber-400/30 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
@@ -292,7 +336,7 @@ export async function StudentDashboardView() {
                 About Shri Ram Smart Minds Academy (SRSMA)
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Top coaching with personal care, not heavy stress. Small batch sizes (25 to 30 students), air-conditioned smart classrooms, and daily attention to every child at our Hyderabad campus.
+                Founded by IIT alumni, SRSMA delivers stress-free, personalized coaching in focused batches of 25–30 students. Backed by smart AI Powered AC classrooms and safe residential care, our very first batch achieved a 99.48 percentile in JEE Main, JEE Advanced selections, and 98% in board exams.
               </p>
             </div>
             <Link

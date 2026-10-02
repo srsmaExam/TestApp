@@ -16,6 +16,13 @@ import {
   MessageCircle,
   BrainCircuit,
   Zap,
+  Target,
+  Map,
+  Timer,
+  TrendingUp,
+  Rocket,
+  AlertCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { BRAND } from '@/config/branding';
 
@@ -44,7 +51,7 @@ export const dynamic = 'force-static';
 export default function BoardChallengePage() {
   const destination = '/login';
   const ctaLabel = 'Take the Challenge Now';
-  const ctaSubtext = 'Instant Student Login • No Password Needed';
+  const ctaSubtext = 'Instant Whatsapp Login • Works on phone & laptop';
 
   return (
     <div className="dark relative min-h-screen w-full overflow-x-hidden bg-[#071120] text-slate-100 selection:bg-amber-400 selection:text-slate-950">
@@ -146,14 +153,14 @@ export default function BoardChallengePage() {
 
                 {/* 4. Subtitle */}
                 <p className="mt-1.5 max-w-xl text-balance text-xs font-semibold leading-relaxed text-slate-600 sm:mt-2.5 sm:text-base md:text-lg dark:text-slate-300">
-                  A Comprehensive Diagnostic Test For Class 10 Students in Mathematics &amp; Science
+                  Studying for hours with no score improvement? Find out where you are losing marks in just 20 minutes
                 </p>
 
                 {/* Desktop-Only Primary Call-to-Action Area */}
-                <div className="hidden w-full max-w-md flex-col items-start gap-3.5 pt-6 md:flex">
+                <div className="hidden w-full max-w-lg flex-col items-start gap-3.5 pt-6 md:flex">
                   <Link
                     href={destination}
-                    className="relative group flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-4 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-xl"
+                    className="relative group flex w-full max-w-md items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-4 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-xl"
                   >
                     <span className="relative z-10 flex items-center gap-2.5">
                       <Zap className="size-5 fill-slate-950 text-slate-950" />
@@ -168,21 +175,23 @@ export default function BoardChallengePage() {
                     <span>{ctaSubtext}</span>
                   </div>
 
-                  {/* Trust Badges */}
-                  <div className="mt-3 flex flex-wrap items-center gap-y-2 gap-x-4 border-t border-slate-200 pt-4 text-xs font-semibold text-slate-700 sm:text-sm dark:border-slate-800/80 dark:text-slate-300">
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="size-4 text-amber-600 dark:text-amber-400" />
-                      <span>By IIT Alumni</span>
+                  {/* Trust Badges Grid (Clean 2x2 Orientation) */}
+                  <div className="mt-3 grid w-full grid-cols-2 gap-x-6 gap-y-2.5 border-t border-slate-200/80 pt-4 text-xs font-semibold text-slate-700 sm:text-sm dark:border-slate-800/80 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <span>Designed by IIT Alumni</span>
                     </div>
-                    <span className="text-slate-400 dark:text-slate-600">•</span>
-                    <div className="flex items-center gap-1.5">
-                      <BarChart3 className="size-4 text-blue-600 dark:text-blue-400" />
-                      <span>Topic-Wise Precision</span>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>100% Free</span>
                     </div>
-                    <span className="text-slate-400 dark:text-slate-600">•</span>
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>100% Free Assessment</span>
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                      <span>Instant 5-Page Diagnostic Report</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Trophy className="size-4 shrink-0 text-amber-500 dark:text-amber-400" />
+                      <span>All-India Relative Ranking</span>
                     </div>
                   </div>
                 </div>
@@ -231,21 +240,23 @@ export default function BoardChallengePage() {
                     <span>{ctaSubtext}</span>
                   </div>
 
-                  {/* Mobile Trust Badges Row */}
-                  <div className="mt-0.5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-semibold text-slate-400">
-                    <div className="flex items-center gap-1">
-                      <ShieldCheck className="size-3.5 text-amber-400" />
+                  {/* Mobile Trust Badges Grid */}
+                  <div className="mt-2 grid w-full max-w-xs grid-cols-2 gap-x-3 gap-y-2 text-[11px] font-semibold text-slate-300">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="size-3.5 shrink-0 text-amber-400" />
                       <span>By IIT Alumni</span>
                     </div>
-                    <span>•</span>
-                    <div className="flex items-center gap-1">
-                      <BarChart3 className="size-3.5 text-blue-400" />
-                      <span>Topic-Wise Precision</span>
-                    </div>
-                    <span>•</span>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle2 className="size-3.5 text-emerald-400" />
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
                       <span>100% Free</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <BarChart3 className="size-3.5 shrink-0 text-blue-400" />
+                      <span>5-Page Report</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Trophy className="size-3.5 shrink-0 text-amber-400" />
+                      <span>All-India Rank</span>
                     </div>
                   </div>
                 </div>
@@ -253,199 +264,382 @@ export default function BoardChallengePage() {
             </div>
 
             {/* The 4 Core Challenge Badges matching pamphlet (Below Hero Grid) */}
-            <div className="mt-12 grid w-full grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
-                {/* Item 1: Diagnostic Test for Class 10 */}
-                <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    <GraduationCap className="size-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">Class 10 Diagnostic Test</h2>
-                    <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
-                      Formulated specifically for CBSE &amp; State Board students to evaluate true board readiness.
-                    </p>
-                  </div>
+            <div className="mt-8 sm:mt-10 grid w-full grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
+              {/* Item 1: Diagnostic Test for Class 10 */}
+              <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
+                  <GraduationCap className="size-6" />
                 </div>
-
-                {/* Item 2: 20 Questions | 20 Minutes */}
-                <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    <Clock className="size-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">20 Questions | 20 Minutes</h2>
-                    <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
-                      High-impact timed assessment measuring conceptual clarity, question-solving speed, and exam stamina.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Item 3: Mathematics & Science Subjects */}
-                <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    <Atom className="size-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">Mathematics &amp; Science</h2>
-                    <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
-                      Comprehensive coverage across key formulas, critical theorems, and core scientific concepts.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Item 4: Free Strengths & Improvement Report */}
-                <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    <Trophy className="size-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">FREE Diagnostic Report</h2>
-                    <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
-                      Receive an instant personalized report breaking down your strengths and key areas for score improvement!
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">Class 10 Diagnostic Test</h2>
+                  <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
+                    Formulated specifically for CBSE &amp; State Board students to evaluate true board readiness.
+                  </p>
                 </div>
               </div>
+
+              {/* Item 2: 20 Questions | 20 Minutes */}
+              <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
+                  <Clock className="size-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">20 Questions | 20 Minutes</h2>
+                  <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
+                    A timed assessment to evaluate your conceptual clarity and solving speed under real exam pressure—so you never run out of time.
+                  </p>
+                </div>
+              </div>
+
+              {/* Item 3: Mathematics & Science Subjects */}
+              <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
+                  <Atom className="size-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">Mathematics &amp; Science</h2>
+                  <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
+                    Multiple-choice questions covering key Class 10 topics in Mathematics and Science.
+                  </p>
+                </div>
+              </div>
+
+              {/* Item 4: Free Strengths & Improvement Report */}
+              <div className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition hover:border-amber-400 hover:shadow-lg dark:border-slate-800/90 dark:bg-slate-900/80 dark:hover:border-amber-400/50 dark:hover:bg-slate-800/90">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 ring-1 ring-amber-400/40 dark:text-amber-400">
+                  <Trophy className="size-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">FREE Diagnostic Report</h2>
+                  <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
+                    Receive an instant personalized report revealing your strengths, blind spots, and key areas to gain marks!
+                  </p>
+                </div>
+              </div>
+            </div>
           </section>
 
-          {/* Section: How It Works in 3 Easy Steps */}
-          <section className="border-t border-slate-200 bg-slate-100/70 py-14 transition-colors sm:py-18 dark:border-slate-800/80 dark:bg-slate-950/60">
-            <div className="mx-auto max-w-5xl px-4 sm:px-6">
-              <div className="text-center">
-                <p className="text-sm font-extrabold tracking-wider uppercase text-amber-600 sm:text-base dark:text-amber-400">
-                  Simple 3-Step Process
-                </p>
-                <h2 className="mt-2 text-3xl font-black text-slate-900 sm:text-4xl md:text-5xl dark:text-white">
-                  How The Board Challenge Works
+          {/* Section: Why This Challenge is a Must For You */}
+          <section className="relative border-t border-slate-800/80 bg-[#071120] py-10 sm:py-14">
+            {/* Ambient subtle glow */}
+            <div className="pointer-events-none absolute -left-20 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-amber-500/10 blur-[120px]" />
+            <div className="pointer-events-none absolute -right-20 top-1/4 h-72 w-72 rounded-full bg-blue-600/10 blur-[120px]" />
+
+            <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+              <div className="text-left">
+                <h2 className="mx-auto max-w-4xl text-center text-balance text-3xl font-black uppercase tracking-tight text-white sm:text-4xl md:text-5xl">
+                  Why This Challenge is a Must For&nbsp;You
                 </h2>
-                <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-lg dark:text-slate-300">
-                  Take the diagnostic test on your mobile or computer and receive your comprehensive performance report instantly.
-                </p>
-              </div>
 
-              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-                {/* Step 1 */}
-                <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-400/20 text-base font-black text-amber-700 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    01
-                  </div>
-                  <h3 className="mt-4 text-xl font-black text-slate-900 sm:text-2xl dark:text-white">Quick Student Login</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-300">
-                    Sign in using your 10-digit WhatsApp number. No complex passwords or email confirmations needed.
+                <div className="mt-5 space-y-4 text-base font-normal leading-relaxed text-slate-300 sm:text-lg">
+                  <p>
+                    Class 10 is your first big board exam. Most students work very hard and have the potential to score 90%+, but they walk into the exam hall without knowing how ready they really are.
                   </p>
-                </div>
-
-                {/* Step 2 */}
-                <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-400/20 text-base font-black text-amber-700 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    02
-                  </div>
-                  <h3 className="mt-4 text-xl font-black text-slate-900 sm:text-2xl dark:text-white">20 Mins • 20 Questions</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-300">
-                    Attempt curated questions in Mathematics &amp; Science covering crucial Class 10 concepts under timed conditions.
-                  </p>
-                </div>
-
-                {/* Step 3 */}
-                <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-400/20 text-base font-black text-amber-700 ring-1 ring-amber-400/40 dark:text-amber-400">
-                    03
-                  </div>
-                  <h3 className="mt-4 text-xl font-black text-slate-900 sm:text-2xl dark:text-white">Instant Diagnostic Report</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-300">
-                    Review your accuracy, identify topic weaknesses, and obtain actionable recommendations to maximize your board exam score.
+                  <p className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-4 text-slate-200 sm:p-5">
+                    Re-reading notes, watching video lectures, or scrolling through guidebook solutions feels productive, but it can hide your real weak areas. It gives you a{' '}
+                    <strong className="font-extrabold text-amber-400">false sense of preparation</strong> without showing you where you will actually lose marks when solving on your own.
                   </p>
                 </div>
               </div>
 
-              {/* Central CTA under steps: Yellow/Amber Color (not black) */}
-              <div className="mt-10 flex justify-center">
+              {/* 3 Questions Container */}
+              <div className="mt-10">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-400/20 text-amber-400 ring-1 ring-amber-400/40">
+                    <HelpCircle className="size-4" />
+                  </span>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white sm:text-xl">
+                    Ask yourself these 3 questions:
+                  </h3>
+                </div>
+
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {/* Question 1 */}
+                  <div className="group relative flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900 hover:shadow-amber-500/10 hover:-translate-y-0.5 sm:p-6">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 font-mono text-sm font-black text-amber-400 ring-1 ring-amber-400/30">
+                        01
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
+                          Can you solve direct, textbook questions easily, but get stuck on tricky, multi-step problems?
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Question 2 */}
+                  <div className="group relative flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg transition-all duration-300 hover:border-blue-400/50 hover:bg-slate-900 hover:shadow-blue-500/10 hover:-translate-y-0.5 sm:p-6">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 font-mono text-sm font-black text-blue-400 ring-1 ring-blue-400/30">
+                        02
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
+                          Do you understand the concepts well at home, yet run out of time during school exams?
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Question 3 */}
+                  <div className="group relative flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg transition-all duration-300 hover:border-orange-400/50 hover:bg-slate-900 hover:shadow-orange-500/10 hover:-translate-y-0.5 sm:p-6">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 font-mono text-sm font-black text-orange-400 ring-1 ring-orange-400/30">
+                        03
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
+                          Are you studying hard, but your marks stay stuck at the same level test after test?
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Solution Callout Card & CTA */}
+              <div className="mt-8 rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-500/10 via-slate-900/90 to-blue-900/15 p-6 shadow-xl sm:p-8">
+                <div className="flex flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left">
+                  <div className="max-w-2xl">
+                    <p className="text-base font-bold leading-snug text-slate-100 sm:text-xl">
+                      If you answered <span className="font-black text-amber-400">yes</span> to even one of these, you don’t need more hours—you need to know where you are losing marks.
+                    </p>
+                    <p className="mt-2 text-sm text-slate-300 sm:text-base">
+                      Take the Board Readiness challenge to pinpoint your score leaks and get your instant 5-page report.
+                    </p>
+                  </div>
+
+                  <div className="shrink-0">
+                    <Link
+                      href={destination}
+                      className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-3.5 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:px-7 sm:py-4 sm:text-lg"
+                    >
+                      <span className="relative z-10 flex items-center gap-2">
+                        <Zap className="size-4.5 fill-slate-950 text-slate-950" />
+                        <span>Take the Free 20-Min Challenge</span>
+                        <ArrowRight className="size-4.5 transition group-hover:translate-x-1" />
+                      </span>
+                      <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Section: What Your 5-Page Personalized Diagnostic Report Delivers */}
+          <section className="relative border-t border-slate-800/80 bg-slate-950/70 py-10 sm:py-14">
+            {/* Background Ambient Aura */}
+            <div className="pointer-events-none absolute right-1/4 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[130px]" />
+
+            <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+              <div className="text-center">
+                <h2 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl md:text-5xl">
+                  What Your 5-Page Personalized Diagnostic Report Delivers
+                </h2>
+              </div>
+
+              {/* 5 Deliverables Grid in 2-2-1 Format */}
+              <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 lg:gap-6">
+                {/* Row 1 - Card 1: Question-Type Breakdown */}
+                <div className="group rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-md transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900/95 hover:shadow-lg sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/15 text-2xl text-rose-400 ring-1 ring-rose-500/30">
+                      🎯
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        Question-Type Breakdown
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Pinpoint exactly where you are losing marks: conceptual fundamentals, multi-step application problems, or diagram &amp; formula interpretation.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 1 - Card 2: Chapter & Topic Priority Map */}
+                <div className="group rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-md transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900/95 hover:shadow-lg sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-500/15 text-2xl text-sky-400 ring-1 ring-sky-500/30">
+                      🗺️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        Chapter &amp; Topic Priority Map
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Stop revising what you already know. Get a clear priority list of chapters that actually need fixing to boost your score (like Trigonometry, Electricity, Light, and Quadratic Equations).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2 - Card 3: Time-Management Analysis */}
+                <div className="group rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-md transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900/95 hover:shadow-lg sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-2xl text-amber-400 ring-1 ring-amber-400/30">
+                      ⏱️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        Time-Management Analysis
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Identify whether you are spending too long on basic questions or rushing through complex ones. Master your pacing so you never leave questions unattempted.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2 - Card 4: All-India Benchmarking & Relative Rank* */}
+                <div className="group rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-md transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900/95 hover:shadow-lg sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-purple-500/15 text-2xl text-purple-400 ring-1 ring-purple-500/30">
+                      📈
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        All-India Benchmarking &amp; Relative Rank*
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Benchmark yourself against thousands of Class 10 students across India and receive your projected relative rank.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 3 - Card 5: 5-Step Action Plan for the Next 3 Months (Highlighted & Full Width across 2 columns) */}
+                <div className="group relative rounded-2xl border-2 border-amber-400/80 bg-gradient-to-r from-amber-500/15 via-slate-900/95 to-orange-500/15 p-5 shadow-xl shadow-amber-500/10 transition-all duration-300 hover:border-amber-300 hover:shadow-amber-500/20 md:col-span-2 sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-2xl text-amber-300 ring-1 ring-amber-400/50 shadow-inner">
+                      🚀
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div>
+                        <h3 className="text-lg font-black text-amber-300 sm:text-xl">
+                          5-Step Action Plan for the Next 3 Months
+                        </h3>
+                      </div>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-200 sm:text-base">
+                        A personalized 5-step action plan to guide your revision, fix recurring mistakes and boost your board score over the next 3 months.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footnote */}
+              <p className="mt-6 text-center text-xs font-semibold italic text-slate-400 sm:text-sm">
+                *Rank will be released in January
+              </p>
+
+              {/* CTA Button */}
+              <div className="mt-8 flex justify-center">
                 <Link
                   href={destination}
-                  className="inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-7 py-4 text-base font-black text-slate-950 shadow-xl shadow-amber-500/25 transition-all duration-200 hover:brightness-110 hover:shadow-2xl hover:shadow-amber-500/40 active:scale-95 sm:text-lg"
+                  className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-7 py-4 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-lg"
                 >
-                  <LogIn className="size-5 text-slate-950" />
-                  <span>Start Challenge Now</span>
-                  <ArrowRight className="size-4.5 text-slate-950" />
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Zap className="size-5 fill-slate-950 text-slate-950" />
+                    <span>Take the Free 20-Min Challenge</span>
+                    <ArrowRight className="size-4.5 transition group-hover:translate-x-1" />
+                  </span>
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                 </Link>
               </div>
             </div>
           </section>
 
-          {/* Section: Diagnostic Test Coverage Details */}
-          <section className="py-14 sm:py-18">
+          {/* Section: Simplified 3-Step Process */}
+          <section className="relative border-t border-slate-800/80 bg-[#071120] py-10 sm:py-14">
             <div className="mx-auto max-w-5xl px-4 sm:px-6">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Mathematics Card */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-lg dark:border-slate-800 dark:bg-gradient-to-br dark:from-slate-900/95 dark:to-[#0c1a2f] dark:shadow-xl">
-                  <div className="flex items-center gap-3.5">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-600 dark:text-amber-400">
-                      <BrainCircuit className="size-7" />
+              <div className="text-center">
+                <h2 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl md:text-5xl">
+                  Simplified 3-Step Process
+                </h2>
+                <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-slate-300 sm:text-base">
+                  Go from uncertainty to pinpoint clarity on your board preparation in three simple steps.
+                </p>
+              </div>
+
+              {/* Steps Grid */}
+              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+                {/* Step 1 */}
+                <div className="relative rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900 sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 font-mono text-base font-black text-amber-400 ring-1 ring-amber-400/40">
+                      01
                     </div>
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900 sm:text-2xl dark:text-white">Mathematics Diagnostics</h3>
-                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400">Key Conceptual Focus Areas</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        Step 1: Take the 20-Min Test
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Answer 20 curated Math &amp; Science MCQs on your phone or laptop with a single-click WhatsApp login.
+                      </p>
                     </div>
                   </div>
-                  <ul className="mt-6 space-y-3 text-sm text-slate-700 sm:text-base dark:text-slate-300">
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-amber-500 dark:text-amber-400" />
-                      <span>Real Numbers &amp; Polynomials Foundation</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-amber-500 dark:text-amber-400" />
-                      <span>Quadratic Equations &amp; Arithmetic Progressions</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-amber-500 dark:text-amber-400" />
-                      <span>Coordinate Geometry &amp; Triangles Theorems</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-amber-500 dark:text-amber-400" />
-                      <span>Trigonometry Applications &amp; Circles</span>
-                    </li>
-                  </ul>
                 </div>
 
-                {/* Science Card */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-lg dark:border-slate-800 dark:bg-gradient-to-br dark:from-slate-900/95 dark:to-[#0c1a2f] dark:shadow-xl">
-                  <div className="flex items-center gap-3.5">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400">
-                      <Atom className="size-7" />
+                {/* Step 2 */}
+                <div className="relative rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900 sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 font-mono text-base font-black text-amber-400 ring-1 ring-amber-400/40">
+                      02
                     </div>
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900 sm:text-2xl dark:text-white">Science Diagnostics</h3>
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">Physics, Chemistry &amp; Biology</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        Step 2: Instant 5-Page Diagnostic Report
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Get your Board Readiness Index, skill profile, and time-management report immediately upon submission.
+                      </p>
                     </div>
                   </div>
-                  <ul className="mt-6 space-y-3 text-sm text-slate-700 sm:text-base dark:text-slate-300">
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-blue-500 dark:text-blue-400" />
-                      <span>Chemical Reactions, Acids, Bases &amp; Metals</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-blue-500 dark:text-blue-400" />
-                      <span>Life Processes &amp; Control &amp; Coordination</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-blue-500 dark:text-blue-400" />
-                      <span>Light: Reflection, Refraction &amp; Human Eye</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <CheckCircle2 className="size-5 shrink-0 text-blue-500 dark:text-blue-400" />
-                      <span>Electricity &amp; Magnetic Effects of Current</span>
-                    </li>
-                  </ul>
                 </div>
+
+                {/* Step 3 */}
+                <div className="relative rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg transition-all duration-300 hover:border-amber-400/50 hover:bg-slate-900 sm:p-6">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 font-mono text-base font-black text-amber-400 ring-1 ring-amber-400/40">
+                      03
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-white sm:text-xl">
+                        Step 3: Fix Gaps &amp; Join the Community
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300 sm:text-base">
+                        Follow your tailored 3-month action plan and gain access to our exclusive student community with free high-yield Board prep resources.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Central CTA under steps */}
+              <div className="mt-10 flex justify-center">
+                <Link
+                  href={destination}
+                  className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-7 py-4 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-lg"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Zap className="size-5 fill-slate-950 text-slate-950" />
+                    <span>Take the Free 20-Min Challenge</span>
+                    <ArrowRight className="size-4.5 transition group-hover:translate-x-1" />
+                  </span>
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                </Link>
               </div>
             </div>
           </section>
 
           {/* Section: About Shri Ram Smart Minds Academy & IIT Alumni Mentorship */}
-          <section className="border-t border-slate-200 bg-slate-100/70 py-12 transition-colors sm:py-16 dark:border-slate-800/80 dark:bg-slate-950/80">
+          <section className="border-t border-slate-800/80 bg-slate-950/60 py-8 transition-colors sm:py-12">
             <div className="mx-auto max-w-5xl px-4 sm:px-6">
-              <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-white to-blue-900/10 p-7 sm:p-9 md:flex-row md:text-left dark:via-slate-900/90 dark:to-blue-900/20">
-                <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
+              <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-slate-900/90 to-blue-900/20 p-7 sm:p-9 md:flex-row md:text-left text-center">
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:text-left">
                   <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border border-amber-400/50 bg-slate-900 p-1 shadow-md shadow-amber-500/10 sm:size-20">
                     <Image
                       src={BRAND.logoMark}
@@ -456,16 +650,16 @@ export default function BoardChallengePage() {
                     />
                   </div>
                   <div className="flex flex-col">
-                    <h3 className="text-xl font-black leading-tight text-slate-900 sm:text-2xl dark:text-white">
+                    <h3 className="text-xl font-black leading-tight text-white sm:text-2xl">
                       <span>Shri Ram</span>
-                      <span className="block text-amber-600 dark:text-amber-400">Smart Minds Academy</span>
+                      <span className="block text-amber-400">Smart Minds Academy</span>
                     </h3>
-                    <div className="mt-1 text-sm font-bold leading-snug text-amber-700 sm:text-base dark:text-amber-300">
+                    <div className="mt-1 text-sm font-bold leading-snug text-amber-300 sm:text-base">
                       <span>A Premier JEE &amp; NEET Coaching Institute</span>
-                      <span className="block font-extrabold text-amber-800 dark:text-amber-200">by IIT Alumni</span>
+                      <span className="block font-extrabold text-amber-200">by IIT Alumni</span>
                     </div>
-                    <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-300">
-                      Empowering young minds with deep conceptual learning, analytical problem solving, and personalized guidance for Board exams, Board Readiness Challenge, and NEET.
+                    <p className="mt-2.5 max-w-xl text-justify text-sm leading-relaxed text-white sm:text-base">
+                      Founded by IIT alumni, SRSMA delivers stress-free, personalized coaching in focused batches of 25–30 students. Backed by smart AI Powered AC classrooms and safe residential care, our inaugural batch achieved a 99.48 percentile in JEE Main, JEE Advanced selections, and 98% in board exams.
                     </p>
                   </div>
                 </div>
@@ -473,11 +667,67 @@ export default function BoardChallengePage() {
                 <div className="mt-2 shrink-0 md:mt-0">
                   <Link
                     href={destination}
-                    className="inline-flex items-center gap-2.5 rounded-2xl bg-amber-400 px-7 py-4 text-sm font-black text-slate-950 shadow-xl shadow-amber-500/25 transition hover:bg-amber-300 active:scale-95 sm:text-base"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-amber-400 px-6 py-3.5 text-sm font-black text-slate-950 shadow-xl shadow-amber-500/25 transition hover:bg-amber-300 active:scale-95 sm:text-base"
                   >
-                    <LogIn className="size-5" />
-                    <span>Login &amp; Start Challenge</span>
+                    <LogIn className="size-4.5" />
+                    <span>Login &amp; Start</span>
                   </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 6: Closing Call To Action Banner (Footer) */}
+          <section className="relative border-t border-slate-800/80 bg-[#071120] py-10 sm:py-16 overflow-hidden">
+            {/* Ambient Lighting */}
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500/15 blur-[140px]" />
+            <div className="pointer-events-none absolute right-10 bottom-0 h-64 w-64 rounded-full bg-blue-600/15 blur-[120px]" />
+
+            <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+              <div className="relative overflow-hidden rounded-3xl border border-amber-400/50 bg-gradient-to-br from-amber-500/20 via-slate-900 to-[#071120] p-8 text-center shadow-2xl shadow-amber-500/10 sm:p-14">
+                {/* Background glow flares */}
+                <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-amber-500/20 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-24 right-10 size-60 rounded-full bg-blue-600/20 blur-3xl" />
+
+                <div className="relative z-10 mx-auto max-w-3xl">
+                  <h2 className="text-balance text-3xl font-black uppercase tracking-tight text-white sm:text-4xl md:text-5xl">
+                    Don’t leave your Board results to guesswork.
+                  </h2>
+                  <p className="mt-4 text-balance text-base font-semibold leading-relaxed text-slate-300 sm:text-lg">
+                    Join thousands of Class 10 students across the country and discover your true readiness today.
+                  </p>
+
+                  <div className="mt-8 flex justify-center">
+                    <Link
+                      href={destination}
+                      className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-8 py-4 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/35 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/50 active:scale-[0.98] sm:px-10 sm:py-5 sm:text-xl"
+                    >
+                      <span className="relative z-10 flex items-center gap-2.5">
+                        <Zap className="size-5 fill-slate-950 text-slate-950" />
+                        <span>Start My Free 20-Minute Challenge</span>
+                        <ArrowRight className="size-5 transition group-hover:translate-x-1" />
+                      </span>
+                      <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    </Link>
+                  </div>
+
+                  {/* Trust Footer Badges */}
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-bold text-slate-300 sm:text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="size-4 text-emerald-400" />
+                      <span>100% Free</span>
+                    </div>
+                    <span className="text-slate-600">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="size-4 text-amber-400" />
+                      <span>No Credit Card Required</span>
+                    </div>
+                    <span className="text-slate-600">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <BarChart3 className="size-4 text-blue-400" />
+                      <span>Instant Reports Access</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

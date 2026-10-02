@@ -454,7 +454,7 @@ export function StudentAnalyticsClient({
                   className="border-amber-400/60 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 dark:text-amber-300"
                 >
                   <FileText className="mr-2 size-4 text-amber-600 dark:text-amber-400" />
-                  Preview Sample 3-Page Report
+                  Preview Sample 5-Page Report
                 </Button>
               )}
             </div>
@@ -480,7 +480,7 @@ export function StudentAnalyticsClient({
                 Demonstration Preview Mode
               </p>
               <p className="text-amber-800 dark:text-amber-300/80 text-[11px]">
-                Viewing the 3-page Board Readiness Challenge Report with sample Class X student attempt responses.
+                Viewing the 5-page Board Readiness Challenge Report with sample Class X student attempt responses.
               </p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { and, desc, eq } from 'drizzle-orm';
 import { getDb } from '@/db/client';
-import { studentFeedback } from '@/db/schema';
+import { profiles, studentFeedback, tests } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { HttpError, json, withApi } from '@/lib/http';
 
@@ -104,10 +104,49 @@ export const GET = withApi(async (req) => {
   }
 
   const url = new URL(req.url);
-  const attemptId = url.searchParams.get('attemptId');
-
   const db = await getDb();
 
+  // If teacher, return all student feedback with profile and test info
+  if (session.role === 'teacher') {
+    const targetStudentId = url.searchParams.get('studentId');
+    const conditions = [];
+    if (targetStudentId) {
+      conditions.push(eq(studentFeedback.studentId, targetStudentId));
+    }
+
+    const rows = await db
+      .select({
+        id: studentFeedback.id,
+        studentId: studentFeedback.studentId,
+        studentName: profiles.fullName,
+        studentPhone: profiles.phone,
+        studentBatch: profiles.batch,
+        studentClassLevel: profiles.classLevel,
+        testId: studentFeedback.testId,
+        testTitle: tests.title,
+        attemptId: studentFeedback.attemptId,
+        testRating: studentFeedback.testRating,
+        reportRating: studentFeedback.reportRating,
+        feedbackText: studentFeedback.feedbackText,
+        sourceTab: studentFeedback.sourceTab,
+        createdAt: studentFeedback.createdAt,
+        updatedAt: studentFeedback.updatedAt,
+      })
+      .from(studentFeedback)
+      .leftJoin(profiles, eq(studentFeedback.studentId, profiles.id))
+      .leftJoin(tests, eq(studentFeedback.testId, tests.id))
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(studentFeedback.updatedAt))
+      .limit(300);
+
+    return json({
+      ok: true,
+      feedback: rows,
+    });
+  }
+
+  // Student flow: retrieve own feedback for an attempt
+  const attemptId = url.searchParams.get('attemptId');
   const conditions = [eq(studentFeedback.studentId, session.userId)];
   if (attemptId) {
     conditions.push(eq(studentFeedback.attemptId, attemptId));
@@ -130,5 +169,32 @@ export const GET = withApi(async (req) => {
   return json({
     ok: true,
     feedback: feedback || null,
+  });
+});
+
+export const DELETE = withApi(async (req) => {
+  const session = await getSession();
+  if (!session || !session.userId || session.role !== 'teacher') {
+    throw new HttpError(403, 'forbidden', 'Only teachers can delete student feedback.');
+  }
+
+  const url = new URL(req.url);
+  let id = url.searchParams.get('id');
+  if (!id) {
+    const body = await req.json().catch(() => ({}));
+    id = body.id;
+  }
+
+  if (!id) {
+    throw new HttpError(400, 'invalid_request', 'Feedback ID is required.');
+  }
+
+  const db = await getDb();
+  await db.delete(studentFeedback).where(eq(studentFeedback.id, id));
+
+  return json({
+    ok: true,
+    deleted: true,
+    message: 'Feedback deleted successfully.',
   });
 });

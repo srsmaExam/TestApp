@@ -5,9 +5,9 @@ const NAV: NavItem[] = [
   { href: '/teacher', label: 'Overview', exact: true },
   { href: '/teacher/papers', label: 'Papers' },
   { href: '/teacher/questions', label: 'Question bank' },
-  { href: '/teacher/extraction-prompt', label: 'Extraction prompt' },
   { href: '/teacher/tests', label: 'Tests' },
   { href: '/teacher/students', label: 'Students' },
+  { href: '/teacher/feedback', label: 'Student Feedback' },
   { href: '/teacher/analytics', label: 'Report' },
 ];
 

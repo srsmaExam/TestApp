@@ -63,11 +63,13 @@ const CreateStudentSchema = z.object({
     .trim()
     .min(2, 'Username must be at least 2 characters')
     .max(50)
-    .regex(/^[a-zA-Z0-9._-]+$/, 'Username can only contain letters, numbers, hyphens, periods, and underscores'),
-  email: z.string().trim().email('Invalid email address').toLowerCase(),
+    .regex(/^[a-zA-Z0-9._-]+$/, 'Username can only contain letters, numbers, hyphens, periods, and underscores')
+    .optional()
+    .nullable(),
+  email: z.string().trim().email('Invalid email address').toLowerCase().optional().nullable(),
   phone: z.string().trim().max(25).optional().nullable(),
   batch: z.string().trim().max(100).optional().nullable(),
-  password: z.string().min(4, 'Password must be at least 4 characters').default('112345'),
+  password: z.string().min(4, 'Password must be at least 4 characters').optional().nullable(),
 });
 
 /**
@@ -220,39 +222,49 @@ export const POST = withApi(async (req) => {
     });
   }
 
-  const { fullName, username, email, phone, batch, password } = parsed.data;
+  const { fullName, phone, batch } = parsed.data;
   const db = await getDb();
 
   // FBR-05: store E.164 only, so "+919876543210", "919876543210" and
   // "9876543210" can never coexist as separate rows for the same real phone.
   const normalizedPhone = phone && phone.trim() ? normalizePhone('+91', phone.trim()).fullPhone : null;
+  const phoneDigits = normalizedPhone ? normalizedPhone.replace(/\D/g, '') : Math.random().toString().slice(2, 12);
 
-  // Check unique username, email & phone. `username`/`email` are DB-unique
-  // already; `phone` also is (profiles_phone_idx), but only on the
-  // as-normalized string, and a wrong guess on a collision is an account
-  // takeover — so this is checked proactively rather than left to a raw
-  // 23505 on insert.
-  const conditions = [eq(profiles.username, username), eq(profiles.email, email)];
+  // Generate internal fallback credentials if not explicitly provided
+  const username = parsed.data.username?.trim() || `usr_${phoneDigits}_${Date.now().toString().slice(-4)}`;
+  const email = parsed.data.email?.trim() || `${phoneDigits}_${Date.now().toString().slice(-4)}@student.srsma.local`;
+  const password = parsed.data.password || '112345';
+
+  // Check unique username, email & phone
+  const conditions = [];
+  if (parsed.data.username?.trim()) conditions.push(eq(profiles.username, username));
+  if (parsed.data.email?.trim()) conditions.push(eq(profiles.email, email));
   if (normalizedPhone) conditions.push(eq(profiles.phone, normalizedPhone));
 
-  const existing = await db
-    .select({ id: profiles.id, username: profiles.username, email: profiles.email, phone: profiles.phone, fullName: profiles.fullName })
-    .from(profiles)
-    .where(or(...conditions));
+  if (conditions.length > 0) {
+    const existing = await db
+      .select({ id: profiles.id, username: profiles.username, email: profiles.email, phone: profiles.phone, fullName: profiles.fullName })
+      .from(profiles)
+      .where(or(...conditions));
 
-  if (existing.length > 0) {
-    if (existing.some((e) => e.username.toLowerCase() === username.toLowerCase())) {
-      throw new HttpError(409, 'username_taken', `Username "${username}" is already in use.`);
+    if (existing.length > 0) {
+      if (parsed.data.username && existing.some((e) => e.username.toLowerCase() === username.toLowerCase())) {
+        throw new HttpError(409, 'username_taken', `Username "${username}" is already in use.`);
+      }
+      if (parsed.data.email && existing.some((e) => e.email.toLowerCase() === email.toLowerCase())) {
+        throw new HttpError(409, 'email_taken', `Email "${email}" is already registered.`);
+      }
+      if (normalizedPhone) {
+        const holder = existing.find((e) => e.phone === normalizedPhone);
+        if (holder) {
+          throw new HttpError(
+            409,
+            'phone_taken',
+            `Phone "${phone}" is already registered to ${holder.fullName ?? 'another student'}.`,
+          );
+        }
+      }
     }
-    if (existing.some((e) => e.email.toLowerCase() === email.toLowerCase())) {
-      throw new HttpError(409, 'email_taken', `Email "${email}" is already registered.`);
-    }
-    const holder = existing.find((e) => e.phone === normalizedPhone);
-    throw new HttpError(
-      409,
-      'phone_taken',
-      `Phone "${phone}" is already registered to ${holder?.fullName ?? 'another student'}.`,
-    );
   }
 
   const passwordHash = await hashPassword(password);

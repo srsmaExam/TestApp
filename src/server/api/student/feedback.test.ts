@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { DELETE } from './feedback';
+
+vi.mock('@/lib/auth', () => ({
+  getSession: vi.fn(),
+}));
+
+vi.mock('@/db/client', () => ({
+  getDb: vi.fn(),
+}));
 
 const FeedbackSchema = z.object({
   attemptId: z.string().uuid().optional().nullable(),
@@ -53,5 +62,53 @@ describe('Student Feedback Schema & Validation', () => {
 
     const result = FeedbackSchema.safeParse(payload);
     expect(result.success).toBe(false);
+  });
+});
+
+describe('Student Feedback DELETE Endpoint', () => {
+  it('rejects non-teacher sessions', async () => {
+    const { getSession } = await import('@/lib/auth');
+    vi.mocked(getSession).mockResolvedValueOnce({
+      userId: 'student-123',
+      role: 'student',
+    } as any);
+
+    const req = new Request('http://localhost:3000/api/student/feedback?id=fb-1', {
+      method: 'DELETE',
+    });
+
+    const res = await DELETE(req, {} as any);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.message).toContain('Only teachers can delete');
+  });
+
+  it('deletes feedback when caller is a teacher', async () => {
+    const { getSession } = await import('@/lib/auth');
+    const { getDb } = await import('@/db/client');
+
+    vi.mocked(getSession).mockResolvedValueOnce({
+      userId: 'teacher-123',
+      role: 'teacher',
+    } as any);
+
+    const deleteMock = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(true),
+    });
+
+    vi.mocked(getDb).mockResolvedValueOnce({
+      delete: deleteMock,
+    } as any);
+
+    const req = new Request('http://localhost:3000/api/student/feedback?id=fb-1', {
+      method: 'DELETE',
+    });
+
+    const res = await DELETE(req, {} as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.deleted).toBe(true);
+    expect(deleteMock).toHaveBeenCalled();
   });
 });

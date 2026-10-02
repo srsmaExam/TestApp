@@ -15,6 +15,7 @@ import { TeacherStudentsView } from '../views/TeacherStudentsView';
 import { TeacherStudentDetailView } from '../views/TeacherStudentDetailView';
 import { TeacherStudentAttemptView } from '../views/TeacherStudentAttemptView';
 import { TeacherCohortAnalyticsView } from '../views/TeacherCohortAnalyticsView';
+import { TeacherFeedbackView } from '../views/TeacherFeedbackView';
 
 export async function generateMetadata({
   params,
@@ -34,6 +35,7 @@ export async function generateMetadata({
     return { title: 'Question Bank | SRSMA' };
   }
   if (slug[0] === 'extraction-prompt') return { title: 'Extraction Prompts | SRSMA' };
+  if (slug[0] === 'feedback') return { title: 'Student Feedback | SRSMA Faculty' };
   if (slug[0] === 'tests') {
     if (slug.length === 2 && slug[1] === 'new') return { title: 'Create New Test | SRSMA' };
     if (slug.length === 3 && slug[2] === 'analytics') return { title: 'Test Report | SRSMA' };
@@ -84,7 +86,12 @@ export default async function TeacherPageDispatcher({
     return <TeacherExtractionPromptView />;
   }
 
-  // 5. /teacher/tests/*
+  // 5. /teacher/feedback
+  if (slug.length === 1 && slug[0] === 'feedback') {
+    return <TeacherFeedbackView />;
+  }
+
+  // 6. /teacher/tests/*
   if (slug[0] === 'tests') {
     if (slug.length === 1) return <TeacherTestsView />;
     if (slug.length === 2 && slug[1] === 'new') return <TeacherCreateTestView />;
@@ -93,7 +100,7 @@ export default async function TeacherPageDispatcher({
     if (slug.length === 2) return <TeacherTestBuilderView testId={slug[1]} />;
   }
 
-  // 6. /teacher/students/*
+  // 7. /teacher/students/*
   if (slug[0] === 'students') {
     if (slug.length === 1) return <TeacherStudentsView />;
     if (slug.length === 2) return <TeacherStudentDetailView studentId={slug[1]} />;
@@ -102,12 +109,12 @@ export default async function TeacherPageDispatcher({
     if (slug.length === 4 && slug[2] === 'attempts') return <TeacherStudentAttemptView studentId={slug[1]} attemptId={slug[3]} />;
   }
 
-  // 7. /teacher/attempts/:id/result
+  // 8. /teacher/attempts/:id/result
   if (slug[0] === 'attempts' && slug.length === 3 && slug[2] === 'result') {
     return <TeacherStudentAttemptView attemptId={slug[1]} />;
   }
 
-  // 8. /teacher/analytics
+  // 9. /teacher/analytics
   if (slug.length === 1 && slug[0] === 'analytics') {
     return <TeacherCohortAnalyticsView />;
   }

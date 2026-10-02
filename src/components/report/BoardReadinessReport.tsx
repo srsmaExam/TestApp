@@ -9,7 +9,6 @@ import {
   Zap,
   Target,
   FileText,
-  Printer,
   Check,
   TrendingUp,
   Brain,
@@ -53,9 +52,105 @@ interface BoardReadinessReportProps {
   studentDetails?: StudentProfileDetails | null;
   onRetakeOrBrowse?: () => void;
   isTeacherView?: boolean;
-  showPrintButton?: boolean;
   onGoToSolutions?: () => void;
   attemptId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Subject Performance Insight Evaluator (9 Exact Diagnostic Score Cases)
+// ---------------------------------------------------------------------------
+export function getSubjectPerformanceInsight(
+  mathPercentage: number,
+  sciencePercentage: number,
+): { label: string; message: string } {
+  const m = Math.round(mathPercentage);
+  const s = Math.round(sciencePercentage);
+  const diff = m - s;
+  const absDiff = Math.abs(diff);
+
+  // 1. Difference <= 12% (Balanced Cases)
+  if (absDiff <= 12) {
+    // Case 1: Dual High (Maths High, Science High — Balanced)
+    if (m >= 75 && s >= 75) {
+      return {
+        label: 'Dual High — Balanced',
+        message:
+          'Awesome work! You are in great shape to score top marks in your board exams. To push for a full 100%, focus on writing down every step clearly with proper units, drawing neat diagrams, and practicing full 3-hour sample papers so you don\'t lose marks to tiny calculation slips.',
+      };
+    }
+    // Case 3: Dual Low (Maths Low, Science Low — Balanced)
+    if (m < 45 && s < 45) {
+      return {
+        label: 'Dual Low — Balanced',
+        message:
+          'Don\'t lose heart at all—everyone starts somewhere, and board exams are very predictable. Put full mock tests on hold for now; just pick the 3 easiest, high-mark chapters in your textbook (like Statistics in Maths or Life Processes in Science) and master the basic examples first to build steady confidence.',
+      };
+    }
+    // If one is >= 75 and average >= 75 with diff <= 12
+    if ((m + s) / 2 >= 75) {
+      return {
+        label: 'Dual High — Balanced',
+        message:
+          'Awesome work! You are in great shape to score top marks in your board exams. To push for a full 100%, focus on writing down every step clearly with proper units, drawing neat diagrams, and practicing full 3-hour sample papers so you don\'t lose marks to tiny calculation slips.',
+      };
+    }
+    // Case 2: Dual Mid (Maths Mid, Science Mid — Balanced)
+    return {
+      label: 'Dual Mid — Balanced',
+      message:
+        'You have a solid base in both subjects, and you are totally ready to push into the 80s and 90s! Split your study time equally between Maths and Science, and focus on practicing chapter-wise previous years\' board questions (PYQs) so you can get used to how board questions are framed.',
+    };
+  }
+
+  // 2. Maths Leads by > 12% (diff > 12)
+  if (diff > 12) {
+    // Case 6: Maths Ahead, Both Low (Maths Better — Foundational Tier)
+    if (m < 45 && s < 45) {
+      return {
+        label: 'Maths Better — Foundational Tier',
+        message:
+          'You\'re making steady headway in Maths, and we can do the exact same thing for Science! Take it one step at a time: keep practicing your basic Maths formulas daily, and start Science by reading the easiest chapter summaries and learning the short 1-mark and 2-mark textbook questions.',
+      };
+    }
+    // Case 5: Maths High/Mid, Science Low (Maths Much Better — Wide Gap)
+    if (m >= 45 && s < 45) {
+      return {
+        label: 'Maths Much Better — Wide Gap',
+        message:
+          'Your strong Maths score shows you have great focus and logic—that is a huge advantage! Don\'t stress about Science; it is very scoring once you know the direct textbook questions. Spend 20 minutes a day keeping your Maths sharp, and use the rest of your study time to rebuild Science chapter by chapter.',
+      };
+    }
+    // Case 4: Maths High, Science Mid (Maths Much Better)
+    return {
+      label: 'Maths Much Better',
+      message:
+        'Your Maths is looking super strong! Since your problem-solving is already sharp, you can easily pull your Science score up too. Dedicate more of your study time to Science by practicing textbook definitions, balancing chemical equations, and drawing neat, labeled diagrams.',
+    };
+  }
+
+  // 3. Science Leads by > 12% (s - m > 12)
+  // Case 9: Science Ahead, Both Low (Science Better — Foundational Tier)
+  if (s < 45 && m < 45) {
+    return {
+      label: 'Science Better — Foundational Tier',
+      message:
+        'Your Science gives you a solid starting point, and you can definitely bring your Maths score up alongside it! Focus your energy on direct, high-scoring Maths chapters first—work through simple textbook questions step-by-step, and your marks and confidence will climb quickly.',
+    };
+  }
+  // Case 8: Science High/Mid, Maths Low (Science Much Better — Wide Gap)
+  if (s >= 45 && m < 45) {
+    return {
+      label: 'Science Much Better — Wide Gap',
+      message:
+        'Scoring well in Science proves you have what it takes to understand big, detailed ideas! Maths only feels tricky when formulas and basic steps are missing. Make a one-page formula sheet for easy chapters like Real Numbers and Statistics, and solve 4 to 5 textbook examples by hand every day—you will see fast results.',
+    };
+  }
+  // Case 7: Science High, Maths Mid (Science Much Better)
+  return {
+    label: 'Science Much Better',
+    message:
+      'You clearly understand your Science concepts really well—great job! For Maths, remember that board examiners give generous step marks even if your final calculation goes off. Spend more of your study time writing out Maths textbook problems by hand so you build speed and avoid small slips.',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -582,7 +677,36 @@ function TimeManagementReportSection({
           </span>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900 shadow-2xs">
+        {/* Mobile View: Responsive Card Layout (< sm) */}
+        <div className="block sm:hidden space-y-2.5">
+          {visibleRows.map((row) => (
+            <div
+              key={row.key}
+              className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-800/40 space-y-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold border ${row.badgeTone}`}>
+                  <span className={`size-1.5 rounded-full ${row.dot}`} />
+                  {row.term}
+                </span>
+                <span className="inline-flex items-center rounded-md bg-white px-2.5 py-0.5 text-xs font-mono font-bold text-slate-800 border border-slate-200 shadow-2xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
+                  {row.count} {row.count === 1 ? 'Question' : 'Questions'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                {row.explanation}
+              </p>
+            </div>
+          ))}
+          {visibleRows.length === 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+              No question pacing items recorded.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Structured Table (>= sm) */}
+        <div className="hidden sm:block rounded-xl border border-slate-200 bg-white overflow-x-auto dark:border-slate-800 dark:bg-slate-900 shadow-2xs">
           <Table className="w-full">
             <TableHeader>
               <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
@@ -794,7 +918,6 @@ export function BoardReadinessReport({
   studentDetails,
   onRetakeOrBrowse,
   isTeacherView = false,
-  showPrintButton = isTeacherView,
   onGoToSolutions,
   attemptId,
 }: BoardReadinessReportProps) {
@@ -819,8 +942,14 @@ export function BoardReadinessReport({
     setActivePage(pageId);
     const element = getPageSection(pageId);
     if (element) {
-      const yOffset = -80;
-      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      try {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch {
+        // Fallback for older browsers
+      }
+      const yOffset = -90;
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+      const y = element.getBoundingClientRect().top + scrollY + yOffset;
       window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
     }
   };
@@ -836,12 +965,14 @@ export function BoardReadinessReport({
     ];
 
     const handleScroll = () => {
-      const scrollPosition = window.scrollY + 180;
       for (let i = pageIds.length - 1; i >= 0; i--) {
         const el = getPageSection(pageIds[i]);
-        if (el && el.offsetTop <= scrollPosition) {
-          setActivePage(pageIds[i]);
-          break;
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 160) {
+            setActivePage(pageIds[i]);
+            break;
+          }
         }
       }
     };
@@ -865,14 +996,15 @@ export function BoardReadinessReport({
       // ignore
     }
 
-    const message = `Hi\nI took Shri Ram Smart Minds Academy's Board Diagnostic Test.\nI am Interested in  Class 10 Board Mastery Course`;
+    const message =
+      action === 'whatsapp_contact_us'
+        ? `Hi, I just completed the Board Readiness Challenge at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to speak with an academic counsellor about the Class 10 Board Mastery Course. Please share details.`
+        : `Hi, I just completed the Board Readiness Challenge at Shri Ram Smart Minds Academy. Based on my diagnostic report, I would like to enroll in the Class 10 Board Mastery Course. Please share the next steps and batch details.`;
     const url = `https://wa.me/918463911854?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+
 
   // Category & Prep Level styling helpers
   const getPrepLevelBadge = (level: PreparationLevel | string) => {
@@ -1008,115 +1140,106 @@ export function BoardReadinessReport({
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-16">
       {/* 1. Header Toolbar (Hidden in Print) */}
-      <div className="no-print sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 sm:p-4 shadow-md backdrop-blur-md sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/95">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 sm:size-11 items-center justify-center rounded-xl bg-brand-600 text-white shadow-md shrink-0">
-            <GraduationCap className="size-5 sm:size-6" />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded bg-brand-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-800 dark:bg-brand-950 dark:text-brand-300">
-                Shri Ram Smart Minds Academy
-              </span>
-              {studentDetails?.isFormFilled ? (
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  {studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} • {studentDetails.board || 'CBSE'}
-                  {isTeacherView && studentDetails.school && (
-                    <span className="ml-1 text-[11px] text-slate-400 hidden sm:inline">
-                      ({studentDetails.school}{studentDetails.city ? `, ${studentDetails.city}` : ''})
-                    </span>
-                  )}
-                </span>
-              ) : isTeacherView ? (
-                <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
-                  ⚠️ Unlock Form: Not Filled
-                </span>
-              ) : (
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Class X CBSE</span>
-              )}
+      <div className="no-print sticky top-3 z-30 flex flex-col gap-2.5 rounded-2xl border border-slate-200/90 bg-white/95 p-3 sm:p-3.5 shadow-md backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex size-9 sm:size-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-md shrink-0">
+              <GraduationCap className="size-5" />
             </div>
-            <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white mt-0.5">
-              BOARD READINESS CHALLENGE REPORT
-            </h1>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded bg-brand-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-800 dark:bg-brand-950 dark:text-brand-300">
+                  Shri Ram Smart Minds Academy
+                </span>
+                {studentDetails?.isFormFilled ? (
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
+                    {studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} • {studentDetails.board || 'CBSE'}
+                    {isTeacherView && studentDetails.school && (
+                      <span className="ml-1 text-[11px] text-slate-400 hidden sm:inline">
+                        ({studentDetails.school}{studentDetails.city ? `, ${studentDetails.city}` : ''})
+                      </span>
+                    )}
+                  </span>
+                ) : isTeacherView ? (
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                    ⚠️ Unlock Form: Not Filled
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Class X CBSE</span>
+                )}
+              </div>
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white mt-0.5 truncate">
+                BOARD READINESS CHALLENGE REPORT
+              </h1>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 max-w-full">
-          {/* Page Scroll navigation buttons */}
-          <div className="flex items-center gap-1 overflow-x-auto max-w-full no-scrollbar rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full sm:w-auto">
+        {/* Page Scroll navigation buttons - Full width dedicated row so P1-P5 never overflow */}
+        <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-800/90 text-xs font-bold w-full overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => scrollToPage('page1')}
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page1'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+          >
+            P1 • Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToPage('page2')}
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page2'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+          >
+            P2 • Strengths
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToPage('page3')}
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page3'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+          >
+            P3 • Priorities
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToPage('page4')}
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page4'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+          >
+            P4 • Recommendations
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToPage('page5')}
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page5'
+              ? 'bg-brand-600 text-white shadow-xs font-black'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+          >
+            P5 • Support
+          </button>
+          {isTeacherView && (
             <button
               type="button"
-              onClick={() => scrollToPage('page1')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page1'
-                ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              onClick={() => scrollToPage('page6')}
+              className={`flex-1 shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-2 sm:px-2.5 py-1.5 transition ${activePage === 'page6'
+                ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
+                : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
                 }`}
             >
-              P1 • Overview
+              <Calculator className="size-3" />
+              P6 • Audit
             </button>
-            <button
-              type="button"
-              onClick={() => scrollToPage('page2')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page2'
-                ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-            >
-              P2 • Strengths
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToPage('page3')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page3'
-                ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-            >
-              P3 • Priorities
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToPage('page4')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page4'
-                ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-            >
-              P4 • Recommendations
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToPage('page5')}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition text-center ${activePage === 'page5'
-                ? 'bg-brand-600 text-white shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-            >
-              P5 • Support
-            </button>
-            {isTeacherView && (
-              <button
-                type="button"
-                onClick={() => scrollToPage('page6')}
-                className={`shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 transition ${activePage === 'page6'
-                  ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
-                  : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
-                  }`}
-              >
-                <Calculator className="size-3" />
-                P6 • Audit
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 justify-end shrink-0">
-            {showPrintButton && (
-              <Button variant="primary" size="sm" onClick={handlePrint} className="bg-brand-600 hover:bg-brand-500 text-xs shadow-xs font-bold">
-                <Printer className="mr-1.5 size-3.5" />
-                Print / PDF
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -1125,7 +1248,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-1"
-        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
+        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
       >
         {/* Header watermark & Brand bar */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
@@ -1336,21 +1459,30 @@ export function BoardReadinessReport({
               </div>
 
               {/* Subject Comparison Insight Box */}
-              <div className="rounded-2xl border-2 border-sky-300/80 bg-gradient-to-r from-sky-50/90 via-blue-50/70 to-indigo-50/70 p-4 text-xs leading-relaxed text-blue-950 dark:border-sky-700/60 dark:bg-gradient-to-r dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/30 dark:text-sky-100 shadow-sm">
-                <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[11px] text-sky-800 dark:text-sky-300">
-                  <div className="flex size-6 items-center justify-center rounded-lg bg-sky-600 text-white shadow-2xs">
-                    <Sparkles className="size-3.5" />
+              {(() => {
+                const insight = getSubjectPerformanceInsight(
+                  report.breakdown.mathematics.percentage,
+                  report.breakdown.science.percentage,
+                );
+                return (
+                  <div className="rounded-2xl border-2 border-sky-300/80 bg-gradient-to-r from-sky-50/90 via-blue-50/70 to-indigo-50/70 p-4 text-xs leading-relaxed text-blue-950 dark:border-sky-700/60 dark:bg-gradient-to-r dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/30 dark:text-sky-100 shadow-sm">
+                    <div className="flex items-center justify-between gap-2 border-b border-sky-200/60 pb-2 dark:border-sky-800/60">
+                      <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[11px] text-sky-800 dark:text-sky-300">
+                        <div className="flex size-6 items-center justify-center rounded-lg bg-sky-600 text-white shadow-2xs">
+                          <Sparkles className="size-3.5" />
+                        </div>
+                        <span>Subject Performance Insight</span>
+                      </div>
+                      <span className="rounded-md bg-sky-100 dark:bg-sky-900/60 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:text-sky-200 border border-sky-300/60 dark:border-sky-700">
+                        {insight.label}
+                      </span>
+                    </div>
+                    <p className="mt-2.5 font-medium leading-relaxed text-slate-800 dark:text-slate-200 text-xs sm:text-[13px]">
+                      {insight.message}
+                    </p>
                   </div>
-                  <span>Subject Performance Insight</span>
-                </div>
-                <p className="mt-2 font-medium leading-relaxed text-slate-800 dark:text-slate-200">
-                  {report.breakdown.mathematics.percentage > report.breakdown.science.percentage
-                    ? 'You seem to be doing better in Maths compared to Science. Continue reinforcing core Science application concepts while sustaining your Mathematics momentum.'
-                    : report.breakdown.science.percentage > report.breakdown.mathematics.percentage
-                      ? 'You seem to be doing better in Science compared to Maths. Continue reinforcing multi-step calculation skills in Mathematics while maintaining your strong Science foundation.'
-                      : 'Your performance in Maths and Science seems to be well balanced, demonstrating steady preparation across both core subjects.'}
-                </p>
-              </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -1503,7 +1635,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-2"
-        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
+        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -1713,7 +1845,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-3"
-        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
+        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -2139,7 +2271,7 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-4"
-        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
+        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
@@ -2688,40 +2820,37 @@ export function BoardReadinessReport({
         </div>
       </section>
 
-      {/* =========================================================================
-          PAGE 5: NEED STRUCTURED SUPPORT? — SRSMA BOARD MASTERY COURSE
-          ========================================================================= */}
       <section
         id="report-page-5"
-        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block"
+        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+            <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
               <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
               Shri Ram Smart Minds Academy
             </span>
-            <div className="mt-1">
-              <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white break-words">
+            <div className="mt-0.5">
+              <h2 className="text-base sm:text-lg md:text-xl font-black tracking-tight text-slate-900 dark:text-white break-words">
                 Page 5: NEED STRUCTURED SUPPORT?
               </h2>
-              <p className="mt-1 text-xs sm:text-sm font-semibold text-brand-700 dark:text-brand-300 leading-relaxed">
+              <p className="mt-0.5 text-xs sm:text-sm font-semibold text-brand-700 dark:text-brand-300 leading-snug">
                 We recommend joining our Board Mastery Course to excel in the upcoming Board Exams. Online, Offline and Combined Batches begin from 26th October onwards.
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
-            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
               {isTeacherView ? 'PAGE 5 OF 6' : 'PAGE 5 OF 5'}
             </span>
           </div>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-4 space-y-3">
           {/* Top Banner: Why This Course? */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-400/50 bg-slate-950 p-5 text-white shadow-md">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="space-y-1.5 max-w-2xl">
+          <div className="relative overflow-hidden rounded-2xl border border-amber-400/50 bg-slate-950 p-3.5 sm:p-4 text-white shadow-md">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="space-y-1 max-w-2xl">
                 <div className="flex items-center gap-2">
                   <span className="rounded bg-amber-400 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-slate-950">
                     Why This Course?
@@ -2730,7 +2859,7 @@ export function BoardReadinessReport({
                     SRSMA Class 10 Board Mastery Course
                   </span>
                 </div>
-                <h3 className="text-base sm:text-lg font-black text-white">
+                <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
                   Knowing a chapter is not enough. Students must learn to solve unfamiliar, application-based questions.
                 </h3>
                 <p className="text-xs text-amber-200 font-medium italic">
@@ -2741,17 +2870,17 @@ export function BoardReadinessReport({
                 <button
                   type="button"
                   onClick={() => setShowBrochureModal(true)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-black text-slate-950 shadow-sm transition hover:bg-amber-300"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-1.5 text-xs font-black text-slate-950 shadow-sm transition hover:bg-amber-300"
                 >
-                  <FileText className="size-4" />
+                  <FileText className="size-3.5" />
                   View Full Brochure Flyer
                 </button>
                 <button
                   type="button"
                   onClick={() => handleWhatsAppAction('whatsapp_contact_us')}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-black text-white shadow-sm transition active:scale-[0.99]"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1.5 text-xs font-black text-white shadow-sm transition active:scale-[0.99]"
                 >
-                  <MessageCircle className="size-4" />
+                  <MessageCircle className="size-3.5" />
                   Contact Us
                 </button>
               </div>
@@ -2759,16 +2888,16 @@ export function BoardReadinessReport({
           </div>
 
           {/* Two-Column Grid matching brochure layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
             {/* Left Column (5 cols) */}
-            <div className="lg:col-span-5 space-y-3.5">
+            <div className="lg:col-span-5 space-y-2.5">
               {/* The Class X Gap */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 sm:p-3.5 space-y-2 dark:border-slate-800 dark:bg-slate-900/60">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   The Class X Gap
                 </h4>
                 {/* Visual Pipeline */}
-                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold text-center">
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] font-bold text-center">
                   <div className="rounded-lg bg-amber-300/80 text-slate-900 p-1.5 flex items-center justify-center">
                     School teaches the chapter
                   </div>
@@ -2784,7 +2913,7 @@ export function BoardReadinessReport({
                 </div>
 
                 {/* Quotes */}
-                <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 italic">
+                <div className="space-y-1 text-xs text-slate-700 dark:text-slate-300 italic leading-snug">
                   <p className="rounded-lg bg-white p-1.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950/60">
                     “I know the formula… but don’t know when to use it.”
                   </p>
@@ -2802,14 +2931,14 @@ export function BoardReadinessReport({
               </div>
 
               {/* Ideal For Students Who */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-950 p-4 text-white space-y-2.5 dark:border-slate-800">
-                <div className="flex items-center gap-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-950 p-3 sm:p-3.5 text-white space-y-2 dark:border-slate-800">
+                <div className="flex items-center gap-1.5">
                   <div className="size-1.5 rounded-full bg-amber-400" />
                   <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
                     This Programme Is Ideal For Students Who:
                   </h4>
                 </div>
-                <ul className="space-y-1 text-xs text-slate-200">
+                <ul className="space-y-1.5 text-xs text-slate-100 font-medium">
                   <li className="flex items-center gap-2">
                     <Check className="size-3.5 text-amber-400 shrink-0" />
                     <span>Have conceptual gaps</span>
@@ -2831,50 +2960,50 @@ export function BoardReadinessReport({
                     <span>Want stronger fundamentals before Class XI</span>
                   </li>
                 </ul>
-                <div className="rounded-lg bg-amber-400/20 border border-amber-400/40 p-2 text-[11px] font-bold text-amber-300 text-center">
+                <div className="rounded-lg bg-amber-400/20 border border-amber-400/40 p-1.5 text-[11px] sm:text-xs font-bold text-amber-300 text-center leading-snug">
                   Especially valuable for students who plan to choose MPC / BiPC after Class X
                 </div>
               </div>
 
               {/* The Four Pillars */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 sm:p-3.5 space-y-2 dark:border-slate-800 dark:bg-slate-900/60">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   The Four Pillars Of This Course
                 </h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
-                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                    <div className="flex items-center gap-1 font-bold text-xs text-slate-900 dark:text-white mb-0.5">
                       <Brain className="size-3.5 text-rose-500 shrink-0" />
                       <span>Concept Clarity</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
                       Identify weak fundamentals and rebuild them from the ground up.
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
-                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                    <div className="flex items-center gap-1 font-bold text-xs text-slate-900 dark:text-white mb-0.5">
                       <BookOpen className="size-3.5 text-blue-500 shrink-0" />
                       <span>Deep Practice</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
                       Move from basic → application → higher-order → Board-level questions.
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
-                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                    <div className="flex items-center gap-1 font-bold text-xs text-slate-900 dark:text-white mb-0.5">
                       <Target className="size-3.5 text-amber-500 shrink-0" />
                       <span>Performance Feedback</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
                       Tests reveal exactly where the student is losing marks — and what to improve.
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950">
-                    <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white mb-0.5">
+                    <div className="flex items-center gap-1 font-bold text-xs text-slate-900 dark:text-white mb-0.5">
                       <Zap className="size-3.5 text-emerald-500 shrink-0" />
                       <span>Exam Skills</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
                       Learn to approach questions, manage time &amp; present answers effectively.
                     </p>
                   </div>
@@ -2886,7 +3015,7 @@ export function BoardReadinessReport({
                 <button
                   type="button"
                   onClick={() => handleWhatsAppAction('whatsapp_enroll_now')}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-4 text-xs sm:text-sm shadow-md transition-all active:scale-[0.99]"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2.5 px-4 text-xs sm:text-sm shadow-md transition-all active:scale-[0.99]"
                 >
                   <MessageCircle className="size-4" />
                   <span>Enroll Now via WhatsApp</span>
@@ -2895,12 +3024,12 @@ export function BoardReadinessReport({
             </div>
 
             {/* Right Column (7 cols) */}
-            <div className="lg:col-span-7 space-y-3.5">
+            <div className="lg:col-span-7 space-y-2.5">
               {/* The 100 Hour Roadmap */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3 dark:border-slate-800 dark:bg-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                       The 100 Hour Roadmap
                     </h4>
                     <p className="text-xs font-bold text-brand-600 dark:text-brand-400">
@@ -2910,7 +3039,7 @@ export function BoardReadinessReport({
                 </div>
 
                 {/* Phase 1: Understand */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-1.5 dark:border-slate-800 dark:bg-slate-950/60">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5 space-y-1.5 dark:border-slate-800 dark:bg-slate-950/60">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-blue-600" />
@@ -2918,36 +3047,36 @@ export function BoardReadinessReport({
                         1. UNDERSTAND
                       </span>
                     </div>
-                    <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
                       CLOSE THE GAPS (Only Maths &amp; Science)
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-700 dark:text-slate-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-slate-700 dark:text-slate-300">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-bold text-blue-600">01</span>
+                      <span className="font-mono font-bold text-blue-600 text-xs">01</span>
                       <span>Strengthen weak fundamentals</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-bold text-blue-600">02</span>
+                      <span className="font-mono font-bold text-blue-600 text-xs">02</span>
                       <span>Understand concepts from first principles</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-bold text-blue-600">03</span>
+                      <span className="font-mono font-bold text-blue-600 text-xs">03</span>
                       <span>Learn the why, not just the formula</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-bold text-blue-600">04</span>
+                      <span className="font-mono font-bold text-blue-600 text-xs">04</span>
                       <span>Connect concepts across chapters</span>
                     </div>
                     <div className="flex items-center gap-1.5 sm:col-span-2">
-                      <span className="font-mono font-bold text-blue-600">05</span>
+                      <span className="font-mono font-bold text-blue-600 text-xs">05</span>
                       <span>Develop clear methods for solving problems</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Phase 2: Master */}
-                <div className="rounded-xl border border-slate-200 bg-slate-950 p-3 space-y-2 text-white dark:border-slate-800">
+                <div className="rounded-xl border border-slate-200 bg-slate-950 p-2.5 space-y-2 text-white dark:border-slate-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-amber-400" />
@@ -2955,35 +3084,35 @@ export function BoardReadinessReport({
                         2. MASTER
                       </span>
                     </div>
-                    <span className="text-[10px] font-extrabold uppercase text-amber-300 tracking-wider">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-amber-300 tracking-wider">
                       PRACTISE. APPLY. SOLVE.
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                     <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-[11px]">1. BASIC</div>
-                      <div className="text-[10px] text-slate-300">Build confidence with Concept-First questions</div>
+                      <div className="font-bold text-amber-300 text-xs">1. BASIC</div>
+                      <div className="text-[11px] text-slate-300 mt-0.5">Build confidence with Concept-First questions</div>
                     </div>
                     <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-[11px]">2. APPLICATION</div>
-                      <div className="text-[10px] text-slate-300">Apply ideas to unfamiliar, Exam-Style problems</div>
+                      <div className="font-bold text-amber-300 text-xs">2. APPLICATION</div>
+                      <div className="text-[11px] text-slate-300 mt-0.5">Apply ideas to unfamiliar, Exam-Style problems</div>
                     </div>
                     <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-[11px]">3. HIGHER-ORDER</div>
-                      <div className="text-[10px] text-slate-300">Develop thinking needed for Competency based questions</div>
+                      <div className="font-bold text-amber-300 text-xs">3. HIGHER-ORDER</div>
+                      <div className="text-[11px] text-slate-300 mt-0.5">Develop thinking needed for Competency based questions</div>
                     </div>
                     <div className="rounded-lg bg-slate-900 p-2 border border-slate-800">
-                      <div className="font-bold text-amber-300 text-[11px]">4. BOARD PATTERN</div>
-                      <div className="text-[10px] text-slate-300">Practise the PYQs that matter the most in Boards</div>
+                      <div className="font-bold text-amber-300 text-xs">4. BOARD PATTERN</div>
+                      <div className="text-[11px] text-slate-300 mt-0.5">Practise the PYQs that matter the most in Boards</div>
                     </div>
                   </div>
-                  <div className="text-center text-[10px] text-amber-200/90 font-semibold pt-0.5">
+                  <div className="text-center text-[11px] text-amber-200/90 font-semibold pt-0.5">
                     • Build Confidence • Apply Concepts • Master Board Patterns
                   </div>
                 </div>
 
                 {/* Phase 3: Perform */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-1.5 dark:border-slate-800 dark:bg-slate-950/60">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5 space-y-2 dark:border-slate-800 dark:bg-slate-950/60">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-emerald-600" />
@@ -2991,7 +3120,7 @@ export function BoardReadinessReport({
                         3. PERFORM
                       </span>
                     </div>
-                    <span className="text-[10px] font-extrabold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">
                       TEST. ANALYSE. IMPROVE.
                     </span>
                   </div>
@@ -3004,7 +3133,7 @@ export function BoardReadinessReport({
                     </span>
                   </div>
                   {/* Flow */}
-                  <div className="flex flex-wrap items-center justify-center gap-1 text-[10px] font-black text-slate-700 dark:text-slate-300">
+                  <div className="flex flex-wrap items-center justify-center gap-1 text-[11px] font-black text-slate-700 dark:text-slate-300">
                     <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800">ATTEMPT</span>
                     <span>→</span>
                     <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800">ANALYSE</span>
@@ -3015,7 +3144,7 @@ export function BoardReadinessReport({
                     <span>→</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white">IMPROVE</span>
                   </div>
-                  <div className="text-center text-[10px] text-slate-500 dark:text-slate-400">
+                  <div className="text-center text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
                     • Speed • Accuracy • Time Management • Answer Presentation • Exam Strategy
                   </div>
                 </div>
@@ -3026,9 +3155,9 @@ export function BoardReadinessReport({
               </div>
 
               {/* Star Faculty Guiding Your Child */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2.5 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
                 <div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#0e3b43] dark:text-amber-300">
+                  <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-[#0e3b43] dark:text-amber-300">
                     NOT 100 HOURS OF LECTURES. IT&apos;S 100 HOURS OF GUIDED PREPARATION!
                   </div>
                   <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#0e3b43] dark:text-white mt-0.5">
@@ -3037,93 +3166,93 @@ export function BoardReadinessReport({
                   <div className="mt-1 h-0.5 w-full bg-[#0e3b43]/30 dark:bg-slate-700" />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 items-end text-center pt-1">
-                  {/* Amal M Das - Circular Portrait with Yellow Ring */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end text-center pt-1">
+                  {/* Amal M Das */}
                   <div className="flex flex-col items-center justify-end">
-                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                    <div className="relative size-12 sm:size-14 rounded-full overflow-hidden border-2 border-amber-400 mb-1 shadow-xs bg-amber-50">
                       <img
                         src="/board-challenge/faculty_amal.webp"
                         alt="Mr. Amal M Das"
                         className="size-full object-cover object-center"
                       />
                     </div>
-                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
                       MR. AMAL M DAS
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         B.Tech, IIT KGP
                       </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
                         Program Coordinator
                       </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
                         Maths HOD
                       </span>
                     </div>
                   </div>
 
-                  {/* Brajesh - Circular Portrait with Yellow Ring */}
+                  {/* Brajesh */}
                   <div className="flex flex-col items-center justify-end">
-                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                    <div className="relative size-12 sm:size-14 rounded-full overflow-hidden border-2 border-amber-400 mb-1 shadow-xs bg-amber-50">
                       <img
                         src="/board-challenge/faculty_brajesh.webp"
                         alt="Mr. Brajesh"
                         className="size-full object-cover object-center"
                       />
                     </div>
-                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
                       MR. BRAJESH
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         B.Tech, IIT Madras
                       </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
                         Physics HOD
                       </span>
                     </div>
                   </div>
 
-                  {/* Ninad - Circular Portrait with Yellow Ring */}
+                  {/* Ninad */}
                   <div className="flex flex-col items-center justify-end">
-                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                    <div className="relative size-12 sm:size-14 rounded-full overflow-hidden border-2 border-amber-400 mb-1 shadow-xs bg-amber-50">
                       <img
                         src="/board-challenge/faculty_ninad.webp"
                         alt="Mr. Ninad"
                         className="size-full object-cover object-center"
                       />
                     </div>
-                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
                       MR. NINAD
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         B.Tech, IIT Madras
                       </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
                         Chemistry HOD
                       </span>
                     </div>
                   </div>
 
-                  {/* Thirumala - Circular Portrait with Yellow Ring */}
+                  {/* Thirumala */}
                   <div className="flex flex-col items-center justify-end">
-                    <div className="relative size-14 sm:size-16 rounded-full overflow-hidden border-[3px] border-amber-400 mb-1.5 shadow-xs bg-amber-50">
+                    <div className="relative size-12 sm:size-14 rounded-full overflow-hidden border-2 border-amber-400 mb-1 shadow-xs bg-amber-50">
                       <img
                         src="/board-challenge/faculty_thirumala.webp"
                         alt="Mr. Thirumala"
                         className="size-full object-cover object-center"
                       />
                     </div>
-                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
+                    <span className="rounded bg-amber-400 px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-xs">
                       MR. THIRUMALA
                     </span>
                     <div className="mt-1 flex flex-col space-y-0.5">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         M.Tech, NIT Warangal
                       </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-[#0e3b43] dark:text-teal-400 leading-tight">
+                      <span className="text-[9.5px] sm:text-[10px] font-medium text-[#0e3b43] dark:text-teal-400 leading-tight">
                         Maths Faculty
                       </span>
                     </div>
@@ -3135,9 +3264,9 @@ export function BoardReadinessReport({
         </div>
 
         {/* Official Academic Seal & Certification Footer */}
-        <div className="mt-8 border-t border-slate-200/80 dark:border-slate-800 pt-5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
+        <div className="mt-5 border-t border-slate-200/80 dark:border-slate-800 pt-3.5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
           <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400 font-black text-xs border border-brand-200/50">
+            <span className="flex size-5 sm:size-6 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400 font-black text-xs border border-brand-200/50">
               ✓
             </span>
             <div>
@@ -3182,7 +3311,7 @@ export function BoardReadinessReport({
       {isTeacherView && report.calculationSteps && (
         <section
           id="report-page-6"
-          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block print:block"
+          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block print:block scroll-mt-24"
         >
           {/* Header watermark & Brand bar */}
           <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60 gap-2">

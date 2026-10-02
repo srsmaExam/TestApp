@@ -120,12 +120,10 @@ export function TeacherCohortAnalyticsClient() {
       if (search) {
         const q = search.toLowerCase();
         const matchesName = s.fullName.toLowerCase().includes(q);
-        const matchesUsername = s.username.toLowerCase().includes(q);
-        const matchesEmail = s.email?.toLowerCase().includes(q);
         const matchesPhone = s.phone?.toLowerCase().includes(q);
         const matchesCity = s.city?.toLowerCase().includes(q);
         const matchesSchool = s.school?.toLowerCase().includes(q);
-        return Boolean(matchesName || matchesUsername || matchesEmail || matchesPhone || matchesCity || matchesSchool);
+        return Boolean(matchesName || matchesPhone || matchesCity || matchesSchool);
       }
       return true;
     });
@@ -388,7 +386,7 @@ export function TeacherCohortAnalyticsClient() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search candidate name, phone, email, or city…"
+                placeholder="Search candidate name, phone, or city…"
                 className="pl-9"
                 aria-label="Search candidates"
               />
@@ -457,16 +455,14 @@ export function TeacherCohortAnalyticsClient() {
                         {s.fullName}
                       </Link>
 
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                        {s.phone ? (
+                      {s.phone ? (
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                           <span className="inline-flex items-center gap-1 font-mono font-semibold text-brand-700 dark:text-brand-300">
                             <Phone className="size-3" />
                             {s.phone}
                           </span>
-                        ) : null}
-                        <span>{s.username}</span>
-                        {s.email ? <span>· {s.email}</span> : null}
-                      </div>
+                        </div>
+                      ) : null}
 
                       {(s.city || s.school || s.board) && (
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">

@@ -89,19 +89,14 @@ export function parseStudentCsv(csvText: string): StudentImportValidationResult 
   const batchIdx = headerCells.findIndex((h) => ['batch', 'cohort', 'section', 'group'].includes(h));
   const passIdx = headerCells.findIndex((h) => ['password', 'pass', 'pwd'].includes(h));
 
-  if (nameIdx === -1 || usernameIdx === -1 || emailIdx === -1) {
-    const missing: string[] = [];
-    if (nameIdx === -1) missing.push('full_name');
-    if (usernameIdx === -1) missing.push('username');
-    if (emailIdx === -1) missing.push('email');
-
+  if (nameIdx === -1) {
     return {
       validRows: [],
       errors: [
         {
           row: 1,
           field: 'headers',
-          message: `Missing required header column(s): ${missing.join(', ')}. Expected: full_name, username, email, phone, batch, password`,
+          message: 'Missing required header column: full_name (or name). Expected: full_name, phone, batch',
         },
       ],
     };
@@ -123,15 +118,11 @@ export function parseStudentCsv(csvText: string): StudentImportValidationResult 
 
     let hasRowError = false;
     const rawName = cells[nameIdx] ?? '';
-    const rawUsername = cells[usernameIdx] ?? '';
-    const rawEmail = cells[emailIdx] ?? '';
     const rawPhone = phoneIdx !== -1 ? (cells[phoneIdx] ?? '') : '';
     const rawBatch = batchIdx !== -1 ? (cells[batchIdx] ?? '') : '';
     const rawPass = passIdx !== -1 ? (cells[passIdx] ?? '') : '';
 
     const fullName = sanitizeString(rawName);
-    const username = sanitizeString(rawUsername);
-    const email = sanitizeString(rawEmail).toLowerCase();
     const phone = rawPhone ? sanitizeString(rawPhone) : null;
     const batch = rawBatch ? sanitizeString(rawBatch) : null;
     const password = rawPass ? rawPass.trim() : '112345';
@@ -140,36 +131,6 @@ export function parseStudentCsv(csvText: string): StudentImportValidationResult 
     if (!fullName) {
       hasRowError = true;
       errors.push({ row: rowNum, field: 'full_name', message: 'Full name is required' });
-    }
-
-    if (!username) {
-      hasRowError = true;
-      errors.push({ row: rowNum, field: 'username', message: 'Username is required' });
-    } else if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
-      hasRowError = true;
-      errors.push({
-        row: rowNum,
-        field: 'username',
-        message: 'Username may only contain letters, numbers, hyphens, periods, and underscores',
-      });
-    } else if (seenUsernames.has(username.toLowerCase())) {
-      hasRowError = true;
-      errors.push({ row: rowNum, field: 'username', message: `Duplicate username in CSV: "${username}"` });
-    } else {
-      seenUsernames.add(username.toLowerCase());
-    }
-
-    if (!email) {
-      hasRowError = true;
-      errors.push({ row: rowNum, field: 'email', message: 'Email address is required' });
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      hasRowError = true;
-      errors.push({ row: rowNum, field: 'email', message: `Invalid email address format: "${email}"` });
-    } else if (seenEmails.has(email)) {
-      hasRowError = true;
-      errors.push({ row: rowNum, field: 'email', message: `Duplicate email in CSV: "${email}"` });
-    } else {
-      seenEmails.add(email);
     }
 
     let normalizedPhone: string | null = null;
@@ -184,6 +145,41 @@ export function parseStudentCsv(csvText: string): StudentImportValidationResult 
       } else {
         seenPhones.add(fullPhone);
         normalizedPhone = fullPhone;
+      }
+    }
+
+    const phoneDigits = normalizedPhone ? normalizedPhone.replace(/\D/g, '') : `row${rowNum}`;
+    const rawUsername = usernameIdx !== -1 ? (cells[usernameIdx] ?? '') : '';
+    const rawEmail = emailIdx !== -1 ? (cells[emailIdx] ?? '') : '';
+
+    const username = rawUsername ? sanitizeString(rawUsername) : `usr_${phoneDigits}_${rowNum}`;
+    const email = rawEmail ? sanitizeString(rawEmail).toLowerCase() : `${phoneDigits}_${rowNum}@student.srsma.local`;
+
+    if (rawUsername) {
+      if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+        hasRowError = true;
+        errors.push({
+          row: rowNum,
+          field: 'username',
+          message: 'Username may only contain letters, numbers, hyphens, periods, and underscores',
+        });
+      } else if (seenUsernames.has(username.toLowerCase())) {
+        hasRowError = true;
+        errors.push({ row: rowNum, field: 'username', message: `Duplicate username in CSV: "${username}"` });
+      } else {
+        seenUsernames.add(username.toLowerCase());
+      }
+    }
+
+    if (rawEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        hasRowError = true;
+        errors.push({ row: rowNum, field: 'email', message: `Invalid email address format: "${email}"` });
+      } else if (seenEmails.has(email)) {
+        hasRowError = true;
+        errors.push({ row: rowNum, field: 'email', message: `Duplicate email in CSV: "${email}"` });
+      } else {
+        seenEmails.add(email);
       }
     }
 

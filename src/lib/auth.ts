@@ -78,7 +78,7 @@ export function normalizePhone(
 export async function loginWithPhone(
   countryCode: string,
   rawPhone: string,
-  extraDetails?: { fullName?: string; classLevel?: string },
+  extraDetails?: { fullName?: string; classLevel?: string; phoneVerified?: boolean },
 ): Promise<Session> {
   const { fullPhone, cleanDigits } = normalizePhone(countryCode, rawPhone);
 
@@ -117,6 +117,9 @@ export async function loginWithPhone(
     const updates: Partial<typeof profiles.$inferInsert> = {};
     if (!user.phone) {
       updates.phone = fullPhone;
+    }
+    if (extraDetails?.phoneVerified !== undefined) {
+      updates.phoneVerified = extraDetails.phoneVerified;
     }
     if (extraDetails?.fullName?.trim()) {
       updates.fullName = extraDetails.fullName.trim();
@@ -164,6 +167,7 @@ export async function loginWithPhone(
           isActive: true,
           canLogin: true,
           isProvisional: true,
+          phoneVerified: extraDetails?.phoneVerified ?? false,
         })
         .returning();
 
@@ -332,6 +336,25 @@ export async function apiSession(): Promise<Session> {
     role: user.role,
     isProvisional: user.isProvisional,
   };
+}
+
+/**
+ * JWT-only guard for high-frequency exam endpoints (autosave, question load,
+ * images). Skips the profiles lookup. Only use where the handler itself checks
+ * that the attempt belongs to session.userId. Everything else keeps apiSession().
+ */
+export async function apiSessionFast(): Promise<Session> {
+  const session = await getSession();
+  if (!session) throw new HttpError(401, 'unauthenticated', 'Sign in to continue.');
+  return session;
+}
+
+export async function apiStudentFast(): Promise<Session> {
+  const session = await apiSessionFast();
+  if (session.role !== 'student') {
+    throw new HttpError(403, 'forbidden', 'This action requires a student account.');
+  }
+  return session;
 }
 
 export async function apiTeacher(): Promise<Session> {

@@ -36,9 +36,12 @@ import { NextResponse } from 'next/server';
 import * as authLogin from './auth/login';
 import * as authLogout from './auth/logout';
 import * as authCheckPhone from './auth/check-phone';
+import * as authPhoneSendOtp from './auth/phone/send-otp';
+import * as authPhoneVerifyOtp from './auth/phone/verify-otp';
 import * as studentReportDetails from './student/report-details';
 import * as studentLeadAction from './student/lead-action';
 import * as studentFeedback from './student/feedback';
+import * as teacherSettings from './teacher/settings';
 
 // 2. Cron Handlers
 import * as cronSweep from './cron/sweep-expired';
@@ -83,7 +86,6 @@ import * as testsReleaseResults from './tests/release-results';
 // 8. Attempt Session Handlers
 import * as attemptsById from './attempts/by-id';
 import * as attemptsAnswers from './attempts/answers';
-import * as attemptsEvents from './attempts/events';
 import * as attemptsExtendTime from './attempts/extend-time';
 import * as attemptsQuestions from './attempts/questions';
 import * as attemptsResult from './attempts/result';
@@ -138,6 +140,10 @@ export function matchRoute(slug: string[]): RouteMatch | null {
       if (s1 === 'lead-action') return { handler: studentLeadAction, params: {}, pattern: '/api/student/lead-action' };
       if (s1 === 'feedback') return { handler: studentFeedback, params: {}, pattern: '/api/student/feedback' };
     }
+    // /api/teacher/*
+    if (s0 === 'teacher') {
+      if (s1 === 'settings') return { handler: teacherSettings, params: {}, pattern: '/api/teacher/settings' };
+    }
     // /api/cron/*
     if (s0 === 'cron' && s1 === 'sweep-expired') {
       return { handler: cronSweep, params: {}, pattern: '/api/cron/sweep-expired' };
@@ -175,6 +181,11 @@ export function matchRoute(slug: string[]): RouteMatch | null {
   }
 
   if (len === 3) {
+    // /api/auth/phone/*
+    if (s0 === 'auth' && s1 === 'phone') {
+      if (s2 === 'send-otp') return { handler: authPhoneSendOtp, params: {}, pattern: '/api/auth/phone/send-otp' };
+      if (s2 === 'verify-otp') return { handler: authPhoneVerifyOtp, params: {}, pattern: '/api/auth/phone/verify-otp' };
+    }
     // /api/analytics/student/me
     if (s0 === 'analytics' && s1 === 'student' && s2 === 'me') {
       return { handler: analyticsStudentMe, params: {}, pattern: '/api/analytics/student/me' };
@@ -206,7 +217,6 @@ export function matchRoute(slug: string[]): RouteMatch | null {
     // /api/attempts/[id]/*
     if (s0 === 'attempts') {
       if (s2 === 'answers') return { handler: attemptsAnswers, params: { id: s1 }, pattern: '/api/attempts/[id]/answers' };
-      if (s2 === 'events') return { handler: attemptsEvents, params: { id: s1 }, pattern: '/api/attempts/[id]/events' };
       if (s2 === 'extend-time') return { handler: attemptsExtendTime, params: { id: s1 }, pattern: '/api/attempts/[id]/extend-time' };
       if (s2 === 'questions') return { handler: attemptsQuestions, params: { id: s1 }, pattern: '/api/attempts/[id]/questions' };
       if (s2 === 'result') return { handler: attemptsResult, params: { id: s1 }, pattern: '/api/attempts/[id]/result' };
@@ -278,9 +288,12 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/auth/login', verbs: ['POST'] },
   { pattern: '/api/auth/logout', verbs: ['POST'] },
   { pattern: '/api/auth/check-phone', verbs: ['POST'] },
+  { pattern: '/api/auth/phone/send-otp', verbs: ['POST'] },
+  { pattern: '/api/auth/phone/verify-otp', verbs: ['POST'] },
   { pattern: '/api/student/report-details', verbs: ['POST'] },
   { pattern: '/api/student/lead-action', verbs: ['POST'] },
-  { pattern: '/api/student/feedback', verbs: ['GET', 'POST'] },
+  { pattern: '/api/student/feedback', verbs: ['DELETE', 'GET', 'POST'] },
+  { pattern: '/api/teacher/settings', verbs: ['GET', 'PATCH'] },
   { pattern: '/api/cron/sweep-expired', verbs: ['GET', 'POST'] },
   { pattern: '/api/batches', verbs: ['GET'] },
   { pattern: '/api/students', verbs: ['GET', 'POST'] },
@@ -311,7 +324,6 @@ export const ALL_REGISTERED_ROUTES: { pattern: string; verbs: string[] }[] = [
   { pattern: '/api/tests/[id]/release-results', verbs: ['POST'] },
   { pattern: '/api/attempts/[id]', verbs: ['GET'] },
   { pattern: '/api/attempts/[id]/answers', verbs: ['PATCH', 'POST'] },
-  { pattern: '/api/attempts/[id]/events', verbs: ['POST'] },
   { pattern: '/api/attempts/[id]/extend-time', verbs: ['POST'] },
   { pattern: '/api/attempts/[id]/questions', verbs: ['GET'] },
   { pattern: '/api/attempts/[id]/result', verbs: ['GET'] },

@@ -925,13 +925,16 @@ export function ResultReviewClient({
             <p className="mt-0.5 text-xl font-bold text-white">{Math.round(data.totalTimeS / 60)} min</p>
           </div>
 
-          <div className="rounded-lg bg-white/5 p-3 text-center">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Correct / Wrong</p>
-            <p className="mt-0.5 text-xl font-bold text-white">
-              <span className="text-emerald-400">{data.summary.correctCount}</span>
-              <span className="mx-1 text-slate-400">/</span>
-              <span className="text-red-400">{data.summary.wrongCount}</span>
-            </p>
+          <div className="rounded-lg bg-white/5 p-3 text-center flex flex-col justify-center">
+            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1.5">Responses</p>
+            <div className="flex items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2.5 py-1 text-sm font-bold text-emerald-400 border border-emerald-500/30">
+                <span className="text-base font-extrabold">{data.summary.correctCount}</span> Correct
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/15 px-2.5 py-1 text-sm font-bold text-rose-400 border border-rose-500/30">
+                <span className="text-base font-extrabold">{data.summary.wrongCount}</span> Wrong
+              </span>
+            </div>
           </div>
         </div>
       </div>

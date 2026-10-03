@@ -14,9 +14,10 @@ function GoogleAnalyticsRouteTracker({ gaId }: { gaId: string }) {
     captureAndPersistUtmParams();
 
     // 2. Track page_view on client-side route transitions
-    if (typeof window !== 'undefined' && typeof (window as unknown as { gtag?: Function }).gtag === 'function') {
+    const win = typeof window !== 'undefined' ? (window as unknown as { gtag?: (...args: unknown[]) => void }) : null;
+    if (win && typeof win.gtag === 'function') {
       const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
-      (window as unknown as { gtag: Function }).gtag('config', gaId, {
+      win.gtag('config', gaId, {
         page_path: url,
       });
     }

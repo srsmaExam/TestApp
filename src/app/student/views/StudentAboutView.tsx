@@ -3,22 +3,17 @@ import Link from 'next/link';
 import {
   Award,
   GraduationCap,
-  BookOpen,
   Sparkles,
   MapPin,
-  Phone,
   Mail,
   ArrowRight,
-  ShieldCheck,
-  Target,
   Users,
   Clock,
   ExternalLink,
-  CheckCircle2,
   HeartHandshake,
   Utensils,
-  Maximize2,
   MessageCircle,
+  Globe,
 } from 'lucide-react';
 import { BRAND } from '@/config/branding';
 import { requireStudent } from '@/lib/auth';
@@ -35,38 +30,35 @@ export async function StudentAboutView() {
           <div className="absolute -right-16 -top-16 size-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
           <div className="absolute -left-16 -bottom-16 size-80 rounded-full bg-brand-500/10 blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
-            <div className="flex flex-col items-center md:items-start text-center md:text-left gap-4">
-              <div className="relative size-20 sm:size-24 shrink-0 overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-white/10 p-2 backdrop-blur-sm shadow-md shadow-amber-500/10">
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Logo on Left */}
+            <div className="shrink-0 flex items-center justify-center">
+              <div className="relative size-20 sm:size-24 lg:size-28 shrink-0 overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-white/10 p-2 backdrop-blur-sm shadow-md shadow-amber-500/10">
                 <Image
                   src={BRAND.logoMark}
                   alt="SRSMA Emblem"
-                  width={96}
-                  height={96}
+                  width={112}
+                  height={112}
                   className="size-full rounded-xl object-contain"
                 />
               </div>
-
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/15 border border-amber-400/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-300 mb-2">
-                  <Sparkles className="size-3.5" />
-                  <span>Founded by Top IIT Alumni</span>
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-                  Shri Ram <span className="text-amber-400">Smart Minds Academy</span>
-                </h1>
-                <p className="mt-1.5 text-sm sm:text-lg font-bold text-amber-200/95">
-                  Top Coaching with Personal Care, Not Heavy Stress
-                </p>
-                <p className="mt-3 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-300">
-                  At Shri Ram Smart Minds Academy (SRSMA), we believe top coaching should come with personal care, not heavy stress. Founded by top IIT Alumni, our academy has proven its quality right from its very first batch.
-                </p>
-              </div>
             </div>
 
+            {/* Center: Shri Ram Smart Minds Academy between Logo and Locate Campus */}
+            <div className="flex-1 flex flex-col items-center text-center px-1 sm:px-4">
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/15 border border-amber-400/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-300 mb-2">
+                <Sparkles className="size-3.5" />
+                <span>Founded by Top IIT Alumni</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+                Shri Ram <span className="text-amber-400">Smart Minds Academy</span>
+              </h1>
+            </div>
+
+            {/* Locate Campus on Maps on Right */}
             <div className="shrink-0 flex flex-col items-center md:items-end gap-3">
               <a
-                href="https://share.google/xZAdnqnV9TqeAZCbJ"
+                href="https://share.google/xZAdnqnV9TqeAZCbJ?utm_source=exam-app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-2xl bg-amber-400 px-5 py-3 text-xs sm:text-sm font-black text-slate-950 shadow-md shadow-amber-500/20 transition hover:bg-amber-300 active:scale-95"
@@ -90,7 +82,7 @@ export async function StudentAboutView() {
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           {/* Photo Showcase */}
           <div className="lg:col-span-7 relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-md group dark:border-slate-800">
-            <div className="relative aspect-video w-full overflow-hidden">
+            <div className="relative aspect-[16/10] sm:aspect-video w-full overflow-hidden">
               <Image
                 src="/brand/smart_classroom.webp"
                 alt="Shri Ram Smart Minds Academy - Air-Conditioned Smart Classroom"
@@ -98,17 +90,16 @@ export async function StudentAboutView() {
                 priority
                 className="object-cover transition duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 text-white space-y-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-2.5 py-0.5 text-[11px] font-black text-slate-950 uppercase tracking-wider">
-                  Interactive Learning
-                </span>
-                <h3 className="text-base sm:text-xl font-black text-white drop-shadow-sm">
-                  Air-Conditioned Smart Classrooms
+              <div className="absolute inset-x-0 bottom-0 h-20 sm:h-32 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent pointer-events-none" />
+              <div className="absolute bottom-2.5 left-3 right-3 sm:bottom-6 sm:left-6 sm:right-6 text-white space-y-0.5 sm:space-y-1">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] sm:text-[11px] font-black text-slate-950 uppercase tracking-wider">
+                    Interactive Learning
+                  </span>
+                </div>
+                <h3 className="text-xs sm:text-xl font-black text-white drop-shadow-sm leading-tight">
+                  Air-Conditioned Smart AI Powered Classrooms
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-200 font-medium drop-shadow-xs line-clamp-2">
-                  Interactive digital smart boards and comfortable, modern learning spaces designed for deep conceptual focus and high student engagement.
-                </p>
               </div>
             </div>
           </div>
@@ -126,6 +117,19 @@ export async function StudentAboutView() {
               <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 To make sure no child gets left behind, we keep our batch size small with only <strong>25 to 30 students per batch</strong>. This allows our teachers to give daily attention to every child.
               </p>
+
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 mb-2 text-amber-600 dark:text-amber-400">
+                  <Sparkles className="size-5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">The SRSMA Philosophy</span>
+                </div>
+                <h4 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-snug">
+                  Top Coaching with Personal Care, Not Heavy Stress
+                </h4>
+                <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  At Shri Ram Smart Minds Academy (SRSMA), we believe top coaching should come with personal care, not heavy stress. Founded by top IIT Alumni, our academy has proven its quality right from its very first batch.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2.5 pt-2">
@@ -233,7 +237,7 @@ export async function StudentAboutView() {
         {/* 4. Contact & Campus Information */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-9 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
-            <div className="space-y-4 max-w-xl">
+            <div className="space-y-4 max-w-xl flex-1">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-400">
                   Visit &amp; Connect
@@ -254,7 +258,7 @@ export async function StudentAboutView() {
                   </div>
                   <div>
                     <strong className="block text-slate-900 dark:text-white font-bold">Campus Address</strong>
-                    <span>Shri Ram Smart Minds Academy, 2nd Floor Sankirtan Bhavan, Bandlaguda Jagir, Sun City, Hyderabad</span>
+                    <span>Shri Ram Smart Minds Academy, 2<sup>nd</sup> Floor Sankirtan Bhavan, Bandlaguda Jagir, Sun City, Hyderabad</span>
                   </div>
                 </div>
 
@@ -289,6 +293,25 @@ export async function StudentAboutView() {
                   </div>
                 </div>
 
+                {/* Website */}
+                <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
+                  <div className="size-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-brand-600 dark:text-brand-400">
+                    <Globe className="size-4.5" />
+                  </div>
+                  <div>
+                    <strong className="block text-slate-900 dark:text-white font-bold">Website</strong>
+                    <a
+                      href="https://srsma.in/?utm_source=exam-app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-brand-700 hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                    >
+                      <span>srsma.in</span>
+                      <ExternalLink className="size-3 opacity-70" />
+                    </a>
+                  </div>
+                </div>
+
                 {/* Timings */}
                 <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
                   <div className="size-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-brand-600 dark:text-brand-400">
@@ -302,74 +325,43 @@ export async function StudentAboutView() {
               </div>
             </div>
 
-            {/* Quick Action Map Card */}
-            <div className="w-full lg:w-80 rounded-2xl border border-amber-300/80 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 p-5 shadow-sm dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-slate-900 dark:via-amber-950/20 dark:to-slate-900 space-y-4">
+            {/* Google Maps Location Card */}
+            <div className="w-full lg:w-96 rounded-2xl border border-amber-300/80 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 p-4 sm:p-5 shadow-sm dark:border-amber-500/30 dark:bg-gradient-to-br dark:from-slate-900 dark:via-amber-950/20 dark:to-slate-900 space-y-3.5 shrink-0">
               <div className="flex items-center gap-2 text-amber-950 dark:text-amber-300 font-bold text-sm">
                 <MapPin className="size-4 text-amber-600 dark:text-amber-400" />
                 <span>Google Maps Location</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Direct navigation link to Sankirtan Bhavan, Bandlaguda Jagir, Sun City, Hyderabad.
-              </p>
+
+              {/* Compact Mini Map */}
+              <div className="relative h-44 sm:h-48 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 shadow-inner">
+                <iframe
+                  title="Shri Ram Smart Minds Academy Location"
+                  src="https://maps.google.com/maps?q=Sankirtan+Bhavan,+Bandlaguda+Jagir,+Sun+City,+Hyderabad&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="size-full filter dark:contrast-95 dark:brightness-95"
+                />
+              </div>
+
+              {/* Just the button */}
               <a
-                href="https://share.google/xZAdnqnV9TqeAZCbJ"
+                href="https://share.google/xZAdnqnV9TqeAZCbJ?utm_source=exam-app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 py-3 px-4 text-xs font-black text-slate-950 shadow-md hover:bg-amber-300 transition active:scale-95"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 py-2.5 px-4 text-xs font-black text-slate-950 shadow-md hover:bg-amber-300 transition active:scale-95"
               >
                 <span>Open in Google Maps</span>
                 <ExternalLink className="size-3.5" />
               </a>
-              <div className="pt-2 border-t border-amber-200/60 dark:border-amber-500/20 flex items-center justify-end text-[11px] text-slate-500 dark:text-slate-400">
-                <span>Sun City, Hyderabad</span>
-              </div>
             </div>
-          </div>
-        </section>
-
-        {/* 5. Mini Map Section */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="size-8 rounded-lg bg-amber-100 dark:bg-amber-950/80 flex items-center justify-center text-amber-700 dark:text-amber-400">
-                <MapPin className="size-4.5" />
-              </div>
-              <div>
-                <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                  Campus Location Mini Map
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Sankirtan Bhavan, Bandlaguda Jagir, Sun City, Hyderabad
-                </p>
-              </div>
-            </div>
-
-            <a
-              href="https://share.google/xZAdnqnV9TqeAZCbJ"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition self-start sm:self-auto"
-            >
-              <span>Get Directions</span>
-              <ExternalLink className="size-3.5" />
-            </a>
-          </div>
-
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 aspect-[16/7] sm:aspect-[21/9] w-full bg-slate-100 dark:bg-slate-800">
-            <iframe
-              title="Shri Ram Smart Minds Academy Location"
-              src="https://maps.google.com/maps?q=Sankirtan+Bhavan,+Bandlaguda+Jagir,+Sun+City,+Hyderabad&t=&z=15&ie=UTF8&iwloc=&output=embed"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="size-full filter dark:contrast-95 dark:brightness-95"
-            />
           </div>
         </section>
       </div>
     </StudentChrome>
   );
 }
+

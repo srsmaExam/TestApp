@@ -37,10 +37,11 @@ export function KatexSpan({ tex, display = false }: { tex: string; display?: boo
 
   return (
     <span
-      className={cn(
-        'max-w-full align-middle [scrollbar-width:thin]',
-        display ? 'block my-2 overflow-x-auto' : 'inline-block overflow-x-auto',
-      )}
+      className={
+        display
+          ? 'katex-display-wrapper block my-2 max-w-full overflow-x-auto overflow-y-hidden py-1 [scrollbar-width:thin]'
+          : 'inline'
+      }
       dangerouslySetInnerHTML={{ __html: result.html }}
     />
   );

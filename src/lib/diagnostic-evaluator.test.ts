@@ -120,6 +120,9 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(classifyPreparationLevel(49.9)).toBe('Basic');
     expect(classifyPreparationLevel(40)).toBe('Basic');
     expect(classifyPreparationLevel(35)).toBe('Basic');
+    expect(classifyPreparationLevel(20)).toBe('Basic');
+    expect(classifyPreparationLevel(19.9)).toBe('Foundational');
+    expect(classifyPreparationLevel(10)).toBe('Foundational');
   });
 
   it('correctly classifies priority levels', () => {
@@ -314,6 +317,36 @@ describe('SRSMA Diagnostic Evaluator', () => {
     expect(strongResult.keyInsight).toBe(
       'You have built a strong understanding of your Board-level concepts. Your next step is to turn this strong conceptual base into consistently high performance by practising questions that require deeper application, multiple steps and careful interpretation. Read the report further to identify the areas that can help you take your preparation to the next level.',
     );
+  });
+
+  it('generates hope-giving Page 4 recommendations and key insight for students whose BRI is less than 20', () => {
+    // 1 correct out of 9 total weight (Q1 weight 1 correct, others wrong) => 1 / 9 = 11.1% BRI (< 20%)
+    const lowScorerPayload: StudentResponsePayload = {
+      studentName: 'Amit Kumar',
+      responses: [
+        { qno: 1, attempted: true, selectedOption: 'B', timeTakenSeconds: 40 }, // Correct (+1)
+        { qno: 2, attempted: true, selectedOption: 'A', timeTakenSeconds: 30 }, // Wrong (0)
+        { qno: 3, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted (0)
+        { qno: 4, attempted: true, selectedOption: 'A', timeTakenSeconds: 20 }, // Wrong (0)
+        { qno: 5, attempted: false, selectedOption: null, timeTakenSeconds: 0 }, // Unattempted (0)
+      ],
+    };
+
+    const lowResult = evaluateDiagnosticReport(sampleMetadata, lowScorerPayload);
+    expect(lowResult.briScore).toBeLessThan(20);
+    expect(lowResult.levelOfPreparation).toBe('Foundational');
+    expect(lowResult.keyInsight).toContain('Every big achievement begins with a single step');
+    expect(lowResult.keyInsight).toContain('personalized comeback plan');
+
+    // Verify Page 4 plain text report recommendations for BRI < 20 (Concise & hope-giving)
+    expect(lowResult.plainTextReport).toContain('PAGE 4: RECOMMENDATIONS');
+    expect(lowResult.plainTextReport).toContain('START FRESH: BUILD YOUR BOARD CONFIDENCE');
+    expect(lowResult.plainTextReport).toContain('① Reframe your starting baseline');
+    expect(lowResult.plainTextReport).toContain('② Target quick-win chapters first');
+    expect(lowResult.plainTextReport).toContain('③ Master NCERT solved examples by hand');
+    expect(lowResult.plainTextReport).toContain('④ Keep practice calm and consistent');
+    expect(lowResult.plainTextReport).toContain('⑤ Seek guidance without hesitation');
+    expect(lowResult.plainTextReport).toContain('A special note for parents: A lower initial diagnostic score under timer pressure is completely normal');
   });
 
   it('categorizes rapid incorrect response as Too Fast but Incorrect in topics to revisit', () => {

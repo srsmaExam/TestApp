@@ -108,6 +108,7 @@ export default function BoardChallengePage() {
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <Link
                 href={destination}
+                data-ga-cta="header_login"
                 className="group inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-sm transition hover:border-amber-400 hover:bg-amber-400/30 hover:text-slate-950 active:scale-95 sm:px-5 sm:py-2.5 sm:text-base dark:text-amber-300 dark:hover:text-white"
               >
                 <LogIn className="size-3.5 sm:size-5" />
@@ -160,6 +161,7 @@ export default function BoardChallengePage() {
                 <div className="hidden w-full max-w-lg flex-col items-start gap-3.5 pt-6 md:flex">
                   <Link
                     href={destination}
+                    data-ga-cta="hero_cta_desktop"
                     className="relative group flex w-full max-w-md items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-4 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-xl"
                   >
                     <span className="relative z-10 flex items-center gap-2.5">
@@ -225,6 +227,7 @@ export default function BoardChallengePage() {
                 <div className="mt-3 flex w-full max-w-sm flex-col items-center gap-2.5 md:hidden">
                   <Link
                     href={destination}
+                    data-ga-cta="hero_cta_mobile"
                     className="relative group flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-3 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all active:scale-[0.98]"
                   >
                     <span className="relative z-10 flex items-center gap-2">
@@ -413,6 +416,7 @@ export default function BoardChallengePage() {
                   <div className="shrink-0">
                     <Link
                       href={destination}
+                      data-ga-cta="section_sample_report_cta"
                       className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-6 py-3.5 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:px-7 sm:py-4 sm:text-lg"
                     >
                       <span className="relative z-10 flex items-center gap-2">
@@ -539,6 +543,7 @@ export default function BoardChallengePage() {
               <div className="mt-8 flex justify-center">
                 <Link
                   href={destination}
+                  data-ga-cta="section_rank_cta"
                   className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-7 py-4 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-lg"
                 >
                   <span className="relative z-10 flex items-center gap-2">
@@ -622,6 +627,7 @@ export default function BoardChallengePage() {
               <div className="mt-10 flex justify-center">
                 <Link
                   href={destination}
+                  data-ga-cta="section_steps_cta"
                   className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-7 py-4 text-base font-black text-slate-950 shadow-xl shadow-amber-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/45 active:scale-[0.98] sm:text-lg"
                 >
                   <span className="relative z-10 flex items-center gap-2">
@@ -667,6 +673,7 @@ export default function BoardChallengePage() {
                 <div className="mt-2 shrink-0 md:mt-0">
                   <Link
                     href={destination}
+                    data-ga-cta="section_about_institute_login"
                     className="inline-flex items-center gap-2 rounded-2xl bg-amber-400 px-6 py-3.5 text-sm font-black text-slate-950 shadow-xl shadow-amber-500/25 transition hover:bg-amber-300 active:scale-95 sm:text-base"
                   >
                     <LogIn className="size-4.5" />
@@ -700,6 +707,7 @@ export default function BoardChallengePage() {
                   <div className="mt-8 flex justify-center">
                     <Link
                       href={destination}
+                      data-ga-cta="footer_banner_cta"
                       className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-8 py-4 text-lg font-black text-slate-950 shadow-2xl shadow-amber-500/35 transition-all duration-200 hover:brightness-110 hover:shadow-amber-500/50 active:scale-[0.98] sm:px-10 sm:py-5 sm:text-xl"
                     >
                       <span className="relative z-10 flex items-center gap-2.5">
@@ -765,7 +773,7 @@ export default function BoardChallengePage() {
               <div className="flex flex-col items-center">
                 <span className="text-xs font-semibold text-slate-500 sm:text-sm dark:text-slate-400">Academy Website:</span>
                 <a
-                  href="https://srsma.in"
+                  href="https://srsma.in/?utm_source=exam-app"
                   target="_blank"
                   rel="noreferrer"
                   className="mt-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-900 transition hover:text-amber-600 sm:text-base dark:text-white dark:hover:text-amber-400"
@@ -779,7 +787,7 @@ export default function BoardChallengePage() {
               <div className="flex flex-col items-center sm:items-end">
                 <span className="text-xs font-semibold text-slate-500 sm:text-sm dark:text-slate-400">Campus Location:</span>
                 <a
-                  href="https://share.google/BG1sNjUDIiNbnTWLY"
+                  href="https://share.google/BG1sNjUDIiNbnTWLY?utm_source=exam-app"
                   target="_blank"
                   rel="noreferrer"
                   className="mt-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-800 transition hover:text-amber-600 hover:underline sm:text-base dark:text-slate-200 dark:hover:text-amber-400"
@@ -816,6 +824,7 @@ export default function BoardChallengePage() {
 
             <Link
               href={destination}
+              data-ga-cta="mobile_sticky_bottom_cta"
               className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-3 text-sm font-black text-slate-950 shadow-md shadow-amber-500/25 active:scale-95"
             >
               <span>Take Challenge</span>

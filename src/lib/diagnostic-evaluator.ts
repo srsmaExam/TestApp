@@ -44,6 +44,7 @@ export type PreparationLevel =
   | 'ADVANCED'
   | 'PROFICIENT'
   | 'BASIC'
+  | 'Foundational'
   | 'NEEDS IMMEDIATE INTERVENTION';
 export type SkillValueCategory = 'Good' | 'Average' | 'Needs Strengthening';
 export type PriorityLevel = 'High Priority' | 'Medium Priority' | 'Low Priority';
@@ -667,7 +668,8 @@ export function classifySkillValue(percentage: number): SkillValueCategory {
 export function classifyPreparationLevel(bri: number): PreparationLevel {
   if (bri >= 70) return 'High achievement Potential';
   if (bri >= 50) return 'Conceptually Strong';
-  return 'Basic';
+  if (bri >= 20) return 'Basic';
+  return 'Foundational';
 }
 
 export function classifyPriority(percentage: number): PriorityLevel {
@@ -1590,7 +1592,10 @@ export function evaluateDiagnosticReport(
 
   // Dynamic Narrative Generation: Page 1 "YOUR KEY INSIGHT"
   let keyInsight = '';
-  if (levelOfPreparation === 'Basic') {
+  if (levelOfPreparation === 'Foundational') {
+    keyInsight =
+      'Every big achievement begins with a single step. This diagnostic test was designed to highlight where to begin your preparation, not to measure what you are capable of achieving. Board exams are structured and predictable, and with calm, step-by-step guidance starting from textbook basics, you will see your confidence and marks grow rapidly. Read through your report to discover your personalized comeback plan.';
+  } else if (levelOfPreparation === 'Basic') {
     keyInsight =
       'You have started building your foundation for the Boards, and this is a good time to strengthen it further. Some gaps are currently making it difficult to consistently convert your understanding into marks. The good news is that these areas can be improved with focused practice. Read the report further to know where you can improve and how to perform better';
   } else {
@@ -1629,7 +1634,9 @@ export function evaluateDiagnosticReport(
           ? 'BRI >= 70% -> High achievement Potential'
           : briScore >= 50
             ? '50% <= BRI < 70% -> Conceptually Strong'
-            : 'BRI < 50% -> Basic',
+            : briScore >= 20
+              ? '20% <= BRI < 50% -> Basic'
+              : 'BRI < 20% -> Foundational',
       levelResult: levelOfPreparation,
     },
     breakdowns: [
@@ -2474,6 +2481,7 @@ function generateReportPlainTextFormat(data: {
   const prepNorm = String(data.levelOfPreparation || '').trim().toLowerCase();
   const isHighPrep = prepNorm.includes('high achievement') || prepNorm === 'advanced' || data.briScore >= 70;
   const isConceptuallyStrong = !isHighPrep && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || data.briScore >= 50);
+  const isVeryLow = !isHighPrep && !isConceptuallyStrong && (data.briScore < 20 || prepNorm.includes('foundational'));
 
   if (isHighPrep) {
     lines.push('HOW TO MOVE FROM STRONG TO EXCELLENT');
@@ -2500,7 +2508,7 @@ function generateReportPlainTextFormat(data: {
     lines.push('Use mixed, timed questions to check whether your improvement is carrying across chapters.');
     lines.push('⑤ Shift towards Board-style practice');
     lines.push('As the examination approaches, progressively increase your practice of sample papers, case-based questions and mixed-chapter questions.');
-  } else {
+  } else if (!isVeryLow) {
     lines.push('HOW TO BUILD A SOLID FOUNDATION');
     lines.push('① Focus on NCERT textbook fundamentals');
     lines.push('Master definitions, formulas, and solved examples before attempting advanced questions.');
@@ -2513,10 +2521,25 @@ function generateReportPlainTextFormat(data: {
     lines.push('Take a short mixed test every 1–2 weeks and track whether the same mistakes are recurring.');
     lines.push('⑤ Master your prescribed textbook');
     lines.push('Become confident with examples and exercises before moving extensively to additional or advanced material.');
+  } else {
+    lines.push('START FRESH: BUILD YOUR BOARD CONFIDENCE');
+    lines.push('① Reframe your starting baseline');
+    lines.push('A diagnostic test is simply a tool to identify where to begin, not a measure of what you can achieve. Focus on steady improvement without exam anxiety.');
+    lines.push('② Target quick-win chapters first');
+    lines.push('Focus your initial effort on high-weightage, predictable chapters (such as Real Numbers and Statistics in Maths, and Chemical Reactions and Environment in Science) to lock in initial marks.');
+    lines.push('③ Master NCERT solved examples by hand');
+    lines.push('Put advanced reference books aside. Practice textbook solved examples line-by-line—writing the formula and given data alone secures valuable step marks in CBSE.');
+    lines.push('④ Keep practice calm and consistent');
+    lines.push('Avoid long, stressful study sessions. Solving just 3 to 5 simple textbook problems every day builds steady momentum and eliminates fear.');
+    lines.push('⑤ Seek guidance without hesitation');
+    lines.push('Most roadblocks come from minor past gaps that can be resolved quickly. Ask teachers or mentors early—difficult ideas become simple once explained clearly.');
   }
   lines.push('');
   lines.push('A NOTE FOR PARENTS');
   lines.push("Your child's report is meant to identify where their preparation stands today—not to label their ability.");
+  if (isVeryLow) {
+    lines.push("A special note for parents: A lower initial diagnostic score under timer pressure is completely normal. It is not a measure of your child's capability. With patient encouragement, regular daily practice, and small wins, students from this baseline routinely make fast, significant gains in marks.");
+  }
   lines.push("The most useful support at this stage is to understand the areas highlighted in the report, encourage regular practice, and help your child maintain consistency without unnecessary pressure or comparison. Every student develops at a different pace. With the right guidance, focused practice and timely feedback, identified gaps can be strengthened significantly.");
   lines.push('');
   lines.push("We hope Shri Ram Smart Minds Academy could provide you and your child a good plan of action for Class X Board Exams. Wish you all the best! You may contact us if you need any further guidance for your child. Thanks!");
@@ -2598,7 +2621,8 @@ function generateReportPlainTextFormat(data: {
   lines.push(`• Level of Preparation Threshold Rules:`);
   lines.push(`  - BRI >= 70%                     -> High achievement Potential`);
   lines.push(`  - 50% <= BRI < 70%               -> Conceptually Strong`);
-  lines.push(`  - BRI < 50%                      -> Basic`);
+  lines.push(`  - 20% <= BRI < 50%               -> Basic`);
+  lines.push(`  - BRI < 20%                      -> Foundational`);
   lines.push(`• Applied Rule: ${cs.scoring.levelRule} -> Level: ${cs.scoring.levelResult}`);
   lines.push('');
   lines.push('--------------------------------------------------------------------------------');

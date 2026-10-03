@@ -523,7 +523,7 @@ export function StudentAnalyticsClient({
                   </p>
                 </div>
                 <Link
-                  href={`/student/attempts/${paramAttemptId || data.recentTests?.[0]?.attemptId}/result`}
+                  href={`/student/attempts/${paramAttemptId || data.recentTests?.[0]?.attemptId}/result?tab=solutions`}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-brand-800 transition dark:bg-brand-600 dark:hover:bg-brand-500 shrink-0"
                 >
                   <span>Proceed to Solutions</span>

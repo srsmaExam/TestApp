@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Input, Label } from '@/components/ui';
 import { Dialog } from '@/components/Dialog';
 import { ArrowLeft, MessageSquare, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
+import { trackGaEvent } from '@/lib/analytics';
 
 const COUNTRY_CODES = [
   { code: '+91', label: '🇮🇳 India (+91)' },
@@ -103,6 +104,11 @@ export function LoginForm() {
       throw new Error(body.message ?? 'Sign-in failed. Please verify your WhatsApp number.');
     }
 
+    trackGaEvent(fullName ? 'sign_up' : 'login', {
+      method: 'direct_phone',
+      class_level: classLevel,
+    });
+
     router.replace(body.homeUrl || '/student');
     router.refresh();
   }
@@ -192,6 +198,10 @@ export function LoginForm() {
       setSuccessNotice('A 6-digit verification code has been sent to your WhatsApp.');
       setStep('otp');
       setBusy(false);
+
+      trackGaEvent('generate_lead', {
+        method: 'whatsapp_otp',
+      });
 
       // Auto focus first OTP input box on next tick
       setTimeout(() => {
@@ -321,6 +331,11 @@ export function LoginForm() {
       if (!res.ok) {
         throw new Error(body.message ?? 'Verification failed. Please check the code.');
       }
+
+      trackGaEvent(requiresDetails ? 'sign_up' : 'login', {
+        method: 'whatsapp_otp',
+        class_level: requiresDetails ? selectedClass : undefined,
+      });
 
       router.replace(body.homeUrl || '/student');
       router.refresh();

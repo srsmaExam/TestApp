@@ -94,11 +94,13 @@ html.dark body {
   color: var(--color-ink, #f1f5f9);
 }
 
-/* KaTeX inherits a slightly-too-large size against 14px UI text.
-   Ensure math formulas stay strictly contained within their parent container on mobile. */
+/* KaTeX math rendering:
+   Ensure inline math flows naturally with text and never displays scrollbars or gets clipped.
+   Ensure wide display math equations can scroll horizontally on narrow screens with a sleek scrollbar. */
 .katex {
   font-size: 1.06em;
   max-width: 100%;
+  overflow: visible;
 }
 
 .katex .katex-mathml {
@@ -113,16 +115,37 @@ html.dark body {
 }
 
 .katex-html {
+  overflow: visible !important;
+}
+
+.katex-display {
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  vertical-align: middle;
+  padding: 0.25rem 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 
+.katex-display::-webkit-scrollbar {
+  height: 4px;
+}
+
+.katex-display::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+.katex-display::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 html.dark .katex {
   color: #f1f5f9;
+}
+
+html.dark .katex-display::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
 }
 
 /* Question bodies: optically comfortable scale (16px/17px, max-width 70ch)
@@ -161,13 +184,6 @@ html.dark .q-render :is(th, td) {
 html.dark .q-render :is(th) {
   background: #1e293b;
   color: #f8fafc;
-}
-.q-render .katex-display {
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.25rem 0;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Touch-friendly hidden scrollbars */

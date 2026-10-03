@@ -341,7 +341,7 @@ export function TestRunnerClient({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 403 && data.error === 'attempt_expired') {
-          router.push(`/student/attempts/${attemptId}/result`);
+          router.push(`/student/attempts/${attemptId}/result?tab=report`);
           return;
         }
         dirtyRef.current = true;
@@ -728,10 +728,10 @@ export function TestRunnerClient({
           throw new Error(data?.message || 'Failed to submit test');
         }
 
-        router.push(`/student/attempts/${attemptId}/result`);
+        router.push(`/student/attempts/${attemptId}/result?tab=report`);
       } catch (err) {
         if (mode === 'auto') {
-          router.push(`/student/attempts/${attemptId}/result`);
+          router.push(`/student/attempts/${attemptId}/result?tab=report`);
           return;
         }
         setSubmitError(err instanceof Error ? err.message : 'Failed to submit test');

@@ -346,6 +346,8 @@ function BriSpeedometerGauge({
 
   const isHigh = clamped >= 70;
   const isMed = clamped >= 50 && clamped < 70;
+  const isBasic = clamped >= 20 && clamped < 50;
+  const isFoundational = clamped < 20;
 
   return (
     <div className="flex flex-col items-center justify-between rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 via-white to-slate-50/50 p-4 sm:p-5 shadow-xs dark:border-slate-800 dark:from-slate-900/90 dark:via-slate-900 dark:to-slate-950/80 h-full">
@@ -371,9 +373,13 @@ function BriSpeedometerGauge({
               <stop offset="0%" stopColor="#3b82f6" />
               <stop offset="100%" stopColor="#6366f1" />
             </linearGradient>
-            <linearGradient id="briGradLow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id="briGradBasic" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#f59e0b" />
               <stop offset="100%" stopColor="#ea580c" />
+            </linearGradient>
+            <linearGradient id="briGradFoundational" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#8b5cf6" />
             </linearGradient>
           </defs>
 
@@ -391,7 +397,15 @@ function BriSpeedometerGauge({
           <path
             d="M 28.9 107.2 A 65 65 0 1 1 151.1 107.2"
             fill="none"
-            stroke={isHigh ? 'url(#briGradHigh)' : isMed ? 'url(#briGradMed)' : 'url(#briGradLow)'}
+            stroke={
+              isHigh
+                ? 'url(#briGradHigh)'
+                : isMed
+                  ? 'url(#briGradMed)'
+                  : isBasic
+                    ? 'url(#briGradBasic)'
+                    : 'url(#briGradFoundational)'
+            }
             strokeWidth="11"
             strokeLinecap="round"
             strokeDasharray={arcLength}
@@ -410,7 +424,15 @@ function BriSpeedometerGauge({
             cx={beadX}
             cy={beadY}
             r="4.5"
-            className={isHigh ? 'fill-emerald-500' : isMed ? 'fill-blue-500' : 'fill-amber-500'}
+            className={
+              isHigh
+                ? 'fill-emerald-500'
+                : isMed
+                  ? 'fill-blue-500'
+                  : isBasic
+                    ? 'fill-amber-500'
+                    : 'fill-indigo-500'
+            }
           />
         </svg>
 
@@ -425,15 +447,23 @@ function BriSpeedometerGauge({
         </div>
       </div>
 
-      {/* 3-Tier Mini Scale Bar */}
-      <div className="w-full grid grid-cols-3 gap-1 px-1 text-center text-[10px] font-bold">
+      {/* 4-Tier Mini Scale Bar */}
+      <div className="w-full grid grid-cols-4 gap-1 px-1 text-center text-[9px] sm:text-[10px] font-bold">
         <div
-          className={`rounded-lg py-1 border transition-all ${!isHigh && !isMed
+          className={`rounded-lg py-1 border transition-all ${isFoundational
+              ? 'bg-indigo-500/15 text-indigo-800 border-indigo-400 font-black shadow-2xs dark:text-indigo-300'
+              : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
+            }`}
+        >
+          &lt;20 Foundational
+        </div>
+        <div
+          className={`rounded-lg py-1 border transition-all ${isBasic
               ? 'bg-amber-500/15 text-amber-800 border-amber-400 font-black shadow-2xs dark:text-amber-300'
               : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
             }`}
         >
-          Basic &lt;50
+          20–49 Basic
         </div>
         <div
           className={`rounded-lg py-1 border transition-all ${isMed
@@ -441,7 +471,7 @@ function BriSpeedometerGauge({
               : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
             }`}
         >
-          Strong 50–69
+          50–69 Strong
         </div>
         <div
           className={`rounded-lg py-1 border transition-all ${isHigh
@@ -449,7 +479,7 @@ function BriSpeedometerGauge({
               : 'text-slate-400 border-slate-200/60 dark:border-slate-800'
             }`}
         >
-          High 70+
+          70+ High
         </div>
       </div>
 
@@ -463,9 +493,11 @@ function BriSpeedometerGauge({
             ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200'
             : isMed
             ? 'border-blue-500/40 bg-blue-500/15 text-blue-800 dark:text-blue-200'
-            : 'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200'
+            : isBasic
+            ? 'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-200'
+            : 'border-indigo-500/40 bg-indigo-500/15 text-indigo-800 dark:text-indigo-200'
         }`}>
-          <span className="text-sm">{isHigh ? '🏆' : isMed ? '🎯' : '⚡'}</span>
+          <span className="text-sm">{isHigh ? '🏆' : isMed ? '🎯' : isBasic ? '⚡' : '🌱'}</span>
           <span>{prepStyle.label}</span>
         </div>
       </div>
@@ -1025,6 +1057,14 @@ export function BoardReadinessReport({
         gradient: 'from-blue-600 to-indigo-700',
       };
     }
+    if (norm.includes('foundational') || norm.includes('early') || norm.includes('emerging')) {
+      return {
+        tone: 'violet' as const,
+        label: 'Foundational',
+        bg: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30',
+        gradient: 'from-indigo-600 to-violet-700',
+      };
+    }
     return {
       tone: 'amber' as const,
       label: 'Basic',
@@ -1128,6 +1168,10 @@ export function BoardReadinessReport({
   };
 
   const prepStyle = getPrepLevelBadge(report.levelOfPreparation);
+  const prepNorm = String(report.levelOfPreparation || '').trim().toLowerCase();
+  const isHighPrep = prepNorm.includes('high achievement') || prepNorm === 'advanced' || (report.briScore ?? 0) >= 70;
+  const isMedPrep = !isHighPrep && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || (report.briScore ?? 0) >= 50);
+  const isVeryLowPrep = !isHighPrep && !isMedPrep && ((report.briScore ?? 0) < 20 || prepNorm.includes('foundational'));
 
   const filteredTopics = report.topicsToRevisit.filter((t) => {
     if (t.category === 'Rapid Guesswork') return false;
@@ -2587,190 +2631,332 @@ export function BoardReadinessReport({
             );
           }
 
-          // Basic (< 60%)
+          // Case 3: Basic (20 <= BRI < 50)
+          if (!isVeryLowPrep) {
+            return (
+              <div className="mt-6 space-y-4">
+                {/* Hero Header for Basic */}
+                <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 p-4 sm:p-5 dark:border-amber-800/60 dark:from-amber-950/40 dark:to-orange-950/20">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-amber-500 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-950 shadow-xs">
+                          ⚡ Level of Preparation: Basic
+                        </span>
+                        <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                          BRI: {report.briScore}/100
+                        </span>
+                      </div>
+                      <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                        TURN YOUR GAPS INTO PROGRESS
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                        A lower starting score is not a setback—it is your clearest roadmap to improvement. By addressing fundamental ideas before memorising formulas, you will see rapid gains in speed, understanding, and exam confidence.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5 Action Points */}
+                <div className="space-y-3">
+                  {/* ① Strengthen the basics */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                        ①
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Strengthen the basics
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Revisit the concepts behind the questions you could not solve. Make sure you can explain the idea before memorising the method.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                            Golden Principle: Understand concepts from first principles before memorising steps
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ② Practise a few questions every day */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                        ②
+                      </span>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Practise a few questions every day
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Use a simple progression:
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                          <span className="rounded-lg bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            Basic
+                          </span>
+                          <span className="text-slate-400">→</span>
+                          <span className="rounded-lg bg-blue-100 px-3 py-1 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            Standard
+                          </span>
+                          <span className="text-slate-400">→</span>
+                          <span className="rounded-lg bg-purple-100 px-3 py-1 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            Application
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Focus on quality and consistency rather than solving a very large number of questions.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ③ Keep an Error Notebook */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                        ③
+                      </span>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Keep an Error Notebook
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          For every important mistake, record:
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                          <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                  1
+                                </span>
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                  What did I get wrong?
+                                </span>
+                              </div>
+                              <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                                Identify the exact misstep or incorrect formula.
+                              </span>
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                  2
+                                </span>
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                  Why?
+                                </span>
+                              </div>
+                              <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                                Did I misread, rush, or miss the fundamental idea?
+                              </span>
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                  3
+                                </span>
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                  What is the correct approach?
+                                </span>
+                              </div>
+                              <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                                Write down the proper reasoning and method.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ④ Test yourself regularly */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                        ④
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Test yourself regularly
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Take a short mixed test every 1–2 weeks and track whether the same mistakes are recurring.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Frequency: 15–20 question short mixed test every 7–14 days
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ⑤ Master your prescribed textbook */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                    <div className="flex items-start gap-3.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                        ⑤
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          Master your prescribed textbook
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Become confident with examples and exercises before moving extensively to additional or advanced material.
+                        </p>
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                            Priority Rule: 100% textbook example &amp; exercise mastery first
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Case 4: BRI < 20 — Hope-Giving, Reassuring & Actionable Comeback Blueprint (Concise)
           return (
             <div className="mt-6 space-y-4">
-              {/* Hero Header for Basic */}
-              <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 p-4 sm:p-5 dark:border-amber-800/60 dark:from-amber-950/40 dark:to-orange-950/20">
+              {/* Hero Header for Foundational Stage (Hope-Giving & Focused) */}
+              <div className="rounded-2xl border border-violet-200/90 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-pink-500/5 p-4 sm:p-5 dark:border-violet-800/60 dark:from-violet-950/40 dark:via-purple-950/30 dark:to-pink-950/20">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-amber-500 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-950 shadow-xs">
-                        ⚡ Level of Preparation: Basic
+                      <span className="rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white shadow-xs">
+                        🌱 Level of Preparation: Foundational
                       </span>
-                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                      <span className="text-xs font-bold text-violet-800 dark:text-violet-300">
                         BRI: {report.briScore}/100
                       </span>
                     </div>
                     <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                      TURN YOUR GAPS INTO PROGRESS
+                      START FRESH: BUILD YOUR BOARD CONFIDENCE
                     </h3>
                     <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                      A lower starting score is not a setback—it is your clearest roadmap to improvement. By addressing fundamental ideas before memorising formulas, you will see rapid gains in speed, understanding, and exam confidence.
+                      A diagnostic test is simply a starting compass, not a limit on what you can achieve. With calm, step-by-step guidance starting from textbook basics, you will see your marks and confidence grow steadily.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* 5 Action Points */}
+              {/* 5 Action Points — Consistent style & length matching Cases 1, 2, and 3 */}
               <div className="space-y-3">
-                {/* ① Strengthen the basics */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                {/* ① Reframe your starting baseline */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-violet-700/60">
                   <div className="flex items-start gap-3.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-black text-sm shadow-xs">
                       ①
                     </span>
                     <div className="flex-1 space-y-1">
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                        Strengthen the basics
+                        Reframe your starting baseline
                       </h4>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Revisit the concepts behind the questions you could not solve. Make sure you can explain the idea before memorising the method.
+                        A diagnostic test is simply a tool to identify where to begin, not a measure of what you can achieve. Focus on steady daily progress without exam anxiety.
+                      </p>
+                      <div className="pt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-violet-100/80 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-300/60 dark:border-violet-800">
+                          🌱 Mindset Anchor: Every top score starts from zero • Progress begins today
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ② Target quick-win chapters first */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-violet-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-black text-sm shadow-xs">
+                      ②
+                    </span>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Target quick-win chapters first
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Focus your initial effort on high-weightage, predictable chapters (such as Real Numbers and Statistics in Maths, and Chemical Reactions and Environment in Science) to lock in initial marks.
+                      </p>
+                      <div className="pt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-100/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          🎯 Quick-Win Target: 2–3 core chapters secure your first 20–25 marks
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ③ Master NCERT solved examples by hand */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-violet-700/60">
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-black text-sm shadow-xs">
+                      ③
+                    </span>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        Master NCERT solved examples by hand
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Put advanced reference books aside. Practice textbook solved examples line-by-line—writing the formula and given data alone secures valuable step marks in CBSE.
                       </p>
                       <div className="pt-0.5">
                         <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                          Golden Principle: Understand concepts from first principles before memorising steps
+                          ✍️ CBSE Step-Marking: Formula + Given data earns marks on every question
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ② Practise a few questions every day */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                {/* ④ Keep practice calm and consistent */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-violet-700/60">
                   <div className="flex items-start gap-3.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
-                      ②
-                    </span>
-                    <div className="flex-1 space-y-2">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                        Practise a few questions every day
-                      </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Use a simple progression:
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-                        <span className="rounded-lg bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          Basic
-                        </span>
-                        <span className="text-slate-400">→</span>
-                        <span className="rounded-lg bg-blue-100 px-3 py-1 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                          Standard
-                        </span>
-                        <span className="text-slate-400">→</span>
-                        <span className="rounded-lg bg-purple-100 px-3 py-1 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                          Application
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Focus on quality and consistency rather than solving a very large number of questions.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ③ Keep an Error Notebook */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
-                  <div className="flex items-start gap-3.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
-                      ③
-                    </span>
-                    <div className="flex-1 space-y-2">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                        Keep an Error Notebook
-                      </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        For every important mistake, record:
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                        <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
-                                1
-                              </span>
-                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
-                                What did I get wrong?
-                              </span>
-                            </div>
-                            <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
-                              Identify the exact misstep or incorrect formula.
-                            </span>
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
-                                2
-                              </span>
-                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
-                                Why?
-                              </span>
-                            </div>
-                            <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
-                              Did I misread, rush, or miss the fundamental idea?
-                            </span>
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
-                                3
-                              </span>
-                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
-                                What is the correct approach?
-                              </span>
-                            </div>
-                            <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
-                              Write down the proper reasoning and method.
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ④ Test yourself regularly */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
-                  <div className="flex items-start gap-3.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-black text-sm shadow-xs">
                       ④
                     </span>
                     <div className="flex-1 space-y-1">
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                        Test yourself regularly
+                        Keep practice calm and consistent
                       </h4>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Take a short mixed test every 1–2 weeks and track whether the same mistakes are recurring.
+                        Avoid long, stressful study sessions. Solving just 3 to 5 simple textbook problems every day builds steady momentum and eliminates fear.
                       </p>
                       <div className="pt-0.5">
                         <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          Frequency: 15–20 question short mixed test every 7–14 days
+                          ⏱️ Consistency Rule: 3–5 solved questions a day creates compounding confidence
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ⑤ Master your prescribed textbook */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-amber-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-amber-700/60">
+                {/* ⑤ Seek guidance without hesitation */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-violet-700/60">
                   <div className="flex items-start gap-3.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-sm shadow-xs">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-black text-sm shadow-xs">
                       ⑤
                     </span>
                     <div className="flex-1 space-y-1">
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                        Master your prescribed textbook
+                        Seek guidance without hesitation
                       </h4>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Become confident with examples and exercises before moving extensively to additional or advanced material.
+                        Most roadblocks come from minor past gaps that can be resolved quickly. Ask teachers or mentors early—difficult ideas become simple once explained clearly.
                       </p>
                       <div className="pt-0.5">
                         <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
-                          Priority Rule: 100% textbook example &amp; exercise mastery first
+                          🤝 Mentorship: Clearing basic doubts early leads to rapid score jumps
                         </span>
                       </div>
                     </div>
@@ -2795,6 +2981,12 @@ export function BoardReadinessReport({
             <p>
               Your child’s report is meant to identify where their preparation stands today—not to label their ability.
             </p>
+            {isVeryLowPrep && (
+              <div className="rounded-xl border border-violet-200/90 bg-violet-50/80 p-3 text-violet-950 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200 leading-relaxed text-xs">
+                <span className="font-bold text-violet-900 dark:text-violet-200">A reassuring note for parents: </span>
+                An initial diagnostic score under timer pressure is completely normal and not a measure of your child’s capability. With patient encouragement, regular daily practice, and small wins, students from this baseline routinely make fast, significant gains in marks.
+              </div>
+            )}
             <p>
               The most useful support at this stage is to understand the areas highlighted in the report, encourage regular practice, and help your child maintain consistency without unnecessary pressure or comparison. Every student develops at a different pace. With the right guidance, focused practice and timely feedback, identified gaps can be strengthened significantly.
             </p>

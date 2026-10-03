@@ -125,14 +125,14 @@ export function ResultReviewClient({
   const [error, setError] = useState<string | null>(null);
   const [awaitingRelease, setAwaitingRelease] = useState(false);
 
-  // Tab View state: 'solutions' or 'report'
-  const initialTab = searchParams?.get('tab') === 'report' ? 'report' : 'solutions';
+  // Tab View state: 'report' or 'solutions' (Default to 'report')
+  const initialTab = searchParams?.get('tab') === 'solutions' ? 'solutions' : 'report';
   const [activeViewTab, setActiveViewTab] = useState<'solutions' | 'report'>(initialTab);
 
   useEffect(() => {
     const tabParam = searchParams?.get('tab');
-    if (tabParam === 'report') setActiveViewTab('report');
-    else if (tabParam === 'solutions') setActiveViewTab('solutions');
+    if (tabParam === 'solutions') setActiveViewTab('solutions');
+    else if (tabParam === 'report') setActiveViewTab('report');
   }, [searchParams]);
 
   const handleTabChange = (tab: 'solutions' | 'report') => {
@@ -408,7 +408,7 @@ export function ResultReviewClient({
       }
 
       // Direct student to reports Tab immediately after form submission
-      router.push(`/student/analytics?attemptId=${attemptId}`);
+      handleTabChange('report');
     } catch (err: any) {
       setReportError(err.message || 'Could not unlock solutions and report.');
     } finally {
@@ -939,22 +939,9 @@ export function ResultReviewClient({
         </div>
       </div>
 
-      {/* Primary Tab Navigation: Solutions vs 5-Page Board Report */}
+      {/* Primary Tab Navigation: 5-Page Board Report vs Solutions */}
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 gap-2 min-w-0 max-w-full">
         <div className="flex gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">
-          <button
-            type="button"
-            onClick={() => handleTabChange('solutions')}
-            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border-b-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-colors ${
-              activeViewTab === 'solutions'
-                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <BookOpen className="size-4" />
-            Solutions &amp; Review
-          </button>
-
           <button
             type="button"
             onClick={() => handleTabChange('report')}
@@ -966,6 +953,19 @@ export function ResultReviewClient({
           >
             <Award className="size-4" />
             5-Page Board Report
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange('solutions')}
+            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 border-b-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-colors ${
+              activeViewTab === 'solutions'
+                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <BookOpen className="size-4" />
+            Solutions &amp; Review
           </button>
         </div>
 

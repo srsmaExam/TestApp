@@ -125,7 +125,16 @@ export const GET = withApi(async (req) => {
     return json({
       studentId: targetUserId,
       studentName: targetStudentName,
+      gender: targetGender,
       isReportUnlocked,
+      studentDetails: {
+        board: targetBoard,
+        school: targetSchool,
+        city: targetCity,
+        classLevel: targetClassLevel,
+        gender: targetGender,
+        isFormFilled,
+      },
       totalAttempts: 0,
       avgScore: 0,
       avgPercentile: 0,

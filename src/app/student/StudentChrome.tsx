@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/db/client';
-import { profiles } from '@/db/schema';
+import { attempts, profiles } from '@/db/schema';
 import { AppShell, type NavItem } from '@/components/AppShell';
 import type { Session } from '@/lib/session';
 
@@ -21,6 +21,7 @@ export async function StudentChrome({
   children: React.ReactNode;
 }) {
   let isReportUnlocked = false;
+  let hasCompletedAttempts = false;
   try {
     const db = await getDb();
     const [profile] = await db
@@ -35,17 +36,30 @@ export async function StudentChrome({
     isReportUnlocked = Boolean(
       session.role === 'teacher' || (profile && profile.whatsappConsent && profile.city),
     );
+
+    const [completedAttempt] = await db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.studentId, session.userId),
+          sql`${attempts.status} <> 'in_progress'`,
+        ),
+      )
+      .limit(1);
+    hasCompletedAttempts = Boolean(completedAttempt);
   } catch {
     // If db fails, default to locked
     isReportUnlocked = false;
+    hasCompletedAttempts = false;
   }
 
   const nav: NavItem[] = [
     { href: '/student', label: 'My tests', exact: true },
     {
       href: '/student/analytics',
-      label: 'Report',
-      isLocked: !isReportUnlocked,
+      label: hasCompletedAttempts ? 'Report' : 'Sample Report',
+      isLocked: hasCompletedAttempts && !isReportUnlocked,
       lockKey: 'report',
     },
     { href: '/student/about', label: 'About SRSMA' },

@@ -35,7 +35,7 @@ export const GET = withApi<Ctx>(async (req, { params }) => {
   }
 
   const etag = `"${meta.sha256 || meta.size}"`;
-  const cacheControl = 'public, max-age=86400, s-maxage=86400';
+  const cacheControl = 'public, max-age=31536000, s-maxage=31536000, immutable';
 
   // 2. Return 304 immediately with 0 bytes of DB egress if client has it cached
   if (req.headers.get('if-none-match') === etag) {

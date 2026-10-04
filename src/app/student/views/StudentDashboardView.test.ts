@@ -122,6 +122,10 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
 
     // The callout mentioning "Below are 2 diagnostic tests" must NOT be rendered
     expect(html).not.toContain('Below are 2 diagnostic tests');
+
+    // Without any completed tests, button must say "View Sample Report"
+    expect(html).toContain('View Sample Report');
+    expect(html).not.toContain('View My Report');
   });
 
   it('after unlock: displays both tests with original titles and displays the diagnostic callout', async () => {
@@ -147,4 +151,32 @@ describe('StudentDashboardView - Pre-Unlock vs Unlocked Diagnostic Tests', () =>
     // The callout mentioning "Below are 2 diagnostic tests" MUST be rendered
     expect(html).toContain('Below are 2 diagnostic tests');
   });
+
+  it('after completing a test: button displays "View My Report"', async () => {
+    // Insert a completed attempt for student 1
+    await db.insert(schema.attempts).values({
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      studentId: student1Id,
+      testId: 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      attemptNo: 1,
+      status: 'submitted',
+      startedAt: new Date(Date.now() - 3600_000),
+      deadlineAt: new Date(Date.now() - 1800_000),
+      submittedAt: new Date(),
+      questionOrder: [],
+      totalMarks: '18',
+      maxMarks: 20,
+      totalTimeS: 1100,
+    });
+
+    const { StudentDashboardView } = await import('./StudentDashboardView');
+    const jsx = await StudentDashboardView();
+
+    const html = renderToStaticMarkup(jsx!);
+
+    // With a completed test, button must say "View My Report"
+    expect(html).toContain('View My Report');
+    expect(html).not.toContain('View Sample Report');
+  });
 });
+

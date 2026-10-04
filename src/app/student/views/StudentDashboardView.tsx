@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { Award, Clock, Eye, HelpCircle, Play, PlayCircle, Sparkles, BookOpen, ArrowRight, Info } from 'lucide-react';
+import { Award, Clock, Eye, FileText, HelpCircle, Play, PlayCircle, Sparkles, BookOpen, ArrowRight, Info } from 'lucide-react';
 import { getDb } from '@/db/client';
 import { attempts, profiles, testQuestions, tests } from '@/db/schema';
 import { getSession } from '@/lib/session';
@@ -128,6 +128,8 @@ export async function StudentDashboardView() {
       };
     });
 
+  const hasCompletedTests = completedList.length > 0;
+
   return (
     <StudentChrome session={session}>
       <div className="space-y-8 min-w-0 max-w-full">
@@ -142,15 +144,20 @@ export async function StudentDashboardView() {
               <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-white truncate sm:text-wrap">
                 Welcome, {session.fullName}!
               </h1>
-              <p className="mt-1 text-sm sm:text-base text-brand-100 dark:text-brand-200 font-medium">
-                Timed Online tests, instant evaluation, and in-depth performance reports.
-              </p>
+              
             </div>
 
-            <Link href="/student/analytics" className={buttonClass('accent', 'md')}>
-              <Award className="mr-1.5 size-4" />
-              View My Report
-            </Link>
+            {hasCompletedTests ? (
+              <Link href="/student/analytics" className={buttonClass('accent', 'md')}>
+                <Award className="mr-1.5 size-4" />
+                View My Report
+              </Link>
+            ) : (
+              <Link href="/student/analytics?sample=true" className={buttonClass('accent', 'md')}>
+                <FileText className="mr-1.5 size-4" />
+                View Sample Report
+              </Link>
+            )}
           </div>
         </div>
 
@@ -329,14 +336,14 @@ export async function StudentDashboardView() {
                   <span>Founded by Top IIT Alumni</span>
                 </span>
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                  Top 99.48%ile in JEE Main · 10/16 Qualifiers
+                  HIgh Selection Ratio in JEE Mains · 1 in 2 Students Qualified
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                 About Shri Ram Smart Minds Academy (SRSMA)
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Founded by IIT alumni, SRSMA delivers stress-free, personalized coaching in focused batches of 25–30 students. Backed by smart AI Powered AC classrooms and safe residential care, our very first batch achieved a 99.48 percentile in JEE Main, JEE Advanced selections, and 98% in board exams.
+                Founded by IIT alumni, SRSMA delivers stress-free, personalized coaching in focused batches of 25–30 students. Backed by smart AI Powered AC classrooms and safe residential care, our very first batch achieved a 99.48 percentile in JEE Main, JEE Advanced selections, and 98% in board exams. Admissions are open for class 11 JEE and NEET batches.
               </p>
             </div>
             <Link

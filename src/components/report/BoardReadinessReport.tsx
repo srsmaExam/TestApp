@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Award,
   CheckCircle2,
@@ -868,7 +868,7 @@ function TimeManagementReportSection({
                     <p>
                       <strong className="font-bold text-slate-900 dark:text-slate-100">Watch Time Traps:</strong>{' '}
                       <span className="text-slate-600 dark:text-slate-300">
-                        Stuck on {counts.TIME_TRAP} question(s). If stuck for over 60 seconds, star it and move ahead.
+                        Stuck on {counts.TIME_TRAP} question(s). If stuck for over 2 minutes, star it and move ahead.
                       </span>
                     </p>
                   </div>
@@ -961,6 +961,9 @@ export function BoardReadinessReport({
   const [revisitFilter, setRevisitFilter] = useState<'all' | RevisitCategory>('all');
   const [auditFilter, setAuditFilter] = useState<'all' | 'incorrect' | 'overtime' | 'revisit'>('all');
 
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const getPageSection = (pageId: string) => {
     const hyphenated = `report-${pageId.replace(/^page(\d+)$/, 'page-$1')}`;
     return (
@@ -973,16 +976,34 @@ export function BoardReadinessReport({
   const scrollToPage = (pageId: 'page1' | 'page2' | 'page3' | 'page4' | 'page5' | 'page6') => {
     setActivePage(pageId);
     const element = getPageSection(pageId);
-    if (element) {
-      try {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } catch {
-        // Fallback for older browsers
-      }
-      const yOffset = -90;
-      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-      const y = element.getBoundingClientRect().top + scrollY + yOffset;
-      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    if (!element) return;
+
+    // Suppress scroll-watcher while programmatic smooth scroll is animating
+    isScrollingRef.current = true;
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 950);
+
+    // Compute dynamic header + sticky toolbar height to offset scroll
+    const appHeader = document.querySelector('header');
+    const appHeaderHeight = appHeader ? appHeader.getBoundingClientRect().height : 0;
+    const toolbar = document.getElementById('report-sticky-toolbar');
+    const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
+
+    // Generous offset so element top rounded border and padding are fully visible below sticky headers
+    const totalOffset = (appHeaderHeight || 90) + (toolbarHeight || 75) + 12;
+    const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+    const elementTop = element.getBoundingClientRect().top + scrollY;
+    const targetY = Math.max(0, elementTop - totalOffset);
+
+    try {
+      window.scrollTo({
+        top: targetY,
+        behavior: 'smooth',
+      });
+    } catch {
+      window.scrollTo(0, targetY);
     }
   };
 
@@ -997,11 +1018,18 @@ export function BoardReadinessReport({
     ];
 
     const handleScroll = () => {
+      if (isScrollingRef.current) return;
+      const appHeader = document.querySelector('header');
+      const appHeaderHeight = appHeader ? appHeader.getBoundingClientRect().height : 0;
+      const toolbar = document.getElementById('report-sticky-toolbar');
+      const toolbarHeight = toolbar ? toolbar.getBoundingClientRect().height : 0;
+      const threshold = (appHeaderHeight || 90) + (toolbarHeight || 75) + 30;
+
       for (let i = pageIds.length - 1; i >= 0; i--) {
         const el = getPageSection(pageIds[i]);
         if (el) {
           const rect = el.getBoundingClientRect();
-          if (rect.top <= 160) {
+          if (rect.top <= threshold) {
             setActivePage(pageIds[i]);
             break;
           }
@@ -1010,7 +1038,10 @@ export function BoardReadinessReport({
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
   }, [isTeacherView]);
 
   const handleWhatsAppAction = (action: 'whatsapp_contact_us' | 'whatsapp_enroll_now') => {
@@ -1184,7 +1215,10 @@ export function BoardReadinessReport({
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-16">
       {/* 1. Header Toolbar (Hidden in Print) */}
-      <div className="no-print sticky top-3 z-30 flex flex-col gap-2.5 rounded-2xl border border-slate-200/90 bg-white/95 p-3 sm:p-3.5 shadow-md backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+      <div
+        id="report-sticky-toolbar"
+        className="no-print sticky top-[5.5rem] md:top-[4rem] z-20 flex flex-col gap-2.5 rounded-2xl border border-slate-200/90 bg-white/95 p-3 sm:p-3.5 shadow-md backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
+      >
         <div className="flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="flex size-9 sm:size-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-md shrink-0">
@@ -1192,11 +1226,11 @@ export function BoardReadinessReport({
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="rounded bg-brand-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-800 dark:bg-brand-950 dark:text-brand-300">
+                <span className="rounded bg-brand-100 px-2 py-0.5 text-xs sm:text-[11px] font-black uppercase tracking-wider text-brand-800 dark:bg-brand-950 dark:text-brand-300 whitespace-nowrap">
                   Shri Ram Smart Minds Academy
                 </span>
                 {studentDetails?.isFormFilled ? (
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">
+                  <span className="text-xs sm:text-xs font-bold text-slate-600 dark:text-slate-300 truncate">
                     {studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} • {studentDetails.board || 'CBSE'}
                     {isTeacherView && studentDetails.school && (
                       <span className="ml-1 text-[11px] text-slate-400 hidden sm:inline">
@@ -1205,11 +1239,11 @@ export function BoardReadinessReport({
                     )}
                   </span>
                 ) : isTeacherView ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
                     ⚠️ Unlock Form: Not Filled
                   </span>
                 ) : (
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Class X CBSE</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Class X CBSE</span>
                 )}
               </div>
               <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white mt-0.5 truncate">
@@ -1224,8 +1258,8 @@ export function BoardReadinessReport({
           <button
             type="button"
             onClick={() => scrollToPage('page1')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page1'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page1'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
@@ -1234,8 +1268,8 @@ export function BoardReadinessReport({
           <button
             type="button"
             onClick={() => scrollToPage('page2')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page2'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page2'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
@@ -1244,8 +1278,8 @@ export function BoardReadinessReport({
           <button
             type="button"
             onClick={() => scrollToPage('page3')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page3'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page3'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
@@ -1254,8 +1288,8 @@ export function BoardReadinessReport({
           <button
             type="button"
             onClick={() => scrollToPage('page4')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page4'
-              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white font-black'
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page4'
+              ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-white'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
@@ -1264,8 +1298,8 @@ export function BoardReadinessReport({
           <button
             type="button"
             onClick={() => scrollToPage('page5')}
-            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-1.5 transition text-center ${activePage === 'page5'
-              ? 'bg-brand-600 text-white shadow-xs font-black'
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-2 sm:py-1.5 transition text-center text-xs sm:text-xs font-black ${activePage === 'page5'
+              ? 'bg-brand-600 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
           >
@@ -1275,12 +1309,12 @@ export function BoardReadinessReport({
             <button
               type="button"
               onClick={() => scrollToPage('page6')}
-              className={`flex-1 shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-2 sm:px-2.5 py-1.5 transition ${activePage === 'page6'
-                ? 'bg-amber-500 text-slate-950 shadow-xs font-black dark:bg-amber-400'
+              className={`flex-1 shrink-0 whitespace-nowrap flex items-center justify-center gap-1 rounded-lg px-2.5 sm:px-2.5 py-2 sm:py-1.5 transition text-xs sm:text-xs font-black ${activePage === 'page6'
+                ? 'bg-amber-500 text-slate-950 shadow-xs dark:bg-amber-400'
                 : 'text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200'
                 }`}
             >
-              <Calculator className="size-3" />
+              <Calculator className="size-3.5" />
               P6 • Audit
             </button>
           )}
@@ -1292,48 +1326,53 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-1"
-        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
+        className="report-page-container report-page-1 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
       >
         {/* Header watermark & Brand bar */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-                <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-                Shri Ram Smart Minds Academy
+        <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div className="flex items-start sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+              <span className="text-xs sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+                <GraduationCap className="size-4 text-brand-600 dark:text-brand-400 shrink-0" />
+                <span className="inline-flex flex-wrap items-baseline gap-x-1">
+                  <span className="whitespace-nowrap">Shri Ram</span>
+                  <span className="whitespace-nowrap">Smart Minds Academy</span>
+                </span>
               </span>
-              <span className="rounded bg-brand-50 border border-brand-200/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-brand-700 dark:bg-brand-950/40 dark:border-brand-800 dark:text-brand-300">
+              <span className="rounded bg-brand-50 border border-brand-200/60 px-2.5 py-0.5 text-[11px] sm:text-xs font-black uppercase tracking-wider text-brand-700 dark:bg-brand-950/40 dark:border-brand-800 dark:text-brand-300">
                 Diagnostic Evaluation
               </span>
               {studentDetails?.isFormFilled ? (
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <span className="rounded bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   {studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} • {studentDetails.board || 'CBSE'}
                 </span>
               ) : isTeacherView ? (
-                <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                <span className="rounded bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                   ⚠️ Unlock Form: Not Filled by Student
                 </span>
               ) : null}
             </div>
-            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
-              BOARD READINESS CHALLENGE REPORT
-            </h2>
-            <div className="mt-3 rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 p-3 sm:p-3.5 text-xs sm:text-sm dark:border-blue-900/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/20 flex items-start gap-2.5 shadow-2xs">
-              <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white mt-0.5 shadow-2xs">
-                <Info className="size-3.5" />
-              </div>
-              <div className="leading-relaxed text-slate-700 dark:text-slate-300">
-                <span className="font-extrabold text-blue-800 dark:text-blue-300 mr-1.5 inline-flex items-center">
-                  A Note For Parents:
-                </span>
-                This report is best used as a starting point for understanding your child&apos;s current preparation and identifying where focused support can make the greatest difference.
-              </div>
+            <div className="text-right shrink-0 pt-0.5 sm:pt-0">
+              <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs whitespace-nowrap">
+                {isTeacherView ? 'PAGE 1 OF 6' : 'PAGE 1 OF 5'}
+              </span>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
-              {isTeacherView ? 'PAGE 1 OF 6' : 'PAGE 1 OF 5'}
-            </span>
+
+          <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-2.5 break-words">
+            BOARD READINESS CHALLENGE REPORT
+          </h2>
+
+          <div className="mt-3.5 w-full rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 p-3.5 sm:p-4 text-sm dark:border-blue-900/60 dark:bg-gradient-to-r dark:from-blue-950/40 dark:to-indigo-950/20 flex items-start gap-2.5 shadow-2xs">
+            <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white mt-0.5 shadow-2xs">
+              <Info className="size-4" />
+            </div>
+            <div className="leading-relaxed text-slate-700 dark:text-slate-300 flex-1 text-sm sm:text-sm">
+              <span className="font-extrabold text-blue-800 dark:text-blue-300 mr-1.5 inline-flex items-center text-sm">
+                A Note For Parents:
+              </span>
+              This report is best used as a starting point for understanding your child&apos;s current preparation and identifying where focused support can make the greatest difference.
+            </div>
           </div>
         </div>
 
@@ -1604,12 +1643,14 @@ export function BoardReadinessReport({
             </div>
 
             {/* Difficulty Performance Insight Box */}
-            <div className="mt-4 rounded-xl border border-indigo-200/80 bg-indigo-50/60 p-3.5 text-xs leading-relaxed text-indigo-950 dark:border-indigo-500/30 dark:bg-slate-900/90 dark:text-indigo-200 shadow-2xs">
-              <div className="flex items-center gap-1.5 font-bold">
-                <Sparkles className="size-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div className="mt-4 rounded-2xl border-2 border-sky-300/80 bg-gradient-to-r from-sky-50/90 via-blue-50/70 to-indigo-50/70 p-4 text-xs leading-relaxed text-blue-950 dark:border-sky-700/60 dark:bg-gradient-to-r dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/30 dark:text-sky-100 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-sky-200/60 pb-2 dark:border-sky-800/60 font-black uppercase tracking-wider text-[11px] text-sky-800 dark:text-sky-300">
+                <div className="flex size-6 items-center justify-center rounded-lg bg-sky-600 text-white shadow-2xs">
+                  <Sparkles className="size-3.5" />
+                </div>
                 <span>Difficulty-Wise Performance Insight</span>
               </div>
-              <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">
+              <p className="mt-2.5 font-medium leading-relaxed text-slate-800 dark:text-slate-200 text-xs sm:text-[13px]">
                 {getDifficultyInsight(report.subjectDifficultyBreakdowns)}
               </p>
             </div>
@@ -1679,20 +1720,23 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-2"
-        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
+        className="report-page-container report-page-2 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-              Shri Ram Smart Minds Academy
+            <span className="text-xs sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-4 text-brand-600 dark:text-brand-400 shrink-0" />
+              <span className="inline-flex flex-wrap items-baseline gap-x-1">
+                <span className="whitespace-nowrap">Shri Ram</span>
+                <span className="whitespace-nowrap">Smart Minds Academy</span>
+              </span>
             </span>
-            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
               PAGE 2: YOUR STRENGTHS
             </h2>
           </div>
           <div className="text-right shrink-0">
-            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs whitespace-nowrap">
               {isTeacherView ? 'PAGE 2 OF 6' : 'PAGE 2 OF 5'}
             </span>
           </div>
@@ -1889,20 +1933,23 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-3"
-        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
+        className="report-page-container report-page-3 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-              Shri Ram Smart Minds Academy
+            <span className="text-xs sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-4 text-brand-600 dark:text-brand-400 shrink-0" />
+              <span className="inline-flex flex-wrap items-baseline gap-x-1">
+                <span className="whitespace-nowrap">Shri Ram</span>
+                <span className="whitespace-nowrap">Smart Minds Academy</span>
+              </span>
             </span>
-            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
               Page 3: WHERE SHOULD YOU IMPROVE?
             </h2>
           </div>
           <div className="text-right shrink-0">
-            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs whitespace-nowrap">
               {isTeacherView ? 'PAGE 3 OF 6' : 'PAGE 3 OF 5'}
             </span>
           </div>
@@ -2315,20 +2362,23 @@ export function BoardReadinessReport({
           ========================================================================= */}
       <section
         id="report-page-4"
-        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
+        className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-              Shri Ram Smart Minds Academy
+            <span className="text-xs sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-4 text-brand-600 dark:text-brand-400 shrink-0" />
+              <span className="inline-flex flex-wrap items-baseline gap-x-1">
+                <span className="whitespace-nowrap">Shri Ram</span>
+                <span className="whitespace-nowrap">Smart Minds Academy</span>
+              </span>
             </span>
-            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
               PAGE 4: RECOMMENDATIONS
             </h2>
           </div>
           <div className="text-right shrink-0">
-            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs whitespace-nowrap">
               {isTeacherView ? 'PAGE 4 OF 6' : 'PAGE 4 OF 5'}
             </span>
           </div>
@@ -2358,7 +2408,7 @@ export function BoardReadinessReport({
                       <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                         HOW TO MOVE FROM STRONG TO EXCELLENT
                       </h3>
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                      <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                         Your diagnostic performance confirms strong grasp across standard chapters. To reach the top tier and secure 95%+ in Boards, your strategic focus must now shift towards unfamiliar problem varieties, cross-chapter synthesis, and high execution speed under timed pressure.
                       </p>
                     </div>
@@ -2377,11 +2427,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Challenge yourself
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Do not spend all your practice time on questions you can already solve. Regularly include unfamiliar and higher-order problems.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-emerald-100/80 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100/80 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
                             ★ High-Impact: Devote 40%+ of study time to unfamiliar &amp; Competency-based problems
                           </span>
                         </div>
@@ -2399,11 +2449,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Practise mixed problems
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Combine concepts from different chapters so that you practise identifying the method, not just applying a memorised formula.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             Multi-Concept Synthesis • Identification over Memorisation
                           </span>
                         </div>
@@ -2421,11 +2471,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Analyse mistakes deeply
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           When you make an error, identify exactly where your reasoning broke down and re-solve the problem independently.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100/80 px-2.5 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                             🔍 Root Cause Pinpointing: Never stop at reading the solution — re-derive independently
                           </span>
                         </div>
@@ -2443,11 +2493,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Build examination efficiency
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Continue timed practice so that your accuracy remains high even when working under examination pressure.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             ⚡ Timed Drills: High Pacing Accuracy + Zero Unforced Errors
                           </span>
                         </div>
@@ -2465,11 +2515,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Use Board preparation strategically
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Secure all standard Board-level questions first, then use additional time to strengthen case-based, application-based and higher-order questions.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-brand-100/80 px-2.5 py-1 text-xs font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
                             🎯 100% Standard Foundation Locked + High-Yield Competency Focus
                           </span>
                         </div>
@@ -2499,7 +2549,7 @@ export function BoardReadinessReport({
                       <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                         TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION
                       </h3>
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                      <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                         You have built solid conceptual understanding across core topics. The next critical leap is turning that understanding into dependable exam-style problem solving, higher accuracy under timer conditions, and mastery of multi-step questions.
                       </p>
                     </div>
@@ -2518,11 +2568,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Move beyond direct questions
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           For every chapter you study, include application-based and multi-step questions—not only straightforward exercises.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-blue-100/80 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-100/80 px-2.5 py-1 text-xs font-bold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
                             Action: Complement textbook drills with scenario-based &amp; application questions
                           </span>
                         </div>
@@ -2540,7 +2590,7 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Rework every important mistake
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           After a test, first attempt the incorrect question again without seeing the solution. Then identify whether the issue was:
                         </p>
                         <div className="flex flex-wrap gap-2 pt-0.5">
@@ -2571,11 +2621,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Practise consistently
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           A manageable amount of focused practice every day is more valuable than occasional long study sessions.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             Consistency Principle: 5–8 high-quality problems daily builds compounding confidence
                           </span>
                         </div>
@@ -2593,11 +2643,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Test yourself every 1–2 weeks
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Use mixed, timed questions to check whether your improvement is carrying across chapters.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             Pacing Cadence: 30–45 min bi-weekly mixed chapter assessments
                           </span>
                         </div>
@@ -2615,11 +2665,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Shift towards Board-style practice
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           As the examination approaches, progressively increase your practice of sample papers, case-based questions and mixed-chapter questions.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-brand-100/80 px-2.5 py-1 text-xs font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
                             Board Target: Full sample papers, Assertion-Reason, and Case Study formats
                           </span>
                         </div>
@@ -2650,7 +2700,7 @@ export function BoardReadinessReport({
                       <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                         TURN YOUR GAPS INTO PROGRESS
                       </h3>
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                      <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                         A lower starting score is not a setback—it is your clearest roadmap to improvement. By addressing fundamental ideas before memorising formulas, you will see rapid gains in speed, understanding, and exam confidence.
                       </p>
                     </div>
@@ -2669,11 +2719,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Strengthen the basics
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Revisit the concepts behind the questions you could not solve. Make sure you can explain the idea before memorising the method.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100/80 px-2.5 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                             Golden Principle: Understand concepts from first principles before memorising steps
                           </span>
                         </div>
@@ -2691,10 +2741,10 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Practise a few questions every day
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Use a simple progression:
                         </p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
                           <span className="rounded-lg bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                             Basic
                           </span>
@@ -2707,7 +2757,7 @@ export function BoardReadinessReport({
                             Application
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                           Focus on quality and consistency rather than solving a very large number of questions.
                         </p>
                       </div>
@@ -2724,21 +2774,21 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Keep an Error Notebook
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           For every important mistake, record:
                         </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs sm:text-sm">
                           <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
                             <div>
                               <div className="flex items-center gap-1.5 mb-1.5">
-                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-xs dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
                                   1
                                 </span>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm tracking-tight">
                                   What did I get wrong?
                                 </span>
                               </div>
-                              <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                              <span className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed block pl-6.5">
                                 Identify the exact misstep or incorrect formula.
                               </span>
                             </div>
@@ -2746,14 +2796,14 @@ export function BoardReadinessReport({
                           <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
                             <div>
                               <div className="flex items-center gap-1.5 mb-1.5">
-                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-xs dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
                                   2
                                 </span>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm tracking-tight">
                                   Why?
                                 </span>
                               </div>
-                              <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                              <span className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed block pl-6.5">
                                 Did I misread, rush, or miss the fundamental idea?
                               </span>
                             </div>
@@ -2761,14 +2811,14 @@ export function BoardReadinessReport({
                           <div className="rounded-xl border border-slate-200/90 bg-white/90 p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700/80 transition flex flex-col justify-between">
                             <div>
                               <div className="flex items-center gap-1.5 mb-1.5">
-                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-[10px] dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 font-black text-xs dark:bg-slate-800 dark:text-brand-300 border border-brand-200/60 dark:border-slate-700">
                                   3
                                 </span>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs tracking-tight">
+                                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm tracking-tight">
                                   What is the correct approach?
                                 </span>
                               </div>
-                              <span className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed block pl-6.5">
+                              <span className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed block pl-6.5">
                                 Write down the proper reasoning and method.
                               </span>
                             </div>
@@ -2788,11 +2838,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Test yourself regularly
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Take a short mixed test every 1–2 weeks and track whether the same mistakes are recurring.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             Frequency: 15–20 question short mixed test every 7–14 days
                           </span>
                         </div>
@@ -2810,11 +2860,11 @@ export function BoardReadinessReport({
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                           Master your prescribed textbook
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                           Become confident with examples and exercises before moving extensively to additional or advanced material.
                         </p>
                         <div className="pt-0.5">
-                          <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-brand-100/80 px-2.5 py-1 text-xs font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
                             Priority Rule: 100% textbook example &amp; exercise mastery first
                           </span>
                         </div>
@@ -2844,7 +2894,7 @@ export function BoardReadinessReport({
                     <h3 className="mt-2 text-base sm:text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                       START FRESH: BUILD YOUR BOARD CONFIDENCE
                     </h3>
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                    <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                       A diagnostic test is simply a starting compass, not a limit on what you can achieve. With calm, step-by-step guidance starting from textbook basics, you will see your marks and confidence grow steadily.
                     </p>
                   </div>
@@ -2863,11 +2913,11 @@ export function BoardReadinessReport({
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         Reframe your starting baseline
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                         A diagnostic test is simply a tool to identify where to begin, not a measure of what you can achieve. Focus on steady daily progress without exam anxiety.
                       </p>
                       <div className="pt-0.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-violet-100/80 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-300/60 dark:border-violet-800">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-violet-100/80 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-300/60 dark:border-violet-800">
                           🌱 Mindset Anchor: Every top score starts from zero • Progress begins today
                         </span>
                       </div>
@@ -2885,11 +2935,11 @@ export function BoardReadinessReport({
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         Target quick-win chapters first
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                         Focus your initial effort on high-weightage, predictable chapters (such as Real Numbers and Statistics in Maths, and Chemical Reactions and Environment in Science) to lock in initial marks.
                       </p>
                       <div className="pt-0.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-emerald-100/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100/80 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                           🎯 Quick-Win Target: 2–3 core chapters secure your first 20–25 marks
                         </span>
                       </div>
@@ -2907,11 +2957,11 @@ export function BoardReadinessReport({
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         Master NCERT solved examples by hand
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                         Put advanced reference books aside. Practice textbook solved examples line-by-line—writing the formula and given data alone secures valuable step marks in CBSE.
                       </p>
                       <div className="pt-0.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-100/80 px-2.5 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                           ✍️ CBSE Step-Marking: Formula + Given data earns marks on every question
                         </span>
                       </div>
@@ -2929,11 +2979,11 @@ export function BoardReadinessReport({
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         Keep practice calm and consistent
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                         Avoid long, stressful study sessions. Solving just 3 to 5 simple textbook problems every day builds steady momentum and eliminates fear.
                       </p>
                       <div className="pt-0.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           ⏱️ Consistency Rule: 3–5 solved questions a day creates compounding confidence
                         </span>
                       </div>
@@ -2951,11 +3001,11 @@ export function BoardReadinessReport({
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         Seek guidance without hesitation
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                         Most roadblocks come from minor past gaps that can be resolved quickly. Ask teachers or mentors early—difficult ideas become simple once explained clearly.
                       </p>
                       <div className="pt-0.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-brand-100/80 px-2 py-0.5 text-[10px] font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-brand-100/80 px-2.5 py-1 text-xs font-bold text-brand-800 dark:bg-brand-950/60 dark:text-brand-300">
                           🤝 Mentorship: Clearing basic doubts early leads to rapid score jumps
                         </span>
                       </div>
@@ -3014,25 +3064,28 @@ export function BoardReadinessReport({
 
       <section
         id="report-page-5"
-        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-24"
+        className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800 gap-2">
           <div className="min-w-0 flex-1">
-            <span className="text-[11px] sm:text-xs font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
-              <GraduationCap className="size-3.5 text-brand-600 dark:text-brand-400" />
-              Shri Ram Smart Minds Academy
+            <span className="text-xs sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+              <GraduationCap className="size-4 text-brand-600 dark:text-brand-400 shrink-0" />
+              <span className="inline-flex flex-wrap items-baseline gap-x-1">
+                <span className="whitespace-nowrap">Shri Ram</span>
+                <span className="whitespace-nowrap">Smart Minds Academy</span>
+              </span>
             </span>
-            <div className="mt-0.5">
-              <h2 className="text-base sm:text-lg md:text-xl font-black tracking-tight text-slate-900 dark:text-white break-words">
+            <div className="mt-1">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white break-words">
                 Page 5: NEED STRUCTURED SUPPORT?
               </h2>
-              <p className="mt-0.5 text-xs sm:text-sm font-semibold text-brand-700 dark:text-brand-300 leading-snug">
+              <p className="mt-1 text-sm font-semibold text-brand-700 dark:text-brand-300 leading-snug">
                 We recommend joining our Board Mastery Course to excel in the upcoming Board Exams. Online, Offline and Combined Batches begin from 26th October onwards.
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
-            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs">
+            <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs whitespace-nowrap">
               {isTeacherView ? 'PAGE 5 OF 6' : 'PAGE 5 OF 5'}
             </span>
           </div>
@@ -3503,20 +3556,20 @@ export function BoardReadinessReport({
       {isTeacherView && report.calculationSteps && (
         <section
           id="report-page-6"
-          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block print:block scroll-mt-24"
+          className="report-page-container report-page-6 relative overflow-hidden rounded-3xl border border-amber-300 bg-white p-4 sm:p-8 shadow-sm transition dark:border-amber-700/60 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
         >
           {/* Header watermark & Brand bar */}
           <div className="flex items-center justify-between border-b border-amber-200 pb-4 dark:border-amber-900/60 gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-amber-700 dark:text-amber-400">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
                   Diagnostic Audit Engine
                 </span>
-                <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                <span className="rounded bg-amber-100 px-2.5 py-0.5 text-xs font-black uppercase tracking-wider text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                   Teacher View
                 </span>
               </div>
-              <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1 break-words">
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
                 PAGE 6 — DIAGNOSTIC AUDIT &amp; STEP-BY-STEP CALCULATIONS
               </h2>
             </div>
@@ -3524,7 +3577,7 @@ export function BoardReadinessReport({
               <span className="inline-block rounded-full bg-amber-500/15 px-3 py-1 text-xs font-black text-amber-800 dark:text-amber-300 border border-amber-500/30">
                 PAGE 6 OF 6
               </span>
-              <p className="mt-1 text-[11px] text-slate-400 hidden sm:block">Faculty Audit Ledger</p>
+              <p className="mt-1 text-xs text-slate-400 hidden sm:block">Faculty Audit Ledger</p>
             </div>
           </div>
 

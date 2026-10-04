@@ -9,6 +9,7 @@ import {
   FileText,
   Sparkles,
   ArrowRight,
+  Zap,
 } from 'lucide-react';
 import {
   Alert,
@@ -118,7 +119,7 @@ export function StudentAnalyticsClient({
 
   useEffect(() => {
     if (isTeacherView) return;
-    if (data && data.isReportUnlocked === false) {
+    if (data && data.totalAttempts > 0 && data.isReportUnlocked === false) {
       setShowUnlockModal(true);
     }
   }, [data, isTeacherView]);
@@ -127,13 +128,15 @@ export function StudentAnalyticsClient({
     if (isTeacherView) return;
     const handleOpenModal = (e: Event) => {
       e.preventDefault();
-      setShowUnlockModal(true);
+      if (data && data.totalAttempts > 0) {
+        setShowUnlockModal(true);
+      }
     };
     window.addEventListener('srsma_open_report_modal', handleOpenModal);
     return () => {
       window.removeEventListener('srsma_open_report_modal', handleOpenModal);
     };
-  }, [isTeacherView]);
+  }, [isTeacherView, data]);
 
   async function handleUnlockSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -219,7 +222,7 @@ export function StudentAnalyticsClient({
     );
   }
 
-  const isLocked = !isTeacherView && data.isReportUnlocked === false;
+  const isLocked = !isTeacherView && data.totalAttempts > 0 && data.isReportUnlocked === false;
 
   if (isLocked) {
     return (
@@ -420,7 +423,13 @@ export function StudentAnalyticsClient({
     );
   }
 
-  if (data.totalAttempts === 0 && !showSamplePreview) {
+  const sampleParam = searchParams.get('sample');
+  const isSampleMode = data.totalAttempts === 0 || showSamplePreview || sampleParam === 'true';
+  const activeReport = isSampleMode
+    ? (data.sampleDiagnosticReport ?? data.diagnosticReport)
+    : data.diagnosticReport;
+
+  if (data.totalAttempts === 0 && !activeReport) {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
@@ -446,17 +455,6 @@ export function StudentAnalyticsClient({
                   Browse Available Tests
                 </Link>
               )}
-              {data.sampleDiagnosticReport && (
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() => setShowSamplePreview(true)}
-                  className="border-amber-400/60 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 dark:text-amber-300"
-                >
-                  <FileText className="mr-2 size-4 text-amber-600 dark:text-amber-400" />
-                  Preview Sample 5-Page Report
-                </Button>
-              )}
             </div>
           }
         />
@@ -464,12 +462,10 @@ export function StudentAnalyticsClient({
     );
   }
 
-  const activeReport = showSamplePreview ? data.sampleDiagnosticReport : data.diagnosticReport;
-
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Sample Preview Banner */}
-      {showSamplePreview && (
+      {isSampleMode && (
         <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs shadow-sm dark:border-amber-800/80 dark:bg-amber-950/40">
           <div className="flex items-center gap-2.5">
             <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold">
@@ -477,21 +473,36 @@ export function StudentAnalyticsClient({
             </div>
             <div>
               <p className="font-bold text-amber-950 dark:text-amber-200">
-                Demonstration Preview Mode
+                Sample Diagnostic Report Preview
               </p>
               <p className="text-amber-800 dark:text-amber-300/80 text-[11px]">
-                Viewing the 5-page Board Readiness Challenge Report with sample Class X student attempt responses.
+                {data.totalAttempts === 0
+                  ? 'You have not written the test yet. Below is a sample 5-page Board Readiness Challenge Report demonstrating the personalized evaluation.'
+                  : 'Viewing the 5-page Board Readiness Challenge Report with sample Class X student attempt responses.'}
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowSamplePreview(false)}
-            className="shrink-0 font-bold"
-          >
-            Exit Sample Preview
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isTeacherView && data.totalAttempts === 0 && (
+              <Link
+                href="/student"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-xs hover:bg-amber-400 transition"
+              >
+                <Zap className="size-3.5" />
+                Take Test to Get Your Real Report
+              </Link>
+            )}
+            {data.totalAttempts > 0 && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowSamplePreview(false)}
+                className="shrink-0 font-bold"
+              >
+                Exit Sample Preview
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -534,11 +545,13 @@ export function StudentAnalyticsClient({
           )}
 
           {/* Student Feedback on Diagnostic Test & Report */}
-          <DiagnosticFeedbackWidget
-            attemptId={paramAttemptId || data.recentTests?.[0]?.attemptId}
-            sourceTab="report"
-            className="mt-6"
-          />
+          {(paramAttemptId || data.recentTests?.[0]?.attemptId) && (
+            <DiagnosticFeedbackWidget
+              attemptId={paramAttemptId || data.recentTests?.[0]?.attemptId}
+              sourceTab="report"
+              className="mt-6"
+            />
+          )}
         </>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">

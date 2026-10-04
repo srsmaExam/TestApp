@@ -289,7 +289,7 @@ export default function BoardChallengePage() {
                 <div>
                   <h2 className="text-lg font-black text-slate-900 sm:text-xl dark:text-white">20 Questions | 20 Minutes</h2>
                   <p className="mt-1 text-sm leading-snug text-slate-600 sm:text-base dark:text-slate-300">
-                    A timed assessment to evaluate your conceptual clarity and solving speed under real exam pressure—so you never run out of time.
+                    The test evaluates your conceptual clarity & solving speed under real exam pressure, so you never run out of time.
                   </p>
                 </div>
               </div>
@@ -335,13 +335,16 @@ export default function BoardChallengePage() {
                 </h2>
 
                 <div className="mt-5 space-y-4 text-base font-normal leading-relaxed text-slate-300 sm:text-lg">
-                  <p>
-                    Class 10 is your first big board exam. Most students work very hard and have the potential to score 90%+, but they walk into the exam hall without knowing how ready they really are.
-                  </p>
-                  <p className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-4 text-slate-200 sm:p-5">
-                    Re-reading notes, watching video lectures, or scrolling through guidebook solutions feels productive, but it can hide your real weak areas. It gives you a{' '}
-                    <strong className="font-extrabold text-amber-400">false sense of preparation</strong> without showing you where you will actually lose marks when solving on your own.
-                  </p>
+                    
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-4 text-slate-200 sm:p-5 space-y-2.5">
+                    <p>
+                      Class 10 is your first big board exam. Most students work very hard and have the potential to score 90%+, but they walk into the exam hall without knowing how ready they really are.
+                    </p>
+                    <p>
+                      Re-reading notes, watching video lectures, or scrolling through guidebook solutions feels productive, but it can hide your real weak areas. It gives you a{' '}
+                      <strong className="font-extrabold text-amber-400">false sense of preparation</strong> without showing you where you will actually lose marks when solving on your own.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -364,7 +367,7 @@ export default function BoardChallengePage() {
                         01
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
+                        <p className="text-base leading-snug text-slate-100 sm:text-lg">
                           Can you solve direct, textbook questions easily, but get stuck on tricky, multi-step problems?
                         </p>
                       </div>
@@ -378,7 +381,7 @@ export default function BoardChallengePage() {
                         02
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
+                        <p className="text-base leading-snug text-slate-100 sm:text-lg">
                           Do you understand the concepts well at home, yet run out of time during school exams?
                         </p>
                       </div>
@@ -392,7 +395,7 @@ export default function BoardChallengePage() {
                         03
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
+                        <p className="text-base leading-snug text-slate-100 sm:text-lg">
                           Are you studying hard, but your marks stay stuck at the same level test after test?
                         </p>
                       </div>
@@ -641,50 +644,7 @@ export default function BoardChallengePage() {
             </div>
           </section>
 
-          {/* Section: About Shri Ram Smart Minds Academy & IIT Alumni Mentorship */}
-          <section className="border-t border-slate-800/80 bg-slate-950/60 py-8 transition-colors sm:py-12">
-            <div className="mx-auto max-w-5xl px-4 sm:px-6">
-              <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-slate-900/90 to-blue-900/20 p-7 sm:p-9 md:flex-row md:text-left text-center">
-                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:text-left">
-                  <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border border-amber-400/50 bg-slate-900 p-1 shadow-md shadow-amber-500/10 sm:size-20">
-                    <Image
-                      src={BRAND.logoMark}
-                      alt="SRSMA Emblem"
-                      width={80}
-                      height={80}
-                      className="size-full rounded-xl object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <h3 className="text-xl font-black leading-tight text-white sm:text-2xl">
-                      <span>Shri Ram</span>
-                      <span className="block text-amber-400">Smart Minds Academy</span>
-                    </h3>
-                    <div className="mt-1 text-sm font-bold leading-snug text-amber-300 sm:text-base">
-                      <span>A Premier JEE &amp; NEET Coaching Institute</span>
-                      <span className="block font-extrabold text-amber-200">by IIT Alumni</span>
-                    </div>
-                    <p className="mt-2.5 max-w-xl text-justify text-sm leading-relaxed text-white sm:text-base">
-                      Founded by IIT alumni, SRSMA delivers stress-free, personalized coaching in focused batches of 25–30 students. Backed by smart AI Powered AC classrooms and safe residential care, our inaugural batch achieved a 99.48 percentile in JEE Main, JEE Advanced selections, and 98% in board exams.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-2 shrink-0 md:mt-0">
-                  <Link
-                    href={destination}
-                    data-ga-cta="section_about_institute_login"
-                    className="inline-flex items-center gap-2 rounded-2xl bg-amber-400 px-6 py-3.5 text-sm font-black text-slate-950 shadow-xl shadow-amber-500/25 transition hover:bg-amber-300 active:scale-95 sm:text-base"
-                  >
-                    <LogIn className="size-4.5" />
-                    <span>Login &amp; Start</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 6: Closing Call To Action Banner (Footer) */}
+          {/* Section: Closing Call To Action Banner */}
           <section className="relative border-t border-slate-800/80 bg-[#071120] py-10 sm:py-16 overflow-hidden">
             {/* Ambient Lighting */}
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500/15 blur-[140px]" />
@@ -736,6 +696,49 @@ export default function BoardChallengePage() {
                       <span>Instant Reports Access</span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Section: About Shri Ram Smart Minds Academy & IIT Alumni Mentorship */}
+          <section className="border-t border-slate-800/80 bg-slate-950/60 py-8 transition-colors sm:py-12">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6">
+              <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-slate-900/90 to-blue-900/20 p-7 sm:p-9 md:flex-row md:text-left text-center">
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:text-left">
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border border-amber-400/50 bg-slate-900 p-1 shadow-md shadow-amber-500/10 sm:size-20">
+                    <Image
+                      src={BRAND.logoMark}
+                      alt="SRSMA Emblem"
+                      width={80}
+                      height={80}
+                      className="size-full rounded-xl object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <h3 className="text-xl font-black leading-tight text-white sm:text-2xl">
+                      <span>Shri Ram</span>
+                      <span className="block text-amber-400">Smart Minds Academy</span>
+                    </h3>
+                    <div className="mt-1 text-sm font-bold leading-snug text-amber-300 sm:text-base">
+                      <span>A Premier JEE &amp; NEET Coaching Institute</span>
+                      <span className="block font-extrabold text-amber-200">by IIT Alumni</span>
+                    </div>
+                    <p className="mt-2.5 max-w-xl text-justify text-sm leading-relaxed text-white sm:text-base">
+                      Founded by IIT alumni, SRSMA delivers stress-free, personalized coaching in focused batches of 25–30 students. Backed by smart AI Powered AC classrooms and safe residential care, our inaugural batch achieved a 99.48 percentile in JEE Main, JEE Advanced selections, and 98% in board exams.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-2 shrink-0 md:mt-0">
+                  <Link
+                    href={destination}
+                    data-ga-cta="section_about_institute_login"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-amber-400 px-6 py-3.5 text-sm font-black text-slate-950 shadow-xl shadow-amber-500/25 transition hover:bg-amber-300 active:scale-95 sm:text-base"
+                  >
+                    <LogIn className="size-4.5" />
+                    <span>Login &amp; Start</span>
+                  </Link>
                 </div>
               </div>
             </div>

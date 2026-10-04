@@ -106,9 +106,9 @@ function PaletteButton({
 }
 
 /** Debounce for answer-driven saves: rapid re-selections collapse into one request. */
-const ANSWER_SAVE_DEBOUNCE_MS = 2000;
+const ANSWER_SAVE_DEBOUNCE_MS = 5000;
 /** Idle heartbeat. It only sends when something changed since the last save. */
-const HEARTBEAT_MS = 60_000;
+const HEARTBEAT_MS = 120_000;
 
 export function TestRunnerClient({
   attemptId,
@@ -165,6 +165,17 @@ export function TestRunnerClient({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** True while there are changes the server has not seen. Gates every autosave. */
   const dirtyRef = useRef(false);
+  /** Tracks IDs of questions with unsaved changes for delta syncing. */
+  const dirtyQuestionIdsRef = useRef<Set<string>>(new Set());
+  /** In-memory Blob URL cache for question/option diagrams to eliminate re-fetching on navigation. */
+  const imageBlobCacheRef = useRef<Map<string, string>>(new Map());
+  const [, setImageCacheTick] = useState(0);
+
+  const getImageSrc = useCallback((questionId: string, placeholderId: string) => {
+    const key = `${questionId}:${placeholderId}`;
+    return imageBlobCacheRef.current.get(key) || `/api/files/images/${questionId}/${placeholderId}`;
+  }, []);
+
   const initialQuestionsRef = useRef(initialQuestions);
 
   /**
@@ -248,7 +259,12 @@ export function TestRunnerClient({
         });
 
         // Offline answers may be newer than the server's — push them on the next sync.
-        if (idbSaved) dirtyRef.current = true;
+        if (idbSaved) {
+          dirtyRef.current = true;
+          for (const qId of Object.keys(idbSaved)) {
+            dirtyQuestionIdsRef.current.add(qId);
+          }
+        }
 
         if (mounted) {
           setQuestions(reconciled);
@@ -268,6 +284,64 @@ export function TestRunnerClient({
       mounted = false;
     };
   }, [attemptId, idbKey]);
+
+  // Pre-load all question diagrams into browser memory Blob URLs.
+  // Eliminates all serverless invocations for images as the student navigates back and forth.
+  useEffect(() => {
+    if (questions.length === 0) return;
+    let active = true;
+
+    const targets: Array<{ qId: string; pId: string }> = [];
+    const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+    for (const q of questions) {
+      let match: RegExpExecArray | null;
+      const bodyStr = q.body || '';
+      imgRegex.lastIndex = 0;
+      while ((match = imgRegex.exec(bodyStr)) !== null) {
+        if (match[2]) targets.push({ qId: q.id, pId: match[2] });
+      }
+      if (Array.isArray(q.options)) {
+        for (const opt of q.options) {
+          const optBody = opt.body || '';
+          imgRegex.lastIndex = 0;
+          while ((match = imgRegex.exec(optBody)) !== null) {
+            if (match[2]) targets.push({ qId: q.id, pId: match[2] });
+          }
+        }
+      }
+    }
+
+    async function preloadAll() {
+      for (const { qId, pId } of targets) {
+        if (!active) break;
+        const key = `${qId}:${pId}`;
+        if (imageBlobCacheRef.current.has(key)) continue;
+
+        try {
+          const res = await fetch(`/api/files/images/${qId}/${pId}`);
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          if (!active) break;
+          const blobUrl = URL.createObjectURL(blob);
+          imageBlobCacheRef.current.set(key, blobUrl);
+          setImageCacheTick((t) => t + 1);
+        } catch {
+          // Graceful fallback to network URL on error
+        }
+      }
+    }
+
+    void preloadAll();
+
+    return () => {
+      active = false;
+      for (const url of imageBlobCacheRef.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      imageBlobCacheRef.current.clear();
+    };
+  }, [questions]);
 
   // 3. Precision timing per question accumulation
   const currentIndexRef = useRef(0);
@@ -309,15 +383,23 @@ export function TestRunnerClient({
 
   /** The wire payload, always read from the ref so it is never stale. */
   const buildAnswersPayload = useCallback(
-    () => ({
-      answers: questionsRef.current.map((q) => ({
-        questionId: q.id,
-        response: q.response,
-        state: q.state,
-        timeSpentMs: q.timeSpentMs,
-        visitCount: q.visitCount,
-      })),
-    }),
+    (forceAll = false) => {
+      const dirtyIds = dirtyQuestionIdsRef.current;
+      const targetQuestions =
+        forceAll || dirtyIds.size === 0
+          ? questionsRef.current
+          : questionsRef.current.filter((q) => dirtyIds.has(q.id));
+
+      return {
+        answers: targetQuestions.map((q) => ({
+          questionId: q.id,
+          response: q.response,
+          state: q.state,
+          timeSpentMs: q.timeSpentMs,
+          visitCount: q.visitCount,
+        })),
+      };
+    },
     [],
   );
 
@@ -329,13 +411,22 @@ export function TestRunnerClient({
     setIsSyncing(true);
 
     flushTimeSpent();
-    dirtyRef.current = false;
+
+    // Snapshot in-flight dirty question IDs
+    const inFlightDirtyIds = new Set(dirtyQuestionIdsRef.current);
+    const payload = buildAnswersPayload(false);
+
+    if (payload.answers.length === 0) {
+      dirtyRef.current = false;
+      setIsSyncing(false);
+      return;
+    }
 
     try {
       const res = await fetch(`/api/attempts/${attemptId}/answers`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildAnswersPayload()),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -350,6 +441,14 @@ export function TestRunnerClient({
           return;
         }
         throw new Error(data?.message || 'Sync failed');
+      }
+
+      // Clear only the IDs that were successfully sent in this request
+      for (const id of inFlightDirtyIds) {
+        dirtyQuestionIdsRef.current.delete(id);
+      }
+      if (dirtyQuestionIdsRef.current.size === 0) {
+        dirtyRef.current = false;
       }
 
       setSyncError(null);
@@ -371,7 +470,7 @@ export function TestRunnerClient({
     }, ANSWER_SAVE_DEBOUNCE_MS);
   }, [syncWithServer]);
 
-  // 6. Periodic Heartbeat Sync (every 60s, only when something changed).
+  // 6. Periodic Heartbeat Sync (every 120s, only when something changed).
   // Mounts once, because syncWithServer's identity is stable.
   useEffect(() => {
     const heartbeat = setInterval(() => {
@@ -398,10 +497,11 @@ export function TestRunnerClient({
     const flushBeacon = () => {
       if (submitStartedRef.current || !dirtyRef.current) return;
       flushTimeSpent();
-      const blob = new Blob([JSON.stringify(buildAnswersPayload())], { type: 'text/plain;charset=UTF-8' });
+      const blob = new Blob([JSON.stringify(buildAnswersPayload(true))], { type: 'text/plain;charset=UTF-8' });
       const queued = navigator.sendBeacon(`/api/attempts/${attemptId}/answers`, blob);
       if (queued) {
         dirtyRef.current = false;
+        dirtyQuestionIdsRef.current.clear();
         // The beacon carried everything; drop the pending debounced PATCH.
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
@@ -510,8 +610,7 @@ export function TestRunnerClient({
 
     setCurrentIndex(targetIndex);
     activeSinceRef.current = performance.now();
-    // Navigation changes only visit/time data; it rides the next heartbeat.
-    dirtyRef.current = true;
+    // Navigation changes only visit/time data; mirrored locally in IndexedDB with zero network cost.
   };
 
   // Action: Select MCQ Option
@@ -535,6 +634,7 @@ export function TestRunnerClient({
           response: { key },
           state: q.state === 'flagged_unanswered' || q.state === 'answered_flagged' ? 'answered_flagged' : 'answered',
         };
+        dirtyQuestionIdsRef.current.add(q.id);
       }
       return copy;
     });
@@ -574,6 +674,7 @@ export function TestRunnerClient({
           draftValue: trimmed,
           state: complete ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
+        dirtyQuestionIdsRef.current.add(q.id);
       }
       return copy;
     });
@@ -593,6 +694,7 @@ export function TestRunnerClient({
           ...q,
           state: hasResponse ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
+        dirtyQuestionIdsRef.current.add(q.id);
       }
       return copy;
     });
@@ -613,6 +715,7 @@ export function TestRunnerClient({
           ...q,
           state: hasResponse ? (wasFlagged ? 'answered_flagged' : 'answered') : wasFlagged ? 'flagged_unanswered' : 'seen_unanswered',
         };
+        dirtyQuestionIdsRef.current.add(q.id);
       }
       return copy;
     });
@@ -645,6 +748,7 @@ export function TestRunnerClient({
           ...q,
           state: hasResponse ? 'answered_flagged' : 'flagged_unanswered',
         };
+        dirtyQuestionIdsRef.current.add(q.id);
       }
       return copy;
     });
@@ -672,6 +776,7 @@ export function TestRunnerClient({
           draftValue: undefined,
           state: nextState,
         };
+        dirtyQuestionIdsRef.current.add(q.id);
       }
       return copy;
     });
@@ -708,7 +813,7 @@ export function TestRunnerClient({
       flushTimeSpent();
 
       try {
-        const payload: Record<string, unknown> = buildAnswersPayload();
+        const payload: Record<string, unknown> = buildAnswersPayload(true);
         if (options?.autoSubmitted || mode === 'auto') {
           payload.autoSubmitted = true;
           payload.autoSubmitReason = options?.reason || (mode === 'auto' ? 'deadline_expired' : 'popup_timeout_60s');
@@ -1088,7 +1193,7 @@ export function TestRunnerClient({
                     renderImage={(placeholderId) => (
                       <div className="my-3 overflow-hidden rounded-md border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-950">
                         <img
-                          src={`/api/files/images/${currentQ.id}/${placeholderId}`}
+                          src={getImageSrc(currentQ.id, placeholderId)}
                           alt="Question figure"
                           className="max-h-80 w-auto object-contain"
                           loading="lazy"
@@ -1133,7 +1238,7 @@ export function TestRunnerClient({
                                 body={opt.body}
                                 renderImage={(imgId) => (
                                   <img
-                                    src={`/api/files/images/${currentQ.id}/${imgId}`}
+                                    src={getImageSrc(currentQ.id, imgId)}
                                     alt="Option figure"
                                     className="my-1 max-h-40 object-contain"
                                   />

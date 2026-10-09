@@ -436,7 +436,7 @@ export function LoginForm() {
             className="w-full rounded-xl bg-brand-700 py-2.5 text-base font-medium shadow-sm transition hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500"
             disabled={busy}
           >
-            {busy ? 'Checking account…' : 'Continue with WhatsApp'}
+            {busy ? 'Checking account…' : 'Login'}
           </Button>
         </form>
       )}

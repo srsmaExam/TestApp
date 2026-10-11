@@ -944,6 +944,335 @@ export function formatWeaknessName(name: string): string {
   return map[name] || name;
 }
 
+// ---------------------------------------------------------------------------
+// Page 4 Recommendations: Stepper Icons & Circuit Roadmap Component
+// ---------------------------------------------------------------------------
+
+export interface RecommendationStep {
+  step: string;
+  nodeIcon?: React.ReactNode;
+  cardIcon: React.ReactNode;
+  title: string;
+  headlineFocus: string;
+  description?: string;
+  actionBox?: React.ReactNode;
+  tags?: Array<{ label: string; className?: string }>;
+}
+
+function MultiColorPuzzleIcon({ className = 'size-7' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      {/* Top-Left Piece (Coral/Red) */}
+      <path
+        d="M6 9a3 3 0 0 1 3-3h5v2.2a2.3 2.3 0 1 0 2 0V6h.5a1.5 1.5 0 0 1 1.5 1.5v4.5a2.5 2.5 0 1 0 0 3.5V17a1.5 1.5 0 0 1-1.5 1.5h-2.2a2.3 2.3 0 1 0 0 2H14v-.5A1.5 1.5 0 0 1 12.5 18.5H9a3 3 0 0 1-3-3V9z"
+        fill="#f43f5e"
+      />
+      {/* Top-Right Piece (Amber/Orange) */}
+      <path
+        d="M17.5 7.5A1.5 1.5 0 0 1 19 6h4a3 3 0 0 1 3 3v6.5a3 3 0 0 1-3 3h-2.5v-2a2.3 2.3 0 1 0-2 0v2H17.5A1.5 1.5 0 0 1 16 17v-1.5a2.5 2.5 0 1 1 0-3.5V7.5z"
+        fill="#f59e0b"
+      />
+      {/* Bottom-Left Piece (Emerald/Green) */}
+      <path
+        d="M6 17.5A1.5 1.5 0 0 1 7.5 16H9a3 3 0 0 1 3 3v2.5h2a2.3 2.3 0 1 1 0 2H12v.5A1.5 1.5 0 0 1 10.5 25.5H9a3 3 0 0 1-3-3v-5z"
+        fill="#10b981"
+      />
+      {/* Bottom-Right Piece (Sky/Blue) */}
+      <path
+        d="M17.5 19.5a1.5 1.5 0 0 1 1.5-1.5h2.5a2.3 2.3 0 1 1 2 0H26a1.5 1.5 0 0 1 1.5 1.5v3.5a3 3 0 0 1-3 3h-5a1.5 1.5 0 0 1-1.5-1.5v-2a2.3 2.3 0 1 0-0.5-3.5v-0z"
+        fill="#3b82f6"
+      />
+    </svg>
+  );
+}
+
+function RotateYellowIcon({ className = 'size-6 sm:size-7' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M4 12a8 8 0 1 0 2.34-5.66L4 8.5"
+        stroke="#facc15"
+        strokeWidth="2.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 3.5v5h5"
+        stroke="#facc15"
+        strokeWidth="2.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TargetDartIcon({ className = 'size-6 sm:size-7' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="17" r="11" fill="#f43f5e" />
+      <circle cx="15" cy="17" r="8" fill="#ffffff" />
+      <circle cx="15" cy="17" r="5" fill="#f43f5e" />
+      <circle cx="15" cy="17" r="2.2" fill="#ffffff" />
+      <path
+        d="M26 6l-9 9"
+        stroke="#38bdf8"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <polygon points="26,6 23.5,4.5 24.5,2 27.5,4.5" fill="#0284c7" />
+      <polygon points="26,6 27.5,8.5 30,7.5 28.5,4.5" fill="#38bdf8" />
+    </svg>
+  );
+}
+
+function StopwatchPieIcon({ className = 'size-6 sm:size-7' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="2" width="4" height="3.5" rx="1" fill="#94a3b8" />
+      <path d="M12 2h8" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="16" cy="18" r="11.5" fill="#1e293b" stroke="#475569" strokeWidth="1.5" />
+      <circle cx="16" cy="18" r="9.5" fill="#f8fafc" />
+      <path d="M16 18 L16 8.5 A9.5 9.5 0 0 1 24.2 22.8 Z" fill="#f43f5e" />
+      <circle cx="16" cy="18" r="1.5" fill="#0f172a" />
+      <path d="M16 18l-3.5-3.5" stroke="#0f172a" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ExamStarIcon({ className = 'size-6 sm:size-7' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M7 4a2 2 0 0 1 2-2h9l5 5v17a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4z"
+        fill="#f1f5f9"
+        stroke="#94a3b8"
+        strokeWidth="1.2"
+      />
+      <path d="M18 2v5h5" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1.2" />
+      <text x="13.5" y="10" textAnchor="middle" fontSize="4.2" fontWeight="900" fill="#1e3a8a" fontFamily="sans-serif">EXAM</text>
+      <line x1="9" y1="13" x2="19" y2="13" stroke="#64748b" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="9" y1="16" x2="19" y2="16" stroke="#64748b" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="9" y1="19" x2="15" y2="19" stroke="#64748b" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="9" y1="22" x2="14" y2="22" stroke="#64748b" strokeWidth="1.2" strokeLinecap="round" />
+      <polygon
+        points="22.5,18 24,21.2 27.5,21.6 25,24 25.7,27.5 22.5,25.7 19.3,27.5 20,24 17.5,21.6 21,21.2"
+        fill="#f59e0b"
+        stroke="#d97706"
+        strokeWidth="0.8"
+      />
+    </svg>
+  );
+}
+
+function CircuitRoadmapStepper({ steps }: { steps: RecommendationStep[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [paths, setPaths] = useState<string[]>([]);
+
+  useEffect(() => {
+    const updateCoords = () => {
+      if (!containerRef.current) return;
+      const cRect = containerRef.current.getBoundingClientRect();
+      const newPaths: string[] = [];
+
+      for (let i = 0; i < steps.length - 1; i++) {
+        const elA = nodeRefs.current[i];
+        const elB = nodeRefs.current[i + 1];
+        if (!elA || !elB) continue;
+
+        const rA = elA.getBoundingClientRect();
+        const rB = elB.getBoundingClientRect();
+
+        const startX = rA.left - cRect.left + rA.width / 2;
+        const startY = rA.bottom - cRect.top;
+        const endX = rB.left - cRect.left + rB.width / 2;
+        const endY = rB.top - cRect.top - 10;
+
+        const midY = (startY + endY) / 2;
+        const dx = Math.abs(endX - startX);
+        const dy = Math.abs(endY - startY);
+        const r = Math.min(16, dx / 2, dy / 4);
+
+        let d = '';
+        if (endX > startX) {
+          d = `M ${startX} ${startY} V ${midY - r} Q ${startX} ${midY} ${startX + r} ${midY} H ${endX - r} Q ${endX} ${midY} ${endX} ${midY + r} V ${endY}`;
+        } else if (endX < startX) {
+          d = `M ${startX} ${startY} V ${midY - r} Q ${startX} ${midY} ${startX - r} ${midY} H ${endX + r} Q ${endX} ${midY} ${endX} ${midY + r} V ${endY}`;
+        } else {
+          d = `M ${startX} ${startY} V ${endY}`;
+        }
+        newPaths.push(d);
+      }
+      setPaths(newPaths);
+    };
+
+    updateCoords();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updateCoords();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+    window.addEventListener('resize', updateCoords);
+
+    return () => {
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', updateCoords);
+    };
+  }, [steps]);
+
+  const getNodeIcon = (idx: number, fallbackIcon?: React.ReactNode) => {
+    switch (idx) {
+      case 0:
+        return <MultiColorPuzzleIcon className="size-6 sm:size-7" />;
+      case 1:
+        return <RotateYellowIcon className="size-6 sm:size-7" />;
+      case 2:
+        return <TargetDartIcon className="size-6 sm:size-7" />;
+      case 3:
+        return <StopwatchPieIcon className="size-6 sm:size-7" />;
+      case 4:
+        return <ExamStarIcon className="size-6 sm:size-7" />;
+      default:
+        return fallbackIcon || null;
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full space-y-6 sm:space-y-8 py-2">
+      {/* SVG Connecting Circuit Trace */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {paths.map((d, i) => (
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            stroke="#243455"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+      </svg>
+
+      {steps.map((item, idx) => {
+        const isAlternate = idx % 2 === 1; // steps 02, 04 are alternate (coral theme, indented)
+        const indentClass = isAlternate ? 'pl-7 sm:pl-11 md:pl-13' : 'pl-0';
+
+        return (
+          <div
+            key={idx}
+            className={`relative flex items-start gap-3 sm:gap-4.5 z-10 ${indentClass}`}
+          >
+            {/* Step Node */}
+            <div className="relative shrink-0 pt-3">
+              {/* Floating Pill on top of Node */}
+              <div className="absolute top-0.5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
+                <span
+                  className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold tracking-wider shadow-sm border ${
+                    isAlternate
+                      ? 'bg-[#2f1523] text-[#fb7185] border-[#f43f5e]'
+                      : 'bg-[#142340] text-[#60a5fa] border-[#3b82f6]'
+                  }`}
+                >
+                  {item.step}
+                </span>
+              </div>
+
+              {/* Node Square Box */}
+              <div
+                ref={(el) => {
+                  nodeRefs.current[idx] = el;
+                }}
+                className={`size-13 sm:size-14 rounded-2xl shadow-lg flex items-center justify-center relative border-2 transition-transform duration-200 hover:scale-105 ${
+                  isAlternate
+                    ? 'bg-[#15192c] border-[#7d324a]'
+                    : 'bg-[#11192e] border-[#2d4470]'
+                }`}
+              >
+                {getNodeIcon(idx, item.nodeIcon)}
+              </div>
+            </div>
+
+            {/* Card Container */}
+            <div className="flex-1 min-w-0 rounded-2xl bg-[#101932] border border-[#203254] p-3.5 sm:p-5 shadow-lg relative space-y-2.5">
+              {/* Speech bubble pointer pointing left towards node */}
+              <div
+                className="absolute -left-2 top-5 sm:top-5.5 w-0 h-0 pointer-events-none"
+                style={{
+                  borderTop: '6px solid transparent',
+                  borderBottom: '6px solid transparent',
+                  borderRight: '8px solid #203254',
+                }}
+              />
+              <div
+                className="absolute -left-[6px] top-5 sm:top-5.5 w-0 h-0 pointer-events-none"
+                style={{
+                  borderTop: '5px solid transparent',
+                  borderBottom: '5px solid transparent',
+                  borderRight: '7px solid #101932',
+                }}
+              />
+
+              {/* Title Row with blue badge icon */}
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-7.5 sm:size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs [&_svg]:size-4 sm:[&_svg]:size-4.5 [&_svg]:stroke-white [&_svg]:text-white">
+                  {item.cardIcon}
+                </span>
+                <h4 className="font-black text-sm sm:text-base text-white uppercase tracking-wide">
+                  {item.title}
+                </h4>
+              </div>
+
+              {/* Headline focus */}
+              <div className="text-xs sm:text-sm leading-relaxed text-slate-200">
+                <span className="font-semibold text-slate-400">Headline focus: </span>
+                <span className="font-medium text-white">{item.headlineFocus}</span>
+              </div>
+
+              {/* Extra Description if available */}
+              {item.description && (
+                <p className="text-xs text-slate-300/90 leading-relaxed font-normal">
+                  {item.description}
+                </p>
+              )}
+
+              {/* Tags if available */}
+              {item.tags && item.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-0.5">
+                  {item.tags.map((tag, tIdx) => (
+                    <span
+                      key={tIdx}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold shadow-xs ${
+                        tag.className || 'bg-slate-800 text-white'
+                      }`}
+                    >
+                      {tag.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Action Box if available */}
+              {item.actionBox && (
+                <div className="rounded-xl bg-[#16223d] border border-[#233558] px-3 sm:px-3.5 py-2 text-xs sm:text-sm text-slate-200 font-medium shadow-xs">
+                  {item.actionBox}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function BoardReadinessReport({
   report,
   studentGender,
@@ -1427,6 +1756,7 @@ export function BoardReadinessReport({
                 </p>
               </div>
 
+<<<<<<< Updated upstream
               {/* Desktop Mascot Standing Character (>= sm) */}
               <div className="hidden sm:flex shrink-0 items-center justify-center">
                 <img
@@ -1436,14 +1766,180 @@ export function BoardReadinessReport({
                 />
               </div>
             </div>
+=======
+              {/* Desktop Heading (>= sm) */}
+              <div className="hidden sm:flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white font-black text-base shadow-sm">
+                  🎓
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Dear {report.studentName},
+                </h3>
+              </div>
+
+              <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                Congratulations on taking this vital first step! Facing a diagnostic test takes courage, and it shows your true dedication to your Class 10 {studentDetails?.board}s. Use the insights given in this report to uncover your strengths, target your weak spots, and build the confidence you need to excel. Your journey to an outstanding Board score starts right here!
+              </p>
+            </div>
+
+            {/* Desktop Mascot Standing Character (>= sm) */}
+            <div className="hidden sm:flex shrink-0 items-center justify-center">
+              <img
+                src={avatarSrc}
+                alt={isMale ? 'Male Student Mascot' : 'Female Student Mascot'}
+                className="h-32 sm:h-40 w-auto object-contain drop-shadow-md"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Personal Diagnostic Report Title */}
+        <div className="mt-8 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-5 w-1.5 rounded-full bg-brand-600" />
+            <h3 className="text-sm sm:text-base font-black tracking-wider uppercase text-slate-900 dark:text-white">
+              Personal Diagnostic Evaluation
+            </h3>
+          </div>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Overview &amp; Baseline
+          </span>
+        </div>
+
+        {/* Hero Readiness Snapshot */}
+        <div className="mt-4 grid gap-5 sm:grid-cols-2 items-stretch">
+          {/* BRI Speedometer Gauge Arc Tile */}
+          <div className="h-full">
+            <BriSpeedometerGauge score={report.briScore} prepStyle={prepStyle} />
           </div>
 
+          {/* Score Snapshot Cards & Subject Performance Matrix */}
+          <div className="flex flex-col justify-between gap-3 h-full">
+            {/* Overall Raw Score Card */}
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Overall Raw Score
+                </span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  Accuracy: {Math.round((report.totalRawScore / Math.max(1, report.totalQuestions)) * 100)}%
+                </span>
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="tnum text-3xl font-black text-slate-900 dark:text-white">
+                  {report.totalRawScore}
+                </span>
+                <span className="text-sm font-bold text-slate-400">/ {report.totalQuestions} Questions Correct</span>
+              </div>
+              <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${report.totalRawScore <= 8
+                    ? 'bg-rose-500'
+                    : report.totalRawScore <= 14
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                    }`}
+                  style={{ width: `${(report.totalRawScore / Math.max(1, report.totalQuestions)) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Subject Breakdown Matrix */}
+            <div className="flex-1 flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 dark:border-slate-800 dark:bg-slate-900 shadow-xs space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold border-b border-slate-100 pb-2 dark:border-slate-800">
+                <span className="uppercase tracking-wider text-slate-500 dark:text-slate-400">Subject-Wise Performance</span>
+                <span className="uppercase tracking-wider text-slate-500 dark:text-slate-400">Accuracy %</span>
+              </div>
+
+              {/* Mathematics */}
+              <div className="flex items-center justify-between rounded-xl bg-blue-50/60 p-2.5 border border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-bold shadow-2xs">
+                    📐
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">Mathematics</span>
+                </div>
+                <span className="rounded-lg bg-blue-600/10 px-2.5 py-1 text-sm font-black text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 tnum">
+                  {report.breakdown.mathematics.percentage}%
+                </span>
+              </div>
+
+              {/* Science */}
+              <div className="rounded-xl bg-emerald-50/60 p-2.5 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-2xs">
+                      🧪
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">Science</span>
+                  </div>
+                  <span className="rounded-lg bg-emerald-600/10 px-2.5 py-1 text-sm font-black text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 tnum">
+                    {report.breakdown.science.percentage}%
+                  </span>
+                </div>
+
+                {/* Science Sub-Disciplines Micro Pills */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  <div className="rounded-lg bg-white/90 dark:bg-slate-800/80 p-1.5 text-center border border-emerald-200/50 dark:border-slate-700">
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block">Physics</span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white tnum">{report.breakdown.physics?.percentage ?? 0}%</span>
+                  </div>
+                  <div className="rounded-lg bg-white/90 dark:bg-slate-800/80 p-1.5 text-center border border-emerald-200/50 dark:border-slate-700">
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block">Chemistry</span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white tnum">{report.breakdown.chemistry?.percentage ?? 0}%</span>
+                  </div>
+                  <div className="rounded-lg bg-white/90 dark:bg-slate-800/80 p-1.5 text-center border border-emerald-200/50 dark:border-slate-700">
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block">Biology</span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white tnum">{report.breakdown.biology?.percentage ?? 0}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+>>>>>>> Stashed changes
+          </div>
+
+<<<<<<< Updated upstream
           {/* Personal Diagnostic Report Title */}
           <div className="mt-8 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="h-5 w-1.5 rounded-full bg-brand-600" />
               <h3 className="text-sm sm:text-base font-black tracking-wider uppercase text-slate-900 dark:text-white">
                 Personal Diagnostic Evaluation
+=======
+        {/* Subject Comparison Insight Box */}
+        {(() => {
+          const insight = getSubjectPerformanceInsight(
+            report.breakdown.mathematics.percentage,
+            report.breakdown.science.percentage,
+          );
+          return (
+            <div className="mt-4 sm:mt-5 rounded-2xl border-2 border-sky-300/80 bg-gradient-to-r from-sky-50/90 via-blue-50/70 to-indigo-50/70 p-4 sm:p-5 text-xs leading-relaxed text-blue-950 dark:border-sky-700/60 dark:bg-gradient-to-r dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/30 dark:text-sky-100 shadow-sm">
+              <div className="flex items-center justify-between gap-2 border-b border-sky-200/60 pb-2.5 dark:border-sky-800/60">
+                <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[11px] sm:text-xs text-sky-800 dark:text-sky-300">
+                  <div className="flex size-6 items-center justify-center rounded-lg bg-sky-600 text-white shadow-2xs">
+                    <Sparkles className="size-3.5" />
+                  </div>
+                  <span>Subject Performance Insight</span>
+                </div>
+                <span className="rounded-md bg-sky-100 dark:bg-sky-900/60 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-sky-800 dark:text-sky-200 border border-sky-300/60 dark:border-sky-700">
+                  {insight.label}
+                </span>
+              </div>
+              <p className="mt-2.5 font-medium leading-relaxed text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+                {insight.message}
+              </p>
+            </div>
+          );
+        })()}
+
+        {/* Difficulty Level Performance Bar Graph (Maths & Science) */}
+        <div className="mt-6 rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-slate-100 pb-3 dark:border-slate-800">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                <BarChart3 className="size-4 text-brand-600 dark:text-brand-400" />
+                Difficulty-Wise Performance
+>>>>>>> Stashed changes
               </h3>
             </div>
             <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -3062,6 +3558,479 @@ export function BoardReadinessReport({
         </div>
       </section>
 
+<<<<<<< Updated upstream
+=======
+      {/* =========================================================================
+          PAGE 4: RECOMMENDATIONS (CIRCUIT ROADMAP STEPPER DESIGN)
+          ========================================================================= */}
+      {(() => {
+        const prepNorm = String(report.levelOfPreparation || '').trim().toLowerCase();
+        const isHigh = prepNorm.includes('high achievement') || prepNorm === 'advanced' || (report.briScore ?? 0) >= 70;
+        const isMed = !isHigh && (prepNorm.includes('conceptually strong') || prepNorm === 'proficient' || (report.briScore ?? 0) >= 50);
+        const isBasic = !isHigh && !isMed && !isVeryLowPrep;
+        const studentFirstName = (report.studentName || 'Student').trim().split(/\s+/)[0];
+
+        let badgeLabel = '🎯 Level of Preparation: Conceptually Strong';
+        let badgeStyle = 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40';
+        let heroTitle = 'TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION';
+        let heroSubtitle = 'You have built solid conceptual understanding across core topics. The next critical leap is turning that understanding into dependable exam-style problem solving, higher accuracy under timer conditions, and mastery of multi-step questions.';
+        let steps: RecommendationStep[] = [];
+
+        if (isHigh) {
+          badgeLabel = '🏆 Level of Preparation: High Achievement Potential';
+          badgeStyle = 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40';
+          heroTitle = 'HOW TO MOVE FROM STRONG TO EXCELLENT';
+          heroSubtitle = 'Your diagnostic performance confirms strong grasp across standard chapters. To reach the top tier and secure 95%+ in Boards, your strategic focus must now shift towards unfamiliar problem varieties, cross-chapter synthesis, and high execution speed under timed pressure.';
+          steps = [
+            {
+              step: '01',
+              nodeIcon: <Puzzle className="size-4 text-emerald-600 dark:text-emerald-400" />,
+              cardIcon: <Puzzle className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'CHALLENGE YOURSELF',
+              headlineFocus: 'Regularly include unfamiliar and higher-order problems',
+              description: 'Do not spend all your practice time on questions you can already solve.',
+              actionBox: (
+                <span className="font-bold text-emerald-800 dark:text-emerald-300">
+                  ★ High-Impact: Devote 40%+ of study time to unfamiliar &amp; Competency-based problems
+                </span>
+              ),
+            },
+            {
+              step: '02',
+              nodeIcon: <RotateCcw className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <RotateCcw className="size-3.5 text-amber-600 dark:text-amber-400" />,
+              title: 'PRACTISE MIXED PROBLEMS',
+              headlineFocus: 'Solve mixed-topic sets instead of only single-chapter questions',
+              description: 'Train your brain to recognize the relevant concept without knowing the chapter in advance.',
+              actionBox: (
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  Cognitive Strategy: Train brain to recognize chapter and concept automatically
+                </span>
+              ),
+            },
+            {
+              step: '03',
+              nodeIcon: <Target className="size-4 text-rose-600 dark:text-rose-400" />,
+              cardIcon: <Target className="size-3.5 text-rose-600 dark:text-rose-400" />,
+              title: 'ANALYSE RECURRING MISTAKES',
+              headlineFocus: 'Keep a targeted error list for higher-level questions',
+              tags: [
+                { label: '• Concept Gap', className: 'bg-rose-600 text-white font-bold' },
+                { label: '• Misread Trap', className: 'bg-amber-600 text-white font-bold' },
+                { label: '• Calculation', className: 'bg-purple-600 text-white font-bold' },
+                { label: '• Pacing Rush', className: 'bg-blue-600 text-white font-bold' },
+              ],
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Error Tagging:</strong> Categorize every missed mark into root-cause buckets
+                </span>
+              ),
+            },
+            {
+              step: '04',
+              nodeIcon: <Timer className="size-4 text-sky-600 dark:text-sky-400" />,
+              cardIcon: <Timer className="size-3.5 text-sky-600 dark:text-sky-400" />,
+              title: 'SIMULATING TIMED EXAM CONDITION',
+              headlineFocus: 'Complete full question sections strictly against the clock',
+              description: 'Timed practice ensures speed and composure during the final examination.',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Pacing Cadence:</strong> 3-hour timed Board simulation once every 10–14 days
+                </span>
+              ),
+            },
+            {
+              step: '05',
+              nodeIcon: <Award className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <Award className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'BOARD-STYLE MASTERY',
+              headlineFocus: 'Focus on step-marking, justification and precise presentation',
+              description: 'CBSE awards marks per step. Write answers with explicit intermediate steps.',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Board Target:</strong> Full sample papers, Assertion-Reason, and Case Study formats
+                </span>
+              ),
+            },
+          ];
+        } else if (isMed) {
+          badgeLabel = '🎯 Level of Preparation: Conceptually Strong';
+          badgeStyle = 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40';
+          heroTitle = 'TURN YOUR CURRENT PERFORMANCE INTO STRONGER BOARD PREPARATION';
+          heroSubtitle = 'You have built solid conceptual understanding across core topics. The next critical leap is turning that understanding into dependable exam-style problem solving, higher accuracy under timer conditions, and mastery of multi-step questions.';
+          steps = [
+            {
+              step: '01',
+              nodeIcon: <Puzzle className="size-4 text-indigo-600 dark:text-indigo-400" />,
+              cardIcon: <Puzzle className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'MOVE BEYOND DIRECT QUESTIONS',
+              headlineFocus: 'For every chapter you study, include application-based and multi-step questions—not only straightforward exercises.',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-blue-400 font-bold">Action:</strong> Complement textbook drills with scenario-based &amp; application questions
+                </span>
+              ),
+            },
+            {
+              step: '02',
+              nodeIcon: <RotateCcw className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <RotateCcw className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'REWORK EVERY IMPORTANT MISTAKE',
+              headlineFocus: 'After a test, first attempt the incorrect question again without seeing the solution. Then identify whether the issue was:',
+              tags: [
+                { label: '• Concept', className: 'bg-rose-600 text-white font-bold' },
+                { label: '• Application', className: 'bg-amber-600 text-white font-bold' },
+                { label: '• Accuracy', className: 'bg-purple-600 text-white font-bold' },
+                { label: '• Interpretation', className: 'bg-blue-600 text-white font-bold' },
+              ],
+            },
+            {
+              step: '03',
+              nodeIcon: <Target className="size-4 text-rose-600 dark:text-rose-400" />,
+              cardIcon: <Calendar className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'PRACTISE CONSISTENTLY',
+              headlineFocus: 'A manageable amount of focused practice every day is more valuable than occasional long study sessions.',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Consistency Target:</strong> 5–8 high-quality problems daily builds compounding confidence
+                </span>
+              ),
+            },
+            {
+              step: '04',
+              nodeIcon: <Timer className="size-4 text-sky-600 dark:text-sky-400" />,
+              cardIcon: <Timer className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'TEST YOURSELF EVERY 1–2 WEEKS',
+              headlineFocus: 'Use mixed, timed questions to check whether your improvement is carrying across chapters.',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Assessment Target:</strong> 30–45 min bi-weekly mixed chapter assessments
+                </span>
+              ),
+            },
+            {
+              step: '05',
+              nodeIcon: <Award className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <FileText className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'SHIFT TOWARDS BOARD-STYLE PRACTICE',
+              headlineFocus: 'As the examination approaches, progressively increase your practice of sample papers, case-based questions and mixed-chapter questions.',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-blue-400 font-bold">Formats:</strong> Assertion-Reason, Case-based questions &amp; Board sample papers
+                </span>
+              ),
+            },
+          ];
+        } else if (isBasic) {
+          badgeLabel = '⚡ Level of Preparation: Basic';
+          badgeStyle = 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40';
+          heroTitle = 'TURN YOUR GAPS INTO PROGRESS';
+          heroSubtitle = `Hi ${studentFirstName}! Think of this initial score not as a setback, but as your clearest guide to improvement. By mastering core concepts before memorizing formulas, you'll unlock rapid gains in both speed and confidence. Here is your personalized 5-step roadmap to get you there.`;
+          steps = [
+            {
+              step: '01',
+              nodeIcon: <Brain className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <Brain className="size-3.5 text-amber-600 dark:text-amber-400" />,
+              title: 'STRENGTHEN THE BASICS',
+              headlineFocus: 'Make sure you can explain the idea before memorising the method',
+              description: 'Revisit the concepts behind the questions you could not solve.',
+              actionBox: (
+                <span className="font-semibold text-amber-800 dark:text-amber-300">
+                  <strong className="text-amber-400 font-bold">Golden Principle:</strong> Understand concepts from first principles before memorising steps
+                </span>
+              ),
+            },
+            {
+              step: '02',
+              nodeIcon: <TrendingUp className="size-4 text-blue-600 dark:text-blue-400" />,
+              cardIcon: <TrendingUp className="size-3.5 text-blue-600 dark:text-blue-400" />,
+              title: 'PRACTISE A FEW QUESTIONS EVERY DAY',
+              headlineFocus: 'Follow a simple three-step progression',
+              tags: [
+                { label: '• Basic', className: 'bg-emerald-600 text-white font-bold' },
+                { label: '• Standard', className: 'bg-blue-600 text-white font-bold' },
+                { label: '• Application', className: 'bg-purple-600 text-white font-bold' },
+              ],
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Daily Cadence:</strong> Focus on quality and consistency rather than solving a very large number of questions.
+                </span>
+              ),
+            },
+            {
+              step: '03',
+              nodeIcon: <BookOpen className="size-4 text-purple-600 dark:text-purple-400" />,
+              cardIcon: <BookOpen className="size-3.5 text-purple-600 dark:text-purple-400" />,
+              title: 'KEEP AN ERROR NOTEBOOK',
+              headlineFocus: 'For every important mistake, record 3 key reflections',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Notebook Rule:</strong> 1. What did I get wrong? • 2. Why? • 3. What is the correct approach?
+                </span>
+              ),
+            },
+            {
+              step: '04',
+              nodeIcon: <Timer className="size-4 text-sky-600 dark:text-sky-400" />,
+              cardIcon: <Timer className="size-3.5 text-sky-600 dark:text-sky-400" />,
+              title: 'TEST YOURSELF REGULARLY',
+              headlineFocus: 'Take a short mixed test every 1–2 weeks and track recurring mistakes',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">Frequency:</strong> 15–20 question short mixed test every 7–14 days
+                </span>
+              ),
+            },
+            {
+              step: '05',
+              nodeIcon: <Award className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <Award className="size-3.5 text-amber-600 dark:text-amber-400" />,
+              title: 'MASTER YOUR PRESCRIBED TEXTBOOK',
+              headlineFocus: 'Become confident with examples and exercises before moving to advanced material',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-amber-400 font-bold">Priority Rule:</strong> 100% textbook example &amp; exercise mastery first
+                </span>
+              ),
+            },
+          ];
+        } else {
+          // Foundational (BRI < 20)
+          badgeLabel = '🌱 Level of Preparation: Foundational';
+          badgeStyle = 'bg-violet-50 text-violet-800 border border-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/40';
+          heroTitle = 'START FRESH: BUILD YOUR BOARD CONFIDENCE';
+          heroSubtitle = `Hi ${studentFirstName}! Remember, a diagnostic test is just a compass showing us where to begin, never a limit on how far you can go. To help you build your confidence step-by-step, here is a personalized 5-step roadmap designed to steadily grow your marks from the ground up.`;
+          steps = [
+            {
+              step: '01',
+              nodeIcon: <Compass className="size-4 text-violet-600 dark:text-violet-400" />,
+              cardIcon: <Compass className="size-3.5 text-violet-600 dark:text-violet-400" />,
+              title: 'REFRAME YOUR STARTING BASELINE',
+              headlineFocus: 'A diagnostic test identifies where to begin, not what you can achieve',
+              actionBox: (
+                <span className="font-bold text-violet-300">
+                  🌱 Mindset Anchor: Every top score starts from zero • Progress begins today
+                </span>
+              ),
+            },
+            {
+              step: '02',
+              nodeIcon: <Target className="size-4 text-emerald-600 dark:text-emerald-400" />,
+              cardIcon: <Target className="size-3.5 text-emerald-600 dark:text-emerald-400" />,
+              title: 'TARGET QUICK-WIN CHAPTERS FIRST',
+              headlineFocus: 'Focus initial effort on high-weightage, predictable chapters',
+              actionBox: (
+                <span className="font-bold text-emerald-300">
+                  🎯 Quick-Win Target: 2–3 core chapters secure your first 20–25 marks
+                </span>
+              ),
+            },
+            {
+              step: '03',
+              nodeIcon: <BookOpen className="size-4 text-amber-600 dark:text-amber-400" />,
+              cardIcon: <BookOpen className="size-3.5 text-amber-600 dark:text-amber-400" />,
+              title: 'MASTER NCERT SOLVED EXAMPLES BY HAND',
+              headlineFocus: 'Practice textbook solved examples line-by-line',
+              actionBox: (
+                <span className="font-bold text-amber-300">
+                  ✍️ CBSE Step-Marking: Formula + Given data earns marks on every question
+                </span>
+              ),
+            },
+            {
+              step: '04',
+              nodeIcon: <Clock className="size-4 text-sky-600 dark:text-sky-400" />,
+              cardIcon: <Clock className="size-3.5 text-sky-600 dark:text-sky-400" />,
+              title: 'KEEP PRACTICE CALM AND CONSISTENT',
+              headlineFocus: 'Solving 3 to 5 simple textbook problems daily builds steady momentum',
+              actionBox: (
+                <span className="font-semibold text-slate-200">
+                  <strong className="text-white font-bold">⏱️ Consistency Rule:</strong> 3–5 solved questions a day creates compounding confidence
+                </span>
+              ),
+            },
+            {
+              step: '05',
+              nodeIcon: <Brain className="size-4 text-teal-600 dark:text-teal-400" />,
+              cardIcon: <Brain className="size-3.5 text-teal-600 dark:text-teal-400" />,
+              title: 'SEEK GUIDANCE WITHOUT HESITATION',
+              headlineFocus: 'Most roadblocks come from minor past gaps that can be resolved quickly',
+              actionBox: (
+                <span className="font-semibold text-teal-300">
+                  🤝 Mentorship: Clearing basic doubts early leads to rapid score jumps
+                </span>
+              ),
+            },
+          ];
+        }
+
+        return (
+          <section
+            id="report-page-4"
+            className="report-page-container report-page-4 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-7 md:p-8 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"
+          >
+            {/* Top Header Bar */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 gap-2">
+              <div className="min-w-0 flex-1">
+                <span className="text-xs sm:text-xs font-black uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+                  <GraduationCap className="size-4 text-brand-600 dark:text-brand-400 shrink-0" />
+                  <span className="inline-flex flex-wrap items-baseline gap-x-1">
+                    <span className="whitespace-nowrap">Shri Ram</span>
+                    <span className="whitespace-nowrap">Smart Minds Academy</span>
+                  </span>
+                </span>
+                <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1.5 break-words">
+                  PAGE 4: RECOMMENDATIONS
+                </h2>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 shadow-2xs whitespace-nowrap">
+                  {isTeacherView ? 'PAGE 4 OF 6' : 'PAGE 4 OF 5'}
+                </span>
+              </div>
+            </div>
+
+            {/* Hero Header */}
+            <div className="mt-6 mb-7 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className={`rounded-md px-2.5 py-0.5 text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-xs ${badgeStyle}`}>
+                  {badgeLabel}
+                </span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  BRI: <strong className="text-slate-900 dark:text-white">{report.briScore}/100</strong>
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                {heroTitle}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                {heroSubtitle}
+              </p>
+            </div>
+
+            {/* 5 Recommendation Action Steps (Circuit Roadmap Stepper) */}
+            <div className="rounded-3xl bg-[#0b1224] border border-[#1b2848] p-4 sm:p-7 shadow-xl relative overflow-hidden my-6">
+              <CircuitRoadmapStepper steps={steps} />
+            </div>
+
+            {/* Parent Support Hub */}
+            <div className="mt-10 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-slate-50 to-blue-50/60 dark:border-indigo-500/30 dark:bg-gradient-to-br dark:from-[#090f24] dark:via-[#0e173a] dark:to-[#090f24] p-5 sm:p-7 text-slate-900 dark:text-white shadow-md dark:shadow-2xl relative overflow-hidden">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-5 sm:mb-6">
+                <div className="min-w-0 flex-1">
+                  <div className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-100 border border-indigo-200 px-2.5 py-1 text-[11px] sm:text-xs font-bold text-indigo-800 dark:bg-indigo-500/20 dark:border-indigo-400/30 dark:text-indigo-300 mb-2">
+                    <Info className="size-3 sm:size-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>A Note For Parents</span>
+                  </div>
+                  <h3 className="text-lg sm:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                    PARENT SUPPORT HUB
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 max-w-xl leading-relaxed">
+                    Practical ways you can encourage your child, reinforce consistent daily habits, and build compounding exam confidence at home.
+                  </p>
+                </div>
+
+                {/* 3D Animated Parent Support Character Artwork */}
+                <div className="shrink-0 flex items-center justify-start sm:justify-end">
+                  <div className="relative size-24 sm:size-32 md:size-36 rounded-2xl overflow-hidden shadow-lg border-2 border-white/95 dark:border-indigo-400/30 ring-4 ring-indigo-500/10 bg-white/70 dark:bg-slate-800/80 group">
+                    <img
+                      src="/board-challenge/parent_support.jpg"
+                      alt="Animated parent and student character encouragement"
+                      className="size-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Checklist & Avoid / Reduce in Elevated Card */}
+              <div className="rounded-2xl bg-white border border-slate-200/90 shadow-2xs dark:bg-[#060c1e] dark:border-indigo-500/20 p-4 sm:p-5 relative overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 relative z-10">
+                  {/* Quick Checklist */}
+                  <div className="space-y-3 rounded-xl bg-emerald-50/30 p-3.5 sm:p-4 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40">
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                      <span className="flex size-6 items-center justify-center rounded-lg bg-emerald-600 text-white dark:bg-emerald-500 shadow-2xs shrink-0">
+                        <Check className="size-4 stroke-[3]" />
+                      </span>
+                      <span>Quick Checklist to support your child</span>
+                    </h4>
+                    <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                      <li className="flex items-start gap-2">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                        <span className="leading-snug">Identify where they stand today, don&apos;t label their ability.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                        <span className="leading-snug">Encourage regular practice &amp; maintain consistency.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                        <span className="leading-snug">Focus on the gaps highlighted in this report.</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Avoid / Reduce */}
+                  <div className="space-y-3 rounded-xl bg-rose-50/30 p-3.5 sm:p-4 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40">
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                      <span className="flex size-6 items-center justify-center rounded-lg bg-rose-600 text-white dark:bg-rose-500 shadow-2xs shrink-0">
+                        <X className="size-4 stroke-[3]" />
+                      </span>
+                      <span>Avoid / Reduce</span>
+                    </h4>
+                    <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                      <li className="flex items-start gap-2">
+                        <span className="text-rose-600 dark:text-rose-400 font-bold shrink-0 mt-0.5">✕</span>
+                        <span className="leading-snug">Avoid unnecessary pressure or comparing with others.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-rose-600 dark:text-rose-400 font-bold shrink-0 mt-0.5">✕</span>
+                        <span className="leading-snug">Don&apos;t rush; let your child develop at their own pace.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reassurance Note for Foundational/Low baseline */}
+              {isVeryLowPrep && (
+                <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-500/40 dark:bg-violet-950/40 dark:text-violet-200 p-3.5 text-xs sm:text-sm leading-relaxed">
+                  <strong className="text-violet-800 dark:text-violet-300">A reassuring note for parents: </strong>
+                  An initial diagnostic score under timer pressure is completely normal and not a measure of your child&apos;s capability. With patient encouragement, regular daily practice, and small wins, students from this baseline routinely make fast, significant gains in marks.
+                </div>
+              )}
+
+              <div className="mt-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed border-t border-slate-200/80 dark:border-slate-800/80 pt-4 space-y-3">
+
+                <div className="p-3 sm:p-3.5 rounded-xl border border-indigo-200/80 bg-indigo-50/70 dark:border-indigo-500/30 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200">
+                  <p className="font-semibold leading-relaxed">
+                    We hope Shri Ram Smart Minds Academy could provide you and your child a good plan of action for Class X Board Exams. Wish you all the best! You may contact us if you need any further guidance for your child. Thanks!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Official Academic Seal & Certification Footer */}
+            <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-3">
+              <div className="flex items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-black text-xs border border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">
+                  ✓
+                </span>
+                <div>
+                  Personalized Growth Blueprint for <strong className="text-slate-900 dark:text-white">{report.studentName}</strong> • {studentDetails?.isFormFilled ? `${studentDetails.classLevel ? `Class ${studentDetails.classLevel}` : 'Class X'} ${studentDetails.board || 'CBSE'}` : 'Class X Board Readiness Challenge'}
+                </div>
+              </div>
+              <div className="text-center sm:text-right font-semibold text-slate-600 dark:text-slate-400">
+                Shri Ram Smart Minds Academy • Academic Evaluation Office
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* =========================================================================
+          PAGE 5: SUPPORT & BOARD MASTERY COURSE (DESKTOP & MOBILE OPTIMIZED)
+          ========================================================================= */}
+>>>>>>> Stashed changes
       <section
         id="report-page-5"
         className="report-page-container report-page-5 relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition dark:border-slate-800 dark:bg-slate-900 block print:block scroll-mt-48 md:scroll-mt-32"

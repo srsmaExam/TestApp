@@ -59,7 +59,7 @@ export function TestInstructionClient({
         typeof window !== 'undefined' &&
         (window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
       if (!isMobile && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen().catch(() => {});
+        await document.documentElement.requestFullscreen().catch(() => { });
       }
     } catch {
       // Ignored if browser restricts
@@ -155,8 +155,7 @@ export function TestInstructionClient({
           <div>
             <h3 className="font-semibold text-slate-900 dark:text-slate-100">1. Timer and Exam Clock</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-              The countdown timer at the top right of the screen will display the remaining time available for you to complete the examination.
-              When the timer reaches zero, the examination will automatically submit and score your responses.
+              The timer in the top right shows your remaining time. The exam will submit and score automatically when it reaches zero.
             </p>
           </div>
 
@@ -264,16 +263,7 @@ export function TestInstructionClient({
             ) : null}
           </div>
 
-          <div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100">4. Navigating and Answering</h3>
-            <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-600 dark:text-slate-400">
-              <li>Click on the question number in the palette to navigate directly to that question.</li>
-              <li>Click <strong>&quot;Save & Next&quot;</strong> to save your answer and proceed to the next question.</li>
-              <li>Click <strong>&quot;Mark for Review & Next&quot;</strong> to save (if chosen) and flag the question.</li>
-              <li>Click <strong>&quot;Clear Response&quot;</strong> to deselect your choice.</li>
-              <li>Your progress is continuously autosaved locally and synchronized with the server.</li>
-            </ul>
-          </div>
+
 
           <div className="rounded-md border border-brand-200 bg-brand-50 p-3.5 text-xs text-brand-900 dark:border-brand-800 dark:bg-brand-950/60 dark:text-brand-200">
             <p className="font-semibold">If your connection drops</p>
@@ -292,17 +282,17 @@ export function TestInstructionClient({
               </div>
               <div className="space-y-2 text-xs text-amber-950 dark:text-amber-200">
                 <h4 className="text-sm font-bold text-amber-900 dark:text-amber-100">
-                  5. Test Environment, Academic Honesty & Diagnostic Accuracy
+                  4. Test Environment, Academic Honesty & Diagnostic Accuracy
                 </h4>
                 <ul className="list-disc space-y-1.5 pl-4 leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                   <li>
-                    <strong>Uninterrupted & Proper Test Environment:</strong> Please take this examination in a quiet, distraction-free environment without interruptions. Ensure your device is sufficiently charged and your network connection is stable before beginning.
+                    <strong>Environment:</strong> Take the exam in a quiet, distraction-free space with a stable internet connection and a charged device.
                   </li>
                   <li>
-                    <strong>Strict Academic Honesty:</strong> Complete the exam with absolute integrity. Do not refer to textbooks, notebooks, other browser tabs, secondary devices, or seek external assistance.
+                    <strong>Honesty:</strong> Work independently. Do not use notes, textbooks, extra tabs, secondary devices, or external help.
                   </li>
                   <li>
-                    <strong>Do NOT Guess on Unsure Questions:</strong> Please refrain from guessing answers to questions you are unsure about. This test generates a comprehensive diagnostic report to highlight your genuine strengths and learning gaps — guessing introduces incorrect data points that lead to an inaccurate diagnostic report.
+                    <strong>No Guessing:</strong> Leave questions blank if you are unsure; guessing skews your diagnostic report and misidentifies your learning gaps.
                   </li>
                 </ul>
               </div>
@@ -319,7 +309,7 @@ export function TestInstructionClient({
                 className="mt-0.5 size-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
               />
               <span className="text-xs text-slate-800 dark:text-slate-200">
-                I have read and understood all the instructions given above. I agree to take the test uninterrupted in a proper environment, maintain complete academic honesty, and avoid guessing unsure questions so that my diagnostic report is authentic and accurate.
+                I understand and agree to follow all instructions, complete the test honestly without distractions, and avoid guessing to ensure an accurate diagnostic report.
               </span>
             </label>
           </div>

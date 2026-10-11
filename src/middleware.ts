@@ -26,9 +26,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // Redirect /home to /boardChallenge (preserves UTM parameters)
+  if (pathname.toLowerCase() === '/home') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/boardChallenge';
+    return NextResponse.redirect(url, 307);
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/srsma', '/boardchallenge'],
+  matcher: ['/', '/srsma', '/boardchallenge', '/home'],
 };
